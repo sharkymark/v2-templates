@@ -1,0 +1,191 @@
+{
+  "version": 4,
+  "terraform_version": "1.1.9",
+  "serial": 4,
+  "lineage": "d0aa4503-e578-ca96-e31d-acc79cc37011",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "data",
+      "type": "coder_workspace",
+      "name": "me",
+      "provider": "provider[\"registry.terraform.io/coder/coder\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "ce29e897-bba8-47fb-b938-22ee3ba60c5e",
+            "name": "docker-local-ws",
+            "owner": "developer",
+            "owner_id": "491e8186-68a3-45eb-b9cd-a26982ac79c3",
+            "start_count": 1,
+            "transition": "start"
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "coder_agent",
+      "name": "dev",
+      "provider": "provider[\"registry.terraform.io/coder/coder\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arch": "amd64",
+            "auth": "token",
+            "dir": null,
+            "env": null,
+            "id": "0c489d1c-5e4b-4aed-b68f-d03ec02126e0",
+            "init_script": "#!/usr/bin/env sh\nset -eu pipefail\nexport BINARY_LOCATION=$(mktemp -d -t tmp.coderXXXXX)/coder\ncurl -fsSL https://keen-mahavira0.try.coder.app/bin/coder-linux-amd64 -o $BINARY_LOCATION\nchmod +x $BINARY_LOCATION\nexport CODER_AGENT_AUTH=\"token\"\nexport CODER_AGENT_URL=\"https://keen-mahavira0.try.coder.app/\"\nexec $BINARY_LOCATION agent",
+            "os": "linux",
+            "startup_script": null,
+            "token": "2534f52e-45bd-4205-bc65-f6522ee9d4c4"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "docker_container",
+      "name": "workspace",
+      "provider": "provider[\"registry.terraform.io/kreuzwerker/docker\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 2,
+          "attributes": {
+            "attach": false,
+            "bridge": "",
+            "capabilities": [],
+            "command": [
+              "sh",
+              "-c",
+              "#!/usr/bin/env sh\nset -eu pipefail\nexport BINARY_LOCATION=$(mktemp -d -t tmp.coderXXXXX)/coder\ncurl -fsSL https://keen-mahavira0.try.coder.app/bin/coder-linux-amd64 -o $BINARY_LOCATION\nchmod +x $BINARY_LOCATION\nexport CODER_AGENT_AUTH=\"token\"\nexport CODER_AGENT_URL=\"https://keen-mahavira0.try.coder.app/\"\nexec $BINARY_LOCATION agent"
+            ],
+            "container_logs": null,
+            "cpu_set": "",
+            "cpu_shares": 0,
+            "destroy_grace_seconds": null,
+            "devices": [],
+            "dns": [
+              "1.1.1.1"
+            ],
+            "dns_opts": null,
+            "dns_search": null,
+            "domainname": "",
+            "entrypoint": [],
+            "env": [
+              "CODER_AGENT_TOKEN=2534f52e-45bd-4205-bc65-f6522ee9d4c4"
+            ],
+            "exit_code": null,
+            "gateway": "172.17.0.1",
+            "group_add": null,
+            "healthcheck": null,
+            "host": [],
+            "hostname": "dca2dddeb468",
+            "id": "dca2dddeb46815a18797bae5dcc885634d45f90937e8025a02894ce60b01df3a",
+            "image": "sha256:b25cb57f4aa481903ba9a9134e4108cbc93e4d6371f0ba62bfdd794655c02de9",
+            "init": false,
+            "ip_address": "172.17.0.2",
+            "ip_prefix_length": 16,
+            "ipc_mode": "private",
+            "labels": [],
+            "links": null,
+            "log_driver": "json-file",
+            "log_opts": null,
+            "logs": false,
+            "max_retry_count": 0,
+            "memory": 0,
+            "memory_swap": 0,
+            "mounts": [],
+            "must_run": true,
+            "name": "coder-developer-docker-local-ws-root",
+            "network_alias": null,
+            "network_data": [
+              {
+                "gateway": "172.17.0.1",
+                "global_ipv6_address": "",
+                "global_ipv6_prefix_length": 0,
+                "ip_address": "172.17.0.2",
+                "ip_prefix_length": 16,
+                "ipv6_gateway": "",
+                "network_name": "bridge"
+              }
+            ],
+            "network_mode": "default",
+            "networks": null,
+            "networks_advanced": [],
+            "pid_mode": "",
+            "ports": [],
+            "privileged": false,
+            "publish_all_ports": false,
+            "read_only": false,
+            "remove_volumes": true,
+            "restart": "no",
+            "rm": false,
+            "security_opts": [],
+            "shm_size": 64,
+            "start": true,
+            "stdin_open": false,
+            "storage_opts": null,
+            "sysctls": null,
+            "tmpfs": null,
+            "tty": false,
+            "ulimit": [],
+            "upload": [],
+            "user": "coder",
+            "userns_mode": "",
+            "volumes": [
+              {
+                "container_path": "/home/coder/",
+                "from_container": "",
+                "host_path": "",
+                "read_only": false,
+                "volume_name": "coder-developer-docker-local-ws-root"
+              }
+            ],
+            "working_dir": ""
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjIifQ==",
+          "dependencies": [
+            "coder_agent.dev",
+            "data.coder_workspace.me",
+            "docker_volume.coder_volume"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "docker_volume",
+      "name": "coder_volume",
+      "provider": "provider[\"registry.terraform.io/kreuzwerker/docker\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "driver": "local",
+            "driver_opts": null,
+            "id": "coder-developer-docker-local-ws-root",
+            "labels": [],
+            "mountpoint": "/var/lib/docker/volumes/coder-developer-docker-local-ws-root/_data",
+            "name": "coder-developer-docker-local-ws-root"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "data.coder_workspace.me"
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+
