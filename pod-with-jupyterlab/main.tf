@@ -46,20 +46,9 @@ resource "coder_agent" "coder" {
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
-#export HOME=/home/${lower(data.coder_workspace.me.owner)}
-export HOME=/home/coder
-
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337
-
-# run configure script (installs and configures projector)
-/coder/configure
-
-# start JetBrains projector-based IntelliJ
-/home/coder/.projector/configs/IntelliJ/run.sh &
-
-  EOT  
+/coder/configure 2>&1 > ~/configure.log
+coder dotfiles git@github.com:mark-theshark/dotfiles.git -y
+EOT
 }
 
 # code-server
@@ -67,15 +56,15 @@ resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
   icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
-  url           = "http://localhost:13337"
+  url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
 }
 
-resource "coder_app" "jetbrains-projector" {
+resource "coder_app" "jupyterlab" {
   agent_id      = coder_agent.coder.id
-  name          = "jetbrains-projector"
-  icon          = "https://jetbrains.github.io/projector-client/mkdocs/latest/favicon.svg"
-  url           = "http://localhost:8997"
+  name          = "jupyterlab"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/3/38/Jupyter_logo.svg"
+  url           = "http://localhost:8888/"
   relative_path = true
 }
 
@@ -87,8 +76,8 @@ resource "kubernetes_pod" "main" {
   }
   spec {
     container {
-      name    = "intellij"
-      image   = "docker.io/marktmilligan/projector-cli:latest"
+      name    = "jupyterlab"
+      image   = "docker.io/marktmilligan/jupyterlab:dev-url"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"

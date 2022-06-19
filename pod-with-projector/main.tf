@@ -42,16 +42,12 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+  #dir            = "/home/${lower(data.coder_workspace.me.owner)}"
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
-export HOME=/home/coder
-
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
-
-  EOT  
+/coder/configure 2>&1 > ~/configure.log
+EOT
 }
 
 # code-server
@@ -63,6 +59,22 @@ resource "coder_app" "code-server" {
   relative_path = true  
 }
 
+resource "coder_app" "intellij-1" {
+  agent_id      = coder_agent.coder.id
+  name          = "intellij-1"
+  icon          = "https://jetbrains.github.io/projector-client/mkdocs/latest/favicon.svg"
+  url           = "http://localhost:8997"
+  relative_path = true
+}
+
+resource "coder_app" "intellij-2" {
+  agent_id      = coder_agent.coder.id
+  name          = "intellij-2"
+  icon          = "https://jetbrains.github.io/projector-client/mkdocs/latest/favicon.svg"
+  url           = "http://localhost:8998"
+  relative_path = true
+}
+
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
@@ -71,8 +83,8 @@ resource "kubernetes_pod" "main" {
   }
   spec {
     container {
-      name    = "node"
-      image   = "docker.io/codercom/enterprise-node:ubuntu"
+      name    = "intellij"
+      image   = "docker.io/marktmilligan/projector-cli-config:latest"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"
