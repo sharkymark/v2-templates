@@ -46,7 +46,14 @@ resource "coder_agent" "coder" {
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
+# start supervisord and start jupyterlab
 /coder/configure 2>&1 > ~/configure.log
+
+# install code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 &
+
+# clone dotfiles
 coder dotfiles git@github.com:mark-theshark/dotfiles.git -y
 EOT
 }
