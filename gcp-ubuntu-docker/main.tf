@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.3.4"
+      version = "0.4.2"
     }
     google = {
       source  = "hashicorp/google"
@@ -12,7 +12,7 @@ terraform {
 }
 
 data "template_file" "sa_token" {
-  template = "${file("/Users/markmilligan/documents/dev_and_debug/v2/gcp-ubuntu-docker/gcp-private-key.json")}"
+  template = "${file("/Users/markmilligan/documents/dev_and_debug/v2/v2-templates/gcp-ubuntu-docker/gcp-private-key.json")}"
 }
 
 
