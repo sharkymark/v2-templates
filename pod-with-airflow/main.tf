@@ -46,7 +46,15 @@ resource "coder_agent" "coder" {
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
+# start supervisord and start jupyterlab
 /coder/configure 2>&1 > ~/configure.log
+
+# install code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 &
+
+# clone dotfiles
+coder dotfiles git@github.com:mark-theshark/dotfiles.git -y
 EOT
 }
 
@@ -59,20 +67,12 @@ resource "coder_app" "code-server" {
   relative_path = true  
 }
 
-resource "coder_app" "intellij-1" {
+resource "coder_app" "airflow" {
   agent_id      = coder_agent.coder.id
-  name          = "intellij-1"
-  icon          = "https://jetbrains.github.io/projector-client/mkdocs/latest/favicon.svg"
-  url           = "http://localhost:8997"
-  relative_path = true
-}
-
-resource "coder_app" "intellij-2" {
-  agent_id      = coder_agent.coder.id
-  name          = "intellij-2"
-  icon          = "https://jetbrains.github.io/projector-client/mkdocs/latest/favicon.svg"
-  url           = "http://localhost:8998"
-  relative_path = true
+  name          = "airflow"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/d/de/AirflowLogo.png"
+  url           = "http://localhost:8080/"
+  relative_path = false
 }
 
 resource "kubernetes_pod" "main" {
@@ -83,8 +83,8 @@ resource "kubernetes_pod" "main" {
   }
   spec {
     container {
-      name    = "intellij"
-      image   = "docker.io/marktmilligan/projector-cli-config:latest"
+      name    = "jupyterlab"
+      image   = "docker.io/marktmilligan/airflow:dev-url"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"
