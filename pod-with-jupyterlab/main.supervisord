@@ -42,11 +42,12 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
-  dir = "/home/jovyan"
+  #dir            = "/home/${lower(data.coder_workspace.me.owner)}"
+  dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
-# start jupyterlab
-jupyter lab --ServerApp.token='password' --ServerApp.ip='0.0.0.0' --ServerApp.base_url='./' &
+# start supervisord and start jupyterlab
+/coder/configure 2>&1 > ~/configure.log
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -71,7 +72,7 @@ resource "coder_app" "jupyterlab" {
   name          = "jupyterlab"
   icon          = "https://upload.wikimedia.org/wikipedia/commons/3/38/Jupyter_logo.svg"
   url           = "http://localhost:8888/"
-  relative_path = false
+  relative_path = true
 }
 
 resource "kubernetes_pod" "main" {
@@ -83,7 +84,7 @@ resource "kubernetes_pod" "main" {
   spec {
     container {
       name    = "jupyterlab"
-      image   = "docker.io/jupyter/datascience-notebook:latest"
+      image   = "docker.io/codercom/enterprise-jupyter:ubuntu"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {
