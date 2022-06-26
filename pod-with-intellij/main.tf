@@ -29,7 +29,7 @@ variable "workspaces_namespace" {
   type        = string
   sensitive   = true
   description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "coder-clean"
+  default     = "oss"
 }
 
 provider "kubernetes" {
@@ -42,7 +42,6 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
-  dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
 
@@ -89,7 +88,7 @@ resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = "coder-clean"
+    namespace = "oss"
   }
   spec {
     container {
