@@ -11,10 +11,9 @@ terraform {
   }
 }
 
-data "template_file" "sa_token" {
-  template = "${file("/Users/markmilligan/documents/dev_and_debug/v2/v2-templates/gcp-ubuntu-docker/gcp-private-key.json")}"
+variable "project_id" {
+  description = "Which Google Compute Project should your workspace live in?"
 }
-
 
 variable "zone" {
   description = "What region should your workspace live in?"
@@ -26,12 +25,20 @@ variable "zone" {
 }
 
 provider "google" {
-  zone        = var.zone
-  credentials = data.template_file.sa_token.rendered
-  project     = jsondecode(data.template_file.sa_token.rendered).project_id
+  zone    = var.zone
+  project = var.project_id
 }
 
 data "google_compute_default_service_account" "default" {
+}
+
+variable "dotfiles_uri" {
+  description = <<-EOF
+  Dotfiles repo URI (optional)
+
+  see https://dotfiles.github.io
+  EOF
+  default = ""
 }
 
 data "coder_workspace" "me" {
@@ -41,23 +48,45 @@ resource "google_compute_disk" "root" {
   name  = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}-root"
   type  = "pd-ssd"
   zone  = var.zone
-  image = "projects/coder-devrel/global/images/coder-ubuntu-2004-lts-with-docker-engine"
+  #image = "debian-cloud/debian-9"
+  image = "projects/coder-demo-1/global/images/coder-ubuntu-2004-lts-with-docker-engine"
   lifecycle {
     ignore_changes = [image]
   }
-} 
+}
 
 resource "coder_agent" "dev" {
   auth = "google-instance-identity"
   arch = "amd64"
   os   = "linux"
+  startup_script = <<EOT
+#!/bin/bash
+
+# use coder CLI to clone and install dotfiles
+
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
+
+# install and start code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 &
+
+EOT
+}  
+
+# code-server
+resource "coder_app" "code-server" {
+  agent_id      = coder_agent.dev.id
+  name          = "code-server"
+  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  url           = "http://localhost:13337?folder=/home/coder"
+  relative_path = true  
 }
 
 resource "google_compute_instance" "dev" {
   zone         = var.zone
   count        = data.coder_workspace.me.start_count
   name         = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-  machine_type = "e2-medium"
+  machine_type = "e2-micro"
   network_interface {
     network = "default"
     access_config {
@@ -72,5 +101,21 @@ resource "google_compute_instance" "dev" {
     email  = data.google_compute_default_service_account.default.email
     scopes = ["cloud-platform"]
   }
-  metadata_startup_script = coder_agent.dev.init_script
+  # The startup script runs as root with no $HOME environment set up, which can break workspace applications, so
+  # instead of directly running the agent init script, setup the home directory, write the init script, and then execute
+  # it.
+  metadata_startup_script = <<EOMETA
+#!/usr/bin/env sh
+set -eux pipefail
+
+mkdir /root || true
+cat <<'EOCODER' > /root/coder_agent.sh
+${coder_agent.dev.startup_script}
+EOCODER
+chmod +x /root/coder_agent.sh
+
+export HOME=/root
+/root/coder_agent.sh
+
+EOMETA
 }
