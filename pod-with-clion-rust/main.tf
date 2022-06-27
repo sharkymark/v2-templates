@@ -11,6 +11,20 @@ terraform {
   }
 }
 
+variable "disk_size" {
+  description = "Disk size (__ GB)"
+  default     = 10
+}
+
+variable "dotfiles_uri" {
+  description = <<-EOF
+  Dotfiles repo URI (optional)
+
+  see https://dotfiles.github.io
+  EOF
+  default = ""
+}
+
 variable "use_kubeconfig" {
   type        = bool
   sensitive   = true
@@ -45,10 +59,14 @@ resource "coder_agent" "coder" {
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
-#/coder/configure 2>&1 > ~/configure.log
 
-# clone dotfiles
-coder dotfiles git@github.com:mark-theshark/dotfiles.git -y 2>&1 > ~/dotfiles.log
+# install rustup and dependencies
+
+/coder/configure 2>&1 > ~/configure.log
+
+# use coder CLI to clone and install dotfiles
+
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
 
 PROJECTOR_BINARY=/home/coder/.local/bin/projector
 
@@ -111,11 +129,18 @@ resource "coder_app" "jetbrains-clion" {
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
+  depends_on = [
+    kubernetes_persistent_volume_claim.home-directory
+  ]    
   metadata {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = "oss"
   }
   spec {
+    security_context {
+      run_as_user = "1000"
+      fs_group    = "1000"
+    }     
     container {
       name    = "clion"
       image   = "docker.io/marktmilligan/clion-rust:latest"
@@ -127,6 +152,31 @@ resource "kubernetes_pod" "main" {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
       }
-    }    
+      volume_mount {
+        mount_path = "/home/coder"
+        name       = "home-directory"
+      }      
+    }
+    volume {
+      name = "home-directory"
+      persistent_volume_claim {
+        claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+      }
+    }          
+  }
+}
+
+resource "kubernetes_persistent_volume_claim" "home-directory" {
+  metadata {
+    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    namespace = var.workspaces_namespace
+  }
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "${var.disk_size}Gi"
+      }
+    }
   }
 }
