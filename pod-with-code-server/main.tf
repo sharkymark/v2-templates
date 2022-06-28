@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.11"
     }
+    random = {
+      source = "hashicorp/random"
+      version = "3.3.2"
+    }    
   }
 }
 
@@ -32,6 +36,13 @@ variable "dotfiles_uri" {
   see https://dotfiles.github.io
   EOF
   default = ""
+}
+
+resource "random_id" "rng" {
+  keepers = {
+    first = "${timestamp()}"
+  }     
+  byte_length = 8
 }
 
 
@@ -100,7 +111,7 @@ resource "kubernetes_pod" "main" {
     kubernetes_persistent_volume_claim.home-directory
   ]  
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}-${random_id.rng.hex}"
     namespace = "oss"
   }
   spec {
@@ -135,7 +146,7 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}-${random_id.rng.hex}"
     namespace = var.workspaces_namespace
   }
   spec {
