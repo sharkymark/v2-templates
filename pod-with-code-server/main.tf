@@ -70,6 +70,18 @@ coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
+REPO_1_PATH=/home/coder/coder-react
+ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+if [ -d $REPO_1_PATH ]; then
+  echo 'repo already exists - skip clone, do fetch and reset'
+  git fetch --all
+  git reset --hard origin/main
+else
+  echo 'repo DOES NOT exists, git clone'
+  git clone git@github.com:mark-theshark/coder-react.git
+fi 
+
+
   EOT  
 }
 
