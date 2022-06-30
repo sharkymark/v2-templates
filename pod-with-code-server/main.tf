@@ -129,7 +129,17 @@ resource "kubernetes_pod" "main" {
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
-      }
+      }  
+      resources {
+        requests = {
+          cpu    = "250m"
+          memory = "250Mi"
+        }        
+        limits = {
+          cpu    = "1"
+          memory = "2G"
+        }
+      }                       
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
