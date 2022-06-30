@@ -110,7 +110,7 @@ set -eux pipefail
 
 mkdir /root || true
 cat <<'EOCODER' > /root/coder_agent.sh
-${coder_agent.dev.startup_script}
+${coder_agent.dev.init_script}
 EOCODER
 chmod +x /root/coder_agent.sh
 
