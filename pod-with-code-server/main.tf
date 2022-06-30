@@ -38,13 +38,6 @@ variable "dotfiles_uri" {
   default = ""
 }
 
-resource "random_id" "rng" {
-  keepers = {
-    first = "${timestamp()}"
-  }     
-  byte_length = 8
-}
-
 
 variable "workspaces_namespace" {
   type        = string
@@ -111,7 +104,7 @@ resource "kubernetes_pod" "main" {
     kubernetes_persistent_volume_claim.home-directory
   ]  
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}-${random_id.rng.hex}"
+    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = "oss"
   }
   spec {
@@ -156,7 +149,7 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}-${random_id.rng.hex}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
   spec {
