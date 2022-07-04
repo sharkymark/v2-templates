@@ -107,17 +107,9 @@ fi
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
-REPO_1_PATH=/home/coder/rust-hw
+# clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-if [ -d $REPO_1_PATH ]; then
-  echo 'rust repo already exists - skip clone, do fetch and reset'
-  git fetch --all
-  git reset --hard origin/main
-else
-  echo 'rust repo DOES NOT exists, git clone'
-  git clone git@github.com:mark-theshark/rust-hw.git 2>&1 > repo-clone.log
-fi 
-
+git clone --progress git@github.com:mark-theshark/rust-hw.git 2>&1 | tee repo-clone.log
 
 EOT
 }

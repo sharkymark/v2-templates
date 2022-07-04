@@ -25,11 +25,84 @@ variable "use_kubeconfig" {
   EOF
 }
 
+variable "dotfiles_uri" {
+  description = <<-EOF
+  Dotfiles repo URI (optional)
+
+  see https://dotfiles.github.io
+  EOF
+  default = ""
+}
+
+variable "image" {
+  description = <<-EOF
+  Container image with Jupyter Lab
+
+  EOF
+  default = "marktmilligan/jupyterlab:latest"
+  validation {
+    condition = contains([
+      "jupyter/datascience-notebook:latest",
+      "marktmilligan/jupyterlab:latest",
+      "codercom/enterprise-jupyter:ubuntu"
+    ], var.image)
+    error_message = "Invalid image!"   
+}  
+}
+
+variable "repo" {
+  description = <<-EOF
+  Code repository to clone
+
+  EOF
+  default = "mark-theshark/pandas_automl.git"
+  validation {
+    condition = contains([
+      "mark-theshark/pandas_automl.git"
+    ], var.repo)
+    error_message = "Invalid repo!"   
+}  
+}
+
+variable "cpu" {
+  description = "CPU (__ cores)"
+  default     = 1
+  validation {
+    condition = contains([
+      "1",
+      "2",
+      "4",
+      "6"
+    ], var.cpu)
+    error_message = "Invalid cpu!"   
+}
+}
+
+variable "memory" {
+  description = "Memory (__ GB)"
+  default     = 2
+  validation {
+    condition = contains([
+      "1",
+      "2",
+      "4",
+      "8"
+    ], var.memory)
+    error_message = "Invalid memory!"  
+}
+}
+
+variable "disk_size" {
+  description = "Disk size (__ GB)"
+  default     = 10
+}
+
+
 variable "workspaces_namespace" {
   type        = string
   sensitive   = true
   description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "coder-clean"
+  default     = "oss"
 }
 
 provider "kubernetes" {
@@ -42,18 +115,27 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
-  dir = "/home/jovyan"
+  dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
-# start jupyterlab
-jupyter lab --ServerApp.token='password' --ServerApp.ip='0.0.0.0' --ServerApp.base_url='./' &
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
+curl -fsSL https://code-server.dev/install.sh | sh 
 code-server --auth none --port 13337 &
 
-# clone dotfiles
-coder dotfiles git@github.com:mark-theshark/dotfiles.git -y
+# start jupyterlab
+jupyter lab --ServerApp.token='' --ServerApp.ip='*' &
+
+# add some Python libraries
+pip3 install --user pandas numpy &
+
+# use coder CLI to clone and install dotfiles
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
+
+# clone repo
+ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
+
 EOT
 }
 
@@ -66,24 +148,20 @@ resource "coder_app" "code-server" {
   relative_path = true  
 }
 
-resource "coder_app" "jupyterlab" {
-  agent_id      = coder_agent.coder.id
-  name          = "jupyterlab"
-  icon          = "https://upload.wikimedia.org/wikipedia/commons/3/38/Jupyter_logo.svg"
-  url           = "http://localhost:8888/"
-  relative_path = false
-}
-
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = "coder-clean"
+    namespace = var.workspaces_namespace
   }
   spec {
+    security_context {
+      run_as_user = "1000"
+      fs_group    = "1000"
+    }     
     container {
       name    = "jupyterlab"
-      image   = "docker.io/jupyter/datascience-notebook:latest"
+      image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {
@@ -93,6 +171,41 @@ resource "kubernetes_pod" "main" {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
       }
-    }    
+      resources {
+        requests = {
+          cpu    = "250m"
+          memory = "250Mi"
+        }        
+        limits = {
+          cpu    = "${var.cpu}"
+          memory = "${var.memory}G"
+        }
+      }                       
+      volume_mount {
+        mount_path = "/home/coder"
+        name       = "home-directory"
+      }        
+    }
+    volume {
+      name = "home-directory"
+      persistent_volume_claim {
+        claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+      }
+    }         
+  }
+}
+
+resource "kubernetes_persistent_volume_claim" "home-directory" {
+  metadata {
+    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    namespace = var.workspaces_namespace
+  }
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "${var.disk_size}Gi"
+      }
+    }
   }
 }

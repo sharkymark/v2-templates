@@ -4,7 +4,7 @@ description: The goal is to enable code-server (VS Code)
 tags: [cloud, kubernetes]
 ---
 
-# code-server (VS Code) template for Node React development
+# code-server (VS Code) template for a workspace in a Kubernetes pod
 
 ### Apps included
 1. A web-based terminal
@@ -12,7 +12,10 @@ tags: [cloud, kubernetes]
 
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
-1. Clone coder-react repo
+1. Prompt user for compute options (CPU core, memory, and disk)
+1. Prompt user for container image to use
+1. Prompt user for repo to clone
+1. Clone repo
 1. Download, install and start code-server (VS Code-in-a-browser)
 
 ### Known limitations
