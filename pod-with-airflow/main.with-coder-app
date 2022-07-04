@@ -126,6 +126,8 @@ code-server --auth none --port 13337 | tee code-server-run.log &
 
 # install and start airflow
 pip3 install apache-airflow 2>&1 | tee airflow-install.log
+export AIRFLOW__WEBSERVER__BASE_URL="./"
+export AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX="True"
 /home/coder/.local/bin/airflow standalone  2>&1 | tee airflow-run.log &
 
 # add some Python libraries
@@ -148,6 +150,14 @@ resource "coder_app" "code-server" {
   icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
+}
+
+resource "coder_app" "airflow" {
+  agent_id      = coder_agent.coder.id
+  name          = "airflow"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/d/de/AirflowLogo.png"
+  url           = "http://localhost:8080/"
+  relative_path = true
 }
 
 resource "kubernetes_pod" "main" {
