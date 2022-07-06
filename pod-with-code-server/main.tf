@@ -139,7 +139,7 @@ resource "coder_agent" "coder" {
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server} 
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts

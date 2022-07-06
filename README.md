@@ -4,7 +4,7 @@
 These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
-6-13-22 mtm
+7-6-22 mtm
 
 ##### Goals
 1. Be able to demo a Kubernetes pod as a workspace
@@ -12,3 +12,4 @@ These are Coder v2 templates that have been customized for demonstrations
 1. Be able to demonstrate JetBrains Gateway
 1. Show a workspace as a GVP VM, with Docker inside
 1. Show JetBrains projector in a workspace
+1. Be able to demonstrate data science tools like JupyterLab and Airflow

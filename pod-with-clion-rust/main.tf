@@ -25,6 +25,29 @@ variable "dotfiles_uri" {
   default = ""
 }
 
+variable "extension" {
+  description = "Rust VS Code extension"
+  default     = "matklad.rust-analyzer"
+  validation {
+    condition = contains([
+      "rust-lang.rust",
+      "matklad.rust-analyzer"
+    ], var.extension)
+    error_message = "Invalid Rust VS Code extension!"  
+}
+}
+
+variable "folder_path" {
+  description = <<-EOF
+ Folder to add to VS Code (optional)
+e.g.,
+/home/coder
+/home/coder/rust-hw
+/home/coder/rust-hw/rocket/hello-rocket
+  EOF
+  default = "/home/coder/rust-hw/rocket/hello-rocket"
+}
+
 variable "use_kubeconfig" {
   type        = bool
   sensitive   = true
@@ -111,6 +134,9 @@ code-server --auth none --port 13337 &
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 git clone --progress git@github.com:mark-theshark/rust-hw.git 2>&1 | tee repo-clone.log
 
+# install Rust and rust-analyzer VS Code extensions into code-server
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} | tee extension-rust.log
+
 EOT
 }
 
@@ -119,7 +145,7 @@ resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
   icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
-  url           = "http://localhost:13337?folder=/home/coder"
+  url           = "http://localhost:13337?folder=${var.folder_path}"
   relative_path = true  
 }
 
@@ -159,7 +185,7 @@ resource "kubernetes_pod" "main" {
       resources {
         requests = {
           cpu    = "500m"
-          memory = "2000Mi"
+          memory = "3000Mi"
         }        
         limits = {
           cpu    = "4"
