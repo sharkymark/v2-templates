@@ -103,8 +103,8 @@ resource "coder_agent" "dev" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server} 2>&1 > ~/coder-server.log
-code-server --auth none --port 13337 2>&1 > ~/coder-server.log
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server} 2>&1 > ~/code-server-install.log
+code-server --auth none --port 13337 2>&1 > ~/code-server-start.log &
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
@@ -121,11 +121,7 @@ SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vs
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  url      = "http://localhost:8080/?folder=/home/coder"
-}
-
-resource "docker_volume" "coder_volume" {
-  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+  url      = "http://localhost:13337/?folder=/home/coder"
 }
 
 resource "docker_container" "workspace" {
@@ -147,4 +143,8 @@ resource "docker_container" "workspace" {
     host = "host.docker.internal"
     ip   = "host-gateway"
   }
+}
+
+resource "docker_volume" "coder_volume" {
+  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
 }
