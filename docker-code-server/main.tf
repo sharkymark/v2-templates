@@ -60,6 +60,7 @@ variable "repo" {
       "mark-theshark/commissions.git",
       "mark-theshark/java_helloworld.git",
       "mark-theshark/python-commissions.git",
+      "mark-theshark/pandas-automl.git",
       "mark-theshark/rust-hw.git"
     ], var.repo)
     error_message = "Invalid repo!"   
