@@ -1,10 +1,10 @@
 ---
 name: Develop in a Java container in a Kubernetes pod
-description: The goal is to enable code-server (VS Code) and JetBrains IntelliJ
+description: The goal is to enable code-server (VS Code) and JetBrains GoLand
 tags: [cloud, kubernetes]
 ---
 
-# JetBrains IntelliJ template for Java development
+# JetBrains GoLand template for Golang development
 
 ### Compute
 1. 4 CPU cores
@@ -14,17 +14,17 @@ tags: [cloud, kubernetes]
 ### Apps included
 1. A web-based terminal
 1. code-server IDE (VS Code-in-a-browser)
-1. JetBrains IntelliJ IDE (in-a-browser) Note: uses JetBrains OSS projector
+1. JetBrains GoLand IDE (in-a-browser) Note: uses JetBrains OSS projector
 
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
 1. Show user the VS Code extension to use
 1. Prompt user for folder to add to VS Code
-1. Prompt user for which IntelliJ release to download and use
+1. Prompt user for which GoLand release to download and use
 1. Prompt user for CPU, memory, and disk storage
 1. Install [JetBrains projector CLI](https://github.com/JetBrains/projector-installer#Installation)
-1. Use `projector ide autoinstall` to download and install IntelliJ
-1. Start the IntelliJ IDE
+1. Use `projector ide autoinstall` to download and install GoLand
+1. Start the GoLand IDE
 1. Download, install and start code-server (VS Code-in-a-browser)
 
 ### Known limitations

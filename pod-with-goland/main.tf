@@ -57,10 +57,10 @@ variable "image" {
   Container images from coder-com
 
   EOF
-  default = "codercom/enterprise-java:ubuntu"
+  default = "codercom/enterprise-golang:ubuntu"
   validation {
     condition = contains([
-      "codercom/enterprise-java:ubuntu"
+      "codercom/enterprise-golang:ubuntu"
     ], var.image)
     error_message = "Invalid image!"   
 }  
@@ -68,10 +68,10 @@ variable "image" {
 
 variable "extension" {
   description = "VS Code extension"
-  default     = "redhat.java"
+  default     = "golang.go"
   validation {
     condition = contains([
-      "redhat.java"
+      "golang.go"
     ], var.extension)
     error_message = "Invalid VS Code extension!"  
 }
@@ -80,7 +80,7 @@ variable "extension" {
 variable "repo" {
   description = <<-EOF
   Code repository to clone with SSH
-  e.g., mark-theshark/java_helloworld.git
+  e.g., mark-theshark/commissions.git
   EOF
   default = ""
 }
@@ -109,14 +109,13 @@ variable "code-server" {
 }
 
 variable "jetbrains-ide" {
-  description = "JetBrains IntelliJ IDE (oldest are Projector-tested by JetBrains s.r.o., Na Hrebenech II 1718/10, Prague, 14000, Czech Republic)"
-  default     = "IntelliJ IDEA Community Edition 2022.1.3"
+  description = "JetBrains GoLand IDE (oldest are Projector-tested by JetBrains s.r.o., Na Hrebenech II 1718/10, Prague, 14000, Czech Republic)"
+  default     = "GoLand 2022.1.3"
   validation {
     condition = contains([
-      "IntelliJ IDEA Community Edition 2022.1.3",
-      "IntelliJ IDEA Community Edition 2021.3",
-      "IntelliJ IDEA Ultimate 2022.1.3",
-      "IntelliJ IDEA Ultimate 2021.3"
+      "GoLand 2022.1.3",
+      "GoLand 2021.3.5",
+      "GoLand 2020.3.5"
     ], var.jetbrains-ide)
     error_message = "Invalid JetBrains IDE!"   
 }
@@ -178,25 +177,25 @@ fi
 echo 'access projector license terms'
 /home/coder/.local/bin/projector --accept-license | tee -a projector.log
 
-PROJECTOR_CONFIG_PATH=/home/coder/.projector/configs/intellij
+PROJECTOR_CONFIG_PATH=/home/coder/.projector/configs/goland
 
 if [ -d "$PROJECTOR_CONFIG_PATH" ]; then
     echo 'projector has already been configured and the JetBrains IDE downloaded - skip step' | tee -a projector.log
 else
     echo 'autoinstalling IDE and creating projector config folder'
-    /home/coder/.local/bin/projector ide autoinstall --config-name "intellij" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder | tee -a projector.log
+    /home/coder/.local/bin/projector ide autoinstall --config-name "goland" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder | tee -a projector.log
 
     # delete the configuration's run.sh input parameters that check password tokens since tokens do not work with coder_app yet passed in the querystring
 
     grep -iv "HANDSHAKE_TOKEN" $PROJECTOR_CONFIG_PATH/run.sh > temp && mv temp $PROJECTOR_CONFIG_PATH/run.sh | tee -a projector.log
     chmod +x $PROJECTOR_CONFIG_PATH/run.sh | tee -a projector.log
 
-    echo "creation of intellij configuration complete" | tee -a projector.log
+    echo "creation of goland configuration complete" | tee -a projector.log
     
 fi
 
 # start JetBrains projector-based IDE
-/home/coder/.local/bin/projector run intellij &
+/home/coder/.local/bin/projector run goland &
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh  | tee code-server-install.log
@@ -221,10 +220,10 @@ resource "coder_app" "code-server" {
   relative_path = true  
 }
 
-resource "coder_app" "intellij" {
+resource "coder_app" "goland" {
   agent_id      = coder_agent.coder.id
   name          = "${var.jetbrains-ide}"
-  icon          = "https://upload.wikimedia.org/wikipedia/commons/9/9c/IntelliJ_IDEA_Icon.svg"
+  icon          = "https://resources.jetbrains.com/storage/products/company/brand/logos/GoLand_icon.svg"
   url           = "http://localhost:8997/"
   relative_path = true
 }
