@@ -215,7 +215,7 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
-  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=${var.folder_path}"
   relative_path = true  
 }
@@ -223,7 +223,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "goland" {
   agent_id      = coder_agent.coder.id
   name          = "${var.jetbrains-ide}"
-  icon          = "https://resources.jetbrains.com/storage/products/company/brand/logos/GoLand_icon.svg"
+  icon          = "/icon/goland.svg"
   url           = "http://localhost:8997/"
   relative_path = true
 }

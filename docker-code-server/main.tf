@@ -123,6 +123,7 @@ SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vs
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
   url      = "http://localhost:13337/?folder=/home/coder"
+  icon     = "/icon/code.svg"
 }
 
 resource "docker_container" "workspace" {

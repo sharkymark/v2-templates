@@ -77,7 +77,7 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
   name          = "code-server"
-  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
 }

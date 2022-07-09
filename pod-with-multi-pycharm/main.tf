@@ -79,7 +79,7 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
-  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
 }
@@ -87,7 +87,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "pycharm-1" {
   agent_id      = coder_agent.coder.id
   name          = "pycharm-1"
-  icon          = "https://upload.wikimedia.org/wikipedia/commons/1/1d/PyCharm_Icon.svg"
+  icon          = "/icon/pycharm.svg"
   url           = "http://localhost:8997"
   relative_path = true
 }
@@ -95,7 +95,7 @@ resource "coder_app" "pycharm-1" {
 resource "coder_app" "pycharm-2" {
   agent_id      = coder_agent.coder.id
   name          = "pycharm-2"
-  icon          = "https://upload.wikimedia.org/wikipedia/commons/1/1d/PyCharm_Icon.svg"
+  icon          = "/icon/pycharm.svg"
   url           = "http://localhost:8998"
   relative_path = true
 }

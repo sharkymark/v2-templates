@@ -78,7 +78,7 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
-  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
 }
@@ -86,7 +86,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "intellij-1" {
   agent_id      = coder_agent.coder.id
   name          = "intellij-1"
-  icon          = "https://upload.wikimedia.org/wikipedia/commons/9/9c/IntelliJ_IDEA_Icon.svg"
+  icon          = "/icon/intellij.svg"
   url           = "http://localhost:8997"
   relative_path = true
 }
