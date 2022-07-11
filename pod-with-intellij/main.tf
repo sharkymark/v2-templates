@@ -244,7 +244,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }     
     container {
-      name    = "clion"
+      name    = "java-intellij"
       image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
