@@ -120,21 +120,21 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh 
-code-server --auth none --port 13337 &
+curl -fsSL https://code-server.dev/install.sh 2>&1 | tee -a build.log
+code-server --auth none --port 13337 2>&1 | tee -a build.log &
 
 # start rstudio
-/usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1
+/usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1 --www-root-path=/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/rstudio/ 2>&1 | tee -a build.log &
 
 # add some Python libraries
-pip3 install --user pandas numpy &
+pip3 install --user pandas numpy 2>&1 | tee -a build.log
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a build.log
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
+git clone --progress git@github.com:${var.repo} 2>&1 | tee -a build.log
 
 EOT
 }
@@ -143,15 +143,23 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
-  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
+}
+
+resource "coder_app" "rstudio" {
+  agent_id      = coder_agent.coder.id
+  name          = "rstudio"
+  icon          = "/icon/rstudio.svg"
+  url           = "http://localhost:8787/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/rstudio/"
+  relative_path = true
 }
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {
@@ -197,7 +205,7 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {

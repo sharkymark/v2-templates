@@ -119,12 +119,14 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
+rm build.log
+
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
+curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log 
 code-server --auth none --port 13337 2>&1 | tee -a build.log &
 
 # start jupyterlab
-jupyter lab --ServerApp.token='' --ServerApp.ip='*' --ServerApp.base_url=/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/jupyter-lab/ 2>&1 | tee -a build.log &
+jupyter lab --ServerApp.token='' --ServerApp.ip='*' 2>&1 | tee -a build.log &
 
 # add some Python libraries
 pip3 install --user pandas numpy 2>&1 | tee -a build.log
@@ -146,14 +148,6 @@ resource "coder_app" "code-server" {
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
-}
-
-resource "coder_app" "jupyter-lab" {
-  agent_id      = coder_agent.coder.id
-  name          = "jupyter-lab"
-  icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/jupyter-lab/"
-  relative_path = true
 }
 
 resource "kubernetes_pod" "main" {

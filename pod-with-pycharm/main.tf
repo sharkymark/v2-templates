@@ -57,10 +57,10 @@ variable "image" {
   Container images from coder-com
 
   EOF
-  default = "codercom/enterprise-base:ubuntu"
+  default = "codercom/enterprise-multieditor:ubuntu"
   validation {
     condition = contains([
-      "codercom/enterprise-base:ubuntu"
+      "codercom/enterprise-multieditor:ubuntu"
     ], var.image)
     error_message = "Invalid image!"   
 }  
@@ -161,7 +161,7 @@ resource "coder_agent" "coder" {
 
 # use coder CLI to clone and install dotfiles
 
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles.log
 
 # install projector into /home/coder
 
@@ -169,29 +169,29 @@ PROJECTOR_BINARY=/home/coder/.local/bin/projector
 
 if [ -f $PROJECTOR_BINARY ]; then
     echo 'projector has already been installed - check for update'
-    /home/coder/.local/bin/projector self-update | tee projector.log
+    /home/coder/.local/bin/projector self-update 2>&1 | tee projector.log
 else
     echo 'installing projector'
-    pip3 install projector-installer --user | tee -a projector.log
+    pip3 install projector-installer --user 2>&1 | tee projector.log
 fi
 
 echo 'access projector license terms'
-/home/coder/.local/bin/projector --accept-license | tee -a projector.log
+/home/coder/.local/bin/projector --accept-license 2>&1 | tee -a projector.log
 
 PROJECTOR_CONFIG_PATH=/home/coder/.projector/configs/pycharm
 
 if [ -d "$PROJECTOR_CONFIG_PATH" ]; then
-    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step' | tee -a projector.log
+    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step' 2>&1 | tee -a projector.log
 else
     echo 'autoinstalling IDE and creating projector config folder'
-    /home/coder/.local/bin/projector ide autoinstall --config-name "pycharm" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder | tee -a projector.log
+    /home/coder/.local/bin/projector ide autoinstall --config-name "pycharm" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder 2>&1 | tee -a projector.log
 
     # delete the configuration's run.sh input parameters that check password tokens since tokens do not work with coder_app yet passed in the querystring
 
-    grep -iv "HANDSHAKE_TOKEN" $PROJECTOR_CONFIG_PATH/run.sh > temp && mv temp $PROJECTOR_CONFIG_PATH/run.sh | tee -a projector.log
-    chmod +x $PROJECTOR_CONFIG_PATH/run.sh | tee -a projector.log
+    grep -iv "HANDSHAKE_TOKEN" $PROJECTOR_CONFIG_PATH/run.sh > temp && mv temp $PROJECTOR_CONFIG_PATH/run.sh 2>&1 | tee -a projector.log
+    chmod +x $PROJECTOR_CONFIG_PATH/run.sh 2>&1 | tee -a projector.log
 
-    echo "creation of pycharm configuration complete" | tee -a projector.log
+    echo "creation of pycharm configuration complete" 2>&1 | tee -a projector.log
     
 fi
 
@@ -199,15 +199,15 @@ fi
 /home/coder/.local/bin/projector run pycharm &
 
 # install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh  | tee code-server-install.log
-code-server --auth none --port 13337 | tee code-server-install.log &
+curl -fsSL https://code-server.dev/install.sh | sh  2>&1 | tee code-server-install.log
+code-server --auth none --port 13337 2>&1 | tee code-server-install.log &
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
 
 # install VS Code extensions into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} | tee vs-code-extension.log
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} 2>&1 | tee vs-code-extension.log
 
 EOT
 }
@@ -245,7 +245,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "clion"
-      image   = "docker.io/marktmilligan/clion-rust:latest"
+      image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"

@@ -22,8 +22,7 @@ tags: [cloud, kubernetes]
 1. Download, install and start code-server (VS Code-in-a-browser)
 
 ### Known limitations
-1. Coder OSS currently does not have dev URL functionality built-in, so to run JupyterLab, developers either use `coder port-forward <workspace name> --tcp 8888:8888` or `ssh -L 8888:localhost:8888 coder.<workspace name>`
-1. Note that a `jupyter-lab` `coder_app` is not in this template since dev URLs are needed for that to work. I've made attempts to pass `--ServerApp.base_url='./'` or substituting the path from an opened `coder_app` IDE like code-server, but no joy yet.
+1. Alternatively, developers can run localhost and either use `coder port-forward <workspace name> --tcp 8888:8888` or `ssh -L 8888:localhost:8888 coder.<workspace name>`
 
 ### Authentication
 

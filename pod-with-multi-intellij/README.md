@@ -20,6 +20,18 @@ tags: [cloud, kubernetes]
 1. Start the IntelliJ IDE
 1. Download, install and start code-server (VS Code-in-a-browser)
 
+### Packaged required for JetBrains projector support
+```console
+# include this in your Dockerfile or use an image with them already
+RUN DEBIAN_FRONTEND="noninteractive" apt-get update -y && \
+    apt-get install -y \
+    libxtst6 \
+    libxrender1 \
+    libfontconfig1 \
+    libxi6 \
+    libgtk-3-0
+```
+
 ### Known limitations
 1. This approach depends on IntelliJ being installed in the image. An alternative is to use `projector ide autoinstall` to download and install the IDE, but `'projector config add` must also be run to overcome Coder OSS limitations with querystrings in the URI for the IDE in a browser.
 
@@ -33,3 +45,7 @@ Be sure to change the workspaces_namespace variable to the Kubernetes namespace 
 [projector CLI commands](https://github.com/JetBrains/projector-installer/blob/master/COMMANDS.md)
 
 [JetBrains projector CLI](https://github.com/JetBrains/projector-installer#Installation)
+
+[codercom/enterprise-multieditor image](https://hub.docker.com/r/codercom/enterprise-multieditor)
+
+[codercom Dockerfile](https://github.com/coder/enterprise-images/tree/main/images/multieditor)

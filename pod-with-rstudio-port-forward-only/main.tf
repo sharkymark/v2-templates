@@ -36,14 +36,14 @@ variable "dotfiles_uri" {
 
 variable "image" {
   description = <<-EOF
-  Container image with Python
+  Container image with RStudio
 
   EOF
-  default = "codercom/enterprise-base:ubuntu"
+  default = "marktmilligan/rstudio:no-args"
   validation {
     condition = contains([
-      "codercom/enterprise-base:ubuntu",
-      "codercom/enterprise-jupyter:ubuntu"
+      "marktmilligan/rstudio:latest",
+      "marktmilligan/rstudio:no-args"
     ], var.image)
     error_message = "Invalid image!"   
 }  
@@ -54,10 +54,11 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/airflow_wac.git"
+  default = "rstudio/connect-examples.git"
   validation {
     condition = contains([
-      "mark-theshark/airflow_wac.git"
+      "rstudio/connect-examples.git",
+      "rstudio/shiny-examples.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -118,27 +119,24 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
-export PATH=$PATH:$HOME/.local/bin
+rm build.log
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh | tee code-server-install.log
-code-server --auth none --port 13337 | tee code-server-run.log &
+curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
+code-server --auth none --port 13337  2>&1 | tee -a build.log &
 
-# install and start airflow
-pip3 install apache-airflow 2>&1 | tee airflow-install.log
-export AIRFLOW__WEBSERVER__BASE_URL="./"
-export AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX="True"
-/home/coder/.local/bin/airflow standalone  2>&1 | tee airflow-run.log &
+# start rstudio
+/usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1 2>&1 | tee -a build.log
 
 # add some Python libraries
-pip3 install --user pandas numpy
+pip3 install --user pandas numpy 2>&1 | tee -a build.log
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee ~/dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a build.log
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
+git clone --progress git@github.com:${var.repo} 2>&1 | tee -a build.log
 
 EOT
 }
@@ -147,23 +145,15 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
-  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
-}
-
-resource "coder_app" "airflow" {
-  agent_id      = coder_agent.coder.id
-  name          = "airflow"
-  icon          = "https://upload.wikimedia.org/wikipedia/commons/d/de/AirflowLogo.png"
-  url           = "http://localhost:8080/"
-  relative_path = true
 }
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {
@@ -172,7 +162,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }     
     container {
-      name    = "airflow"
+      name    = "rstudio"
       image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
@@ -209,7 +199,7 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {

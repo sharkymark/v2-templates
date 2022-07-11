@@ -35,7 +35,7 @@ variable "image" {
   Container images from coder-com
 
   EOF
-  default = "codercom/enterprise-node:ubuntu"
+  default = "codercom/enterprise-golang:ubuntu"
   validation {
     condition = contains([
       "codercom/enterprise-node:ubuntu",
@@ -53,7 +53,7 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/coder-react.git"
+  default = "mark-theshark/commissions.git"
   validation {
     condition = contains([
       "mark-theshark/coder-react.git",
@@ -68,8 +68,8 @@ variable "repo" {
 }
 
 variable "extension" {
-  description = "Rust VS Code extension"
-  default     = "matklad.rust-analyzer"
+  description = "VS Code extension"
+  default     = "golang.go"
   validation {
     condition = contains([
       "rust-lang.rust",
@@ -104,18 +104,18 @@ resource "coder_agent" "dev" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server} 2>&1 > ~/code-server-install.log
-code-server --auth none --port 13337 2>&1 > ~/code-server-start.log &
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server} 2>&1 | tee code-server.log
+code-server --auth none --port 13337 2>&1 | tee -a code-server.log &
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
+git clone --progress git@github.com:${var.repo} 2>&1 | tee -a repo-clone.log
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles-clone.log 
 
 # install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} | tee vscode-extension.log
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} 2>&1 | tee extension-install.log
 
   EOT  
 }

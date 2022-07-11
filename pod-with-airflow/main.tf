@@ -118,25 +118,31 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
+rm build.log
+
 export PATH=$PATH:$HOME/.local/bin
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh | tee code-server-install.log
-code-server --auth none --port 13337 | tee code-server-run.log &
+curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
+code-server --auth none --port 13337 2>&1 | tee -a build.log &
 
 # install and start airflow
-pip3 install apache-airflow 2>&1 | tee airflow-install.log
-/home/coder/.local/bin/airflow standalone  2>&1 | tee airflow-run.log &
+pip3 install apache-airflow 2>&1 | tee -a build.log
+
+# AIRFLOW__WEBSERVER__BASE_URL may be the solution, but commenting out for now
+#export AIRFLOW__WEBSERVER__BASE_URL="/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/airflow/"
+
+/home/coder/.local/bin/airflow standalone 2>&1 | tee -a build.log &
 
 # add some Python libraries
-pip3 install --user pandas numpy
+pip3 install --user pandas numpy 2>&1 | tee -a build.log
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee ~/dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a build.log
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
+git clone --progress git@github.com:${var.repo} 2>&1 | tee -a build.log
 
 EOT
 }
@@ -145,15 +151,23 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
-  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
+}
+
+resource "coder_app" "airflow" {
+  agent_id      = coder_agent.coder.id
+  name          = "airflow"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/d/de/AirflowLogo.png"
+  url           = "http://localhost:8080/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/airflow/"
+  relative_path = true
 }
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {
@@ -199,7 +213,7 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {

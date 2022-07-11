@@ -36,15 +36,13 @@ variable "dotfiles_uri" {
 
 variable "image" {
   description = <<-EOF
-  Container image with Jupyter Lab
+  Container image with Python
 
   EOF
-  default = "marktmilligan/jupyterlab:latest"
+  default = "marktmilligan/airflow:dev-url"
   validation {
     condition = contains([
-      "jupyter/datascience-notebook:latest",
-      "marktmilligan/jupyterlab:latest",
-      "codercom/enterprise-jupyter:ubuntu"
+      "marktmilligan/airflow:dev-url"
     ], var.image)
     error_message = "Invalid image!"   
 }  
@@ -55,10 +53,10 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/pandas_automl.git"
+  default = "mark-theshark/airflow_wac.git"
   validation {
     condition = contains([
-      "mark-theshark/pandas_automl.git"
+      "mark-theshark/airflow_wac.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -119,12 +117,16 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
+rm build.log
+
+export PATH=$PATH:$HOME/.local/bin
+
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
 code-server --auth none --port 13337 2>&1 | tee -a build.log &
 
-# start jupyterlab
-jupyter lab --ServerApp.token='' --ServerApp.ip='*' --ServerApp.base_url=/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/jupyter-lab/ 2>&1 | tee -a build.log &
+# start airflow with supervisord in a configure script
+sudo /coder/configure 2>&1 | tee -a build.log
 
 # add some Python libraries
 pip3 install --user pandas numpy 2>&1 | tee -a build.log
@@ -148,11 +150,11 @@ resource "coder_app" "code-server" {
   relative_path = true  
 }
 
-resource "coder_app" "jupyter-lab" {
+resource "coder_app" "airflow" {
   agent_id      = coder_agent.coder.id
-  name          = "jupyter-lab"
-  icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/jupyter-lab/"
+  name          = "airflow"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/d/de/AirflowLogo.png"
+  url           = "http://localhost:8080/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/airflow/"
   relative_path = true
 }
 
@@ -168,7 +170,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }     
     container {
-      name    = "jupyterlab"
+      name    = "airflow"
       image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
