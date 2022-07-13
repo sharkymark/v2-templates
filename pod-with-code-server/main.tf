@@ -121,8 +121,8 @@ variable "code-server" {
       "4.3.0",
       "4.2.0"
     ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
+    error_message = "Invalid code-server!"
+  }  
 }
 
 variable "disk_size" {
@@ -154,7 +154,7 @@ coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server"
+  name          = "code-server ${var.code-server}"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
@@ -175,7 +175,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }    
     container {
-      name    = "node"
+      name    = "coder-container"
       image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
