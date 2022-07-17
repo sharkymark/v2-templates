@@ -194,6 +194,15 @@ else
     
 fi
 
+# install JetBrains projector packages required
+sudo apt-get update && \
+    DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y \
+    libxtst6 \
+    libxrender1 \
+    libfontconfig1 \
+    libxi6 \
+    libgtk-3-0 | tee -a projector.log
+
 # start JetBrains projector-based IDE
 /home/coder/.local/bin/projector run goland &
 
@@ -244,7 +253,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "clion"
-      image   = "docker.io/marktmilligan/clion-rust:latest"
+      image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"

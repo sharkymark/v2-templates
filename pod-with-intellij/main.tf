@@ -195,6 +195,16 @@ else
     
 fi
 
+# install JetBrains projector packages required
+sudo apt-get update && \
+    DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y \
+    libxtst6 \
+    libxrender1 \
+    libfontconfig1 \
+    libxi6 \
+    libgtk-3-0 | tee -a projector.log
+
+
 # start JetBrains projector-based IDE
 /home/coder/.local/bin/projector run intellij &
 

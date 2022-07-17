@@ -150,7 +150,7 @@ sudo apt-get update && \
     libxrender1 \
     libfontconfig1 \
     libxi6 \
-    libgtk-3-0
+    libgtk-3-0 | tee -a projector.log
 
 # start JetBrains projector-based IDE
 /home/coder/.local/bin/projector run goland &

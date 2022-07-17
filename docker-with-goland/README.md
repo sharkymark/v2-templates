@@ -21,9 +21,9 @@ Default to availability on the Docker host
 1. Prompt user for folder to add to VS Code
 1. Prompt user for which GoLand release to download and use
 1. Prompt user for CPU, memory, and disk storage
-1. Installing projector packages (you can alternatively put these into the image)
 1. Install [JetBrains projector CLI](https://github.com/JetBrains/projector-installer#Installation)
 1. Use `projector ide autoinstall` to download and install GoLand
+1. Install projector packages (you can alternatively put these into the image)
 1. Start the GoLand IDE
 1. Download, install and start code-server (VS Code-in-a-browser)
 
