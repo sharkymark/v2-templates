@@ -11,7 +11,7 @@ tags: [local, docker]
 1. code-server IDE (VS Code-in-a-browser)
 
 ### Additional resources
-1. `docker_image` and `build` to build a VNC image from a Dockerfile included in the directory
+1. `docker_image` and `build` to build a JupyterLab image from a Dockerfile included in the directory
 
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
@@ -28,6 +28,4 @@ tags: [local, docker]
 ### Resources
 [Terraform Docker Provider](https://registry.terraform.io/providers/kreuzwerker/docker/latest/docs)
 [Image Resource](https://registry.terraform.io/providers/kreuzwerker/docker/latest/docs/resources/image)
-[VNC Dockerfile](https://github.com/coder/enterprise-images/tree/main/images/vnc)
-[Coder OSS VNC docs](https://github.com/bpmct/coder-templates/tree/main/desktop-container)
 
