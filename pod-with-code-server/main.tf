@@ -111,18 +111,27 @@ variable "memory" {
 }
 }
 
+locals {
+  code-server-releases = {
+    "4.5.0 | Code 1.68.1" = "4.5.0"
+    "4.4.0 | Code 1.66.2" = "4.4.0"
+    "4.3.0 | Code 1.65.2" = "4.3.0"
+    "4.2.0 | Code 1.64.2" = "4.2.0"
+  }
+}
+
 variable "code-server" {
   description = "code-server release"
-  default     = "4.5.0"
+  default     = "4.5.0 | Code 1.68.1"
   validation {
     condition = contains([
-      "4.5.0",
-      "4.4.0",
-      "4.3.0",
-      "4.2.0"
+      "4.5.0 | Code 1.68.1",
+      "4.4.0 | Code 1.66.2",
+      "4.3.0 | Code 1.65.2",
+      "4.2.0 | Code 1.64.2"
     ], var.code-server)
-    error_message = "Invalid code-server!"
-  }  
+    error_message = "Invalid code-server!"   
+}
 }
 
 variable "disk_size" {
@@ -138,7 +147,7 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server} 
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)} 
 code-server --auth none --port 13337
 
 # clone repo
