@@ -7,7 +7,7 @@ terraform {
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = "~> 2.11"
-    }   
+    }
   }
 }
 
@@ -25,21 +25,6 @@ variable "use_kubeconfig" {
   EOF
 }
 
-
-variable "workspaces_namespace" {
-  type        = string
-  sensitive   = true
-  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "oss"
-}
-
-provider "kubernetes" {
-  # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
-  config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
-}
-
-data "coder_workspace" "me" {}
-
 variable "dotfiles_uri" {
   description = <<-EOF
   Dotfiles repo URI (optional)
@@ -51,16 +36,13 @@ variable "dotfiles_uri" {
 
 variable "image" {
   description = <<-EOF
-  Container images from coder-com
+  Container image with Jupyter Lab
 
   EOF
-  default = "codercom/enterprise-node:ubuntu"
+  default = "marktmilligan/eclipse-vnc:latest"
   validation {
     condition = contains([
-      "codercom/enterprise-node:ubuntu",
-      "codercom/enterprise-golang:ubuntu",
-      "codercom/enterprise-java:ubuntu",
-      "codercom/enterprise-base:ubuntu"
+      "marktmilligan/eclipse-vnc:latest"
     ], var.image)
     error_message = "Invalid image!"   
 }  
@@ -71,13 +53,10 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/coder-react.git"
+  default = "mark-theshark/pandas_automl.git"
   validation {
     condition = contains([
-      "mark-theshark/coder-react.git",
-      "mark-theshark/commissions.git",
-      "mark-theshark/java_helloworld.git",
-      "mark-theshark/python-commissions.git"
+      "mark-theshark/pandas_automl.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -111,35 +90,25 @@ variable "memory" {
 }
 }
 
-locals {
-  code-server-releases = {
-    "4.5.1 | Code 1.68.1" = "4.5.1"
-    "4.5.0 | Code 1.68.1" = "4.5.0"
-    "4.4.0 | Code 1.66.2" = "4.4.0"
-    "4.3.0 | Code 1.65.2" = "4.3.0"
-    "4.2.0 | Code 1.64.2" = "4.2.0"
-  }
-}
-
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.5.1 | Code 1.68.1"
-  validation {
-    condition = contains([
-      "4.5.1 | Code 1.68.1",      
-      "4.5.0 | Code 1.68.1",
-      "4.4.0 | Code 1.66.2",
-      "4.3.0 | Code 1.65.2",
-      "4.2.0 | Code 1.64.2"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
-}
-
 variable "disk_size" {
   description = "Disk size (__ GB)"
   default     = 10
 }
+
+
+variable "workspaces_namespace" {
+  type        = string
+  sensitive   = true
+  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
+  default     = "oss"
+}
+
+provider "kubernetes" {
+  # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
+  config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
+}
+
+data "coder_workspace" "me" {}
 
 resource "coder_agent" "coder" {
   os   = "linux"
@@ -148,54 +117,74 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)} 2>&1 | tee ~/build.log
-code-server --auth none --port 13337 2>&1 | tee -a ~/build.log &
+# start VNC
+echo "Creating desktop..."
+mkdir -p "$XFCE_DEST_DIR"
+cp -rT "$XFCE_BASE_DIR" "$XFCE_DEST_DIR"
+# Skip default shell config prompt.
+cp /etc/zsh/newuser.zshrc.recommended $HOME/.zshrc
+echo "Initializing Supervisor..."
+nohup supervisord
 
-# clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>&1 | tee -a ~/build.log
-git clone --progress git@github.com:${var.repo} 2>&1 | tee -a ~/build.log
+# eclipse
+/opt/eclipse/eclipse -data /home/coder sh 2>&1 | tee -a build.log &
+sleep 15
+DISPLAY=:90 xdotool key alt+F11
+
+# install code-server
+curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
+code-server --auth none --port 13337 2>&1 | tee -a build.log &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a ~/build.log
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a build.log
 
-  EOT  
+# clone repo
+ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo} 2>&1 | tee -a build.log
+
+EOT
 }
 
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server ${var.code-server}"
+  name          = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
 }
 
+resource "coder_app" "eclipse" {
+  agent_id      = coder_agent.coder.id
+  name          = "Eclipse"
+  icon          = "/icon/novnc-icon.svg"
+  url           = "http://localhost:6081"
+  relative_path = true
+}
+
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
-  depends_on = [
-    kubernetes_persistent_volume_claim.home-directory
-  ]  
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {
     security_context {
       run_as_user = "1000"
       fs_group    = "1000"
-    }    
+    }     
     container {
-      name    = "coder-container"
+      name    = "jupyterlab"
       image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
+      image_pull_policy = "Always"
       security_context {
         run_as_user = "1000"
-      }      
+      }
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
-      }  
+      }
       resources {
         requests = {
           cpu    = "250m"
@@ -209,20 +198,20 @@ resource "kubernetes_pod" "main" {
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
-      }      
+      }        
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
       }
-    }        
+    }         
   }
 }
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {
