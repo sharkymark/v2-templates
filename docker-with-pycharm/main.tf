@@ -78,11 +78,13 @@ variable "code-server" {
 
 variable "jetbrains-ide" {
   description = "JetBrains PyCharm IDE (oldest are Projector-tested by JetBrains s.r.o., Na Hrebenech II 1718/10, Prague, 14000, Czech Republic)"
-  default     = "PyCharm Community Edition 2022.1.3"
+  default     = "PyCharm Community Edition 2022.1.4"
   validation {
     condition = contains([
+      "PyCharm Community Edition 2022.1.4",
       "PyCharm Community Edition 2022.1.3",
       "PyCharm Community Edition 2021.3",
+      "PyCharm Professional Edition 2022.1.4",
       "PyCharm Professional Edition 2022.1.3",
       "PyCharm Professional Edition 2021.3"
     ], var.jetbrains-ide)

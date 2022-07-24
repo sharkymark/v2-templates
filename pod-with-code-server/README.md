@@ -15,6 +15,7 @@ tags: [cloud, kubernetes]
 1. Prompt user for compute options (CPU core, memory, and disk)
 1. Prompt user for container image to use
 1. Prompt user for repo to clone
+1. Prompt user for the code-server (VS Code) release to use
 1. Clone repo
 1. Download, install and start code-server (VS Code-in-a-browser)
 

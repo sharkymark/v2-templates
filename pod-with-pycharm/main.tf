@@ -94,27 +94,15 @@ e.g.,
   default = "/home/coder"
 }
 
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.5.0"
-  validation {
-    condition = contains([
-      "4.5.0",
-      "4.4.0",
-      "4.3.0",
-      "4.2.0"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
-}
-
 variable "jetbrains-ide" {
   description = "JetBrains PyCharm IDE (oldest are Projector-tested by JetBrains s.r.o., Na Hrebenech II 1718/10, Prague, 14000, Czech Republic)"
-  default     = "PyCharm Community Edition 2022.1.3"
+  default     = "PyCharm Community Edition 2022.1.4"
   validation {
     condition = contains([
+      "PyCharm Community Edition 2022.1.4",
       "PyCharm Community Edition 2022.1.3",
       "PyCharm Community Edition 2021.3",
+      "PyCharm Professional Edition 2022.1.4",
       "PyCharm Professional Edition 2022.1.3",
       "PyCharm Professional Edition 2021.3"
     ], var.jetbrains-ide)
@@ -163,6 +151,14 @@ resource "coder_agent" "coder" {
 
 coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles.log
 
+# install and start code-server
+curl -fsSL https://code-server.dev/install.sh | sh  2>&1 | tee code-server-install.log
+code-server --auth none --port 13337 2>&1 | tee code-server-install.log &
+
+# clone repo
+ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
+
 # install projector into /home/coder
 
 PROJECTOR_BINARY=/home/coder/.local/bin/projector
@@ -198,14 +194,6 @@ fi
 # start JetBrains projector-based IDE
 /home/coder/.local/bin/projector run pycharm &
 
-# install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh  2>&1 | tee code-server-install.log
-code-server --auth none --port 13337 2>&1 | tee code-server-install.log &
-
-# clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
-
 # install VS Code extensions into code-server
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} 2>&1 | tee vs-code-extension.log
 
@@ -216,7 +204,7 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
-  icon          = "https://cdn.icon-icons.com/icons2/2107/PNG/512/file_type_vscode_icon_130084.png"
+  icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=${var.folder_path}"
   relative_path = true  
 }
@@ -224,7 +212,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "pycharm" {
   agent_id      = coder_agent.coder.id
   name          = "${var.jetbrains-ide}"
-  icon          = "https://upload.wikimedia.org/wikipedia/commons/1/1d/PyCharm_Icon.svg"
+  icon          = "/icon/pycharm.svg"
   url           = "http://localhost:8997/"
   relative_path = true
 }
@@ -244,7 +232,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }     
     container {
-      name    = "clion"
+      name    = "jetbrains"
       image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {

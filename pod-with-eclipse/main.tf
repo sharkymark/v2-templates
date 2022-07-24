@@ -157,7 +157,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "eclipse" {
   agent_id      = coder_agent.coder.id
   name          = "Eclipse"
-  icon          = "/icon/novnc-icon.svg"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/c/cf/Eclipse-SVG.svg"
   url           = "http://localhost:6081"
   relative_path = true
 }

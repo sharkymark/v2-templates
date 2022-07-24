@@ -94,35 +94,28 @@ e.g.,
   default = "/home/coder"
 }
 
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.5.0"
-  validation {
-    condition = contains([
-      "4.5.0",
-      "4.4.0",
-      "4.3.0",
-      "4.2.0"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
+locals {
+  jetbrains-releases = {
+      "IntelliJ IDEA Community Edition 2022.1.4" = "IntelliJ CE 2022.1.4"
+      "IntelliJ IDEA Community Edition 2021.3" = "IntelliJ CE 2021.3"
+      "IntelliJ IDEA Ultimate 2022.1.4" = "IntelliJ U 2022.1.4"
+      "IntelliJ IDEA Ultimate 2021.3" = "IntelliJ U 2021.3"
+  }
 }
 
 variable "jetbrains-ide" {
   description = "JetBrains IntelliJ IDE (oldest are Projector-tested by JetBrains s.r.o., Na Hrebenech II 1718/10, Prague, 14000, Czech Republic)"
-  default     = "IntelliJ IDEA Community Edition 2022.1.3"
+  default     = "IntelliJ IDEA Community Edition 2022.1.4"
   validation {
     condition = contains([
-      "IntelliJ IDEA Community Edition 2022.1.3",
+      "IntelliJ IDEA Community Edition 2022.1.4",
       "IntelliJ IDEA Community Edition 2021.3",
-      "IntelliJ IDEA Ultimate 2022.1.3",
+      "IntelliJ IDEA Ultimate 2022.1.4",
       "IntelliJ IDEA Ultimate 2021.3"
     ], var.jetbrains-ide)
     error_message = "Invalid JetBrains IDE!"   
 }
 }
-
-
 
 variable "use_kubeconfig" {
   type        = bool
@@ -159,9 +152,12 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
-# use coder CLI to clone and install dotfiles
+# install code-server
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=4.5.1 2>&1 | tee ~/code-server.log
+code-server --auth none --port 13337 2>&1 | tee -a ~/coder-server.log &
 
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles.log
+# use coder CLI to clone and install dotfiles
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles.log &
 
 # install projector into /home/coder
 
@@ -208,10 +204,6 @@ sudo apt-get update && \
 # start JetBrains projector-based IDE
 /home/coder/.local/bin/projector run intellij &
 
-# install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee code-server-install.log
-code-server --auth none --port 13337 2>&1 | tee code-server-install.log &
-
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
@@ -227,13 +219,13 @@ resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   name          = "code-server"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=${var.folder_path}"
+  url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
 }
 
 resource "coder_app" "intellij" {
   agent_id      = coder_agent.coder.id
-  name          = "${var.jetbrains-ide}"
+  name          = "${lookup(local.jetbrains-releases, var.jetbrains-ide)}"
   icon          = "/icon/intellij.svg"
   url           = "http://localhost:8997/"
   relative_path = true
