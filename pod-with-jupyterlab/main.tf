@@ -124,7 +124,7 @@ curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
 code-server --auth none --port 13337 2>&1 | tee -a build.log &
 
 # start jupyterlab
-jupyter lab --ServerApp.token='' --ServerApp.ip='*' --ServerApp.base_url=/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/jupyter-lab/ 2>&1 | tee -a build.log &
+jupyter lab --ServerApp.token='' --ip='*' --ServerApp.base_url=/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/jupyter-lab/ 2>&1 | tee -a build.log &
 
 # add some Python libraries
 pip3 install --user pandas numpy 2>&1 | tee -a build.log
