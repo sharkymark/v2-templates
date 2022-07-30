@@ -48,6 +48,7 @@ variable "dotfiles_uri" {
   Dotfiles repo URI (optional)
 
   see https://dotfiles.github.io
+  git@github.com:mark-theshark/dotfiles.git
   EOF
   default = ""
 }
@@ -96,9 +97,10 @@ e.g.,
 
 variable "code-server" {
   description = "code-server release"
-  default     = "4.5.0"
+  default     = "4.5.1"
   validation {
     condition = contains([
+      "4.5.1",
       "4.5.0",
       "4.4.0",
       "4.3.0",
@@ -110,9 +112,10 @@ variable "code-server" {
 
 variable "jetbrains-ide" {
   description = "JetBrains GoLand IDE (oldest are Projector-tested by JetBrains s.r.o., Na Hrebenech II 1718/10, Prague, 14000, Czech Republic)"
-  default     = "GoLand 2022.1.3"
+  default     = "GoLand 2022.2"
   validation {
     condition = contains([
+      "GoLand 2022.2",
       "GoLand 2022.1.3",
       "GoLand 2021.3.5",
       "GoLand 2020.3.5"
