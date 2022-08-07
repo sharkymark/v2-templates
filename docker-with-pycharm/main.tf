@@ -2,11 +2,11 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.2"
+      version = "~> 0.4.4"
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.17.0"
+      version = "~> 2.20.0"
     }
   }
 }
@@ -64,10 +64,10 @@ e.g.,
 
 variable "code-server" {
   description = "code-server release"
-  default     = "4.5.0"
+  default     = "4.5.1"
   validation {
     condition = contains([
-      "4.5.0",
+      "4.5.1",
       "4.4.0",
       "4.3.0",
       "4.2.0"
@@ -190,7 +190,16 @@ resource "docker_container" "workspace" {
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
   # Use the docker gateway if the access URL is 127.0.0.1
-  entrypoint = ["sh", "-c", replace(coder_agent.coder.init_script, "127.0.0.1", "host.docker.internal")]
+  # entrypoint = ["sh", "-c", replace(coder_agent.coder.init_script, "127.0.0.1", "host.docker.internal")]
+
+  command = [
+    "sh", "-c",
+    <<EOT
+    trap '[ $? -ne 0 ] && echo === Agent script exited with non-zero code. Sleeping infinitely to preserve logs... && sleep infinity' EXIT
+    ${replace(coder_agent.coder.init_script, "localhost", "host.docker.internal")}
+    EOT
+  ]
+
   env        = ["CODER_AGENT_TOKEN=${coder_agent.coder.token}"]
   volumes {
     container_path = "/home/coder/"
