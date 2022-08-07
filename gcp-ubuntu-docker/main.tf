@@ -2,11 +2,11 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.4.2"
+      version = "0.4.4"
     }
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.15"
+      version = "~> 4.31"
     }
   }
 }
@@ -21,6 +21,15 @@ variable "zone" {
   validation {
     condition     = contains(["northamerica-northeast1-a", "us-central1-a", "us-west2-c", "europe-west4-b", "southamerica-east1-a"], var.zone)
     error_message = "Invalid zone!"
+  }
+}
+
+variable "machine-type" {
+  description = "What machine type should your workspace be?"
+  default     = "e2-micro"
+  validation {
+    condition     = contains(["e2-micro", "e2-small"], var.machine-type)
+    error_message = "Invalid machine type!"
   }
 }
 
@@ -55,6 +64,22 @@ resource "google_compute_disk" "root" {
   }
 }
 
+variable "repo" {
+  description = <<-EOF
+  Code repository to clone
+
+  EOF
+  default = "mark-theshark/flask-redis-docker-compose.git"
+  validation {
+    condition = contains([
+      "mark-theshark/flask-redis-docker-compose.git"
+    ], var.repo)
+    error_message = "Invalid repo!"   
+}  
+}
+
+
+
 resource "coder_agent" "dev" {
   auth = "google-instance-identity"
   arch = "amd64"
@@ -62,13 +87,16 @@ resource "coder_agent" "dev" {
   startup_script = <<EOT
 #!/bin/bash
 
-# use coder CLI to clone and install dotfiles
+# clone repo
+ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>&1 | tee ~/build.log
+git clone --progress git@github.com:${var.repo} 2>&1 | tee -a ~/build.log
 
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
+# use coder CLI to clone and install dotfiles
+coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a ~/build.log
 
 # install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+curl -fsSL https://code-server.dev/install.sh | sh | tee -a ~/build.log
+code-server --auth none --port 13337 2>&1 | tee -a ~/build.log &
 
 EOT
 }  
@@ -86,7 +114,7 @@ resource "google_compute_instance" "dev" {
   zone         = var.zone
   count        = data.coder_workspace.me.start_count
   name         = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-  machine_type = "e2-micro"
+  machine_type = "${var.machine-type}"
   network_interface {
     network = "default"
     access_config {
