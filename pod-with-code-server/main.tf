@@ -199,7 +199,7 @@ resource "kubernetes_pod" "main" {
       resources {
         requests = {
           cpu    = "250m"
-          memory = "250Mi"
+          memory = "500Mi"
         }        
         limits = {
           cpu    = "${var.cpu}"
