@@ -2,11 +2,11 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.2"
+      version = "~> 0.4.4"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.11"
+      version = "~> 2.12.1"
     }   
   }
 }
@@ -149,15 +149,16 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)} 2>&1 | tee ~/build.log
-code-server --auth none --port 13337 2>&1 | tee -a ~/build.log &
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
+code-server --auth none --port 13337 &
 
 # clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>&1 | tee -a ~/build.log
-git clone --progress git@github.com:${var.repo} 2>&1 | tee -a ~/build.log
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo}
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a ~/build.log
+coder dotfiles -y ${var.dotfiles_uri}
 
   EOT  
 }

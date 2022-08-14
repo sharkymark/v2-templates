@@ -2,11 +2,11 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.2"
+      version = "~> 0.4.4"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.11"
+      version = "~> 2.12.1"
     }   
   }
 }
@@ -118,11 +118,11 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server} 2>&1 | tee ~/code-server.log
-code-server --auth none --port 13337 2>&1 | tee -a ~/code-server.log &
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server}
+code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee ~/dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri}
 
 # start VNC
 echo "Creating desktop..."

@@ -2,11 +2,11 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.2"
+      version = "~> 0.4.4"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.11"
+      version = "~> 2.12.1"
     }
   }
 }
@@ -122,21 +122,22 @@ resource "coder_agent" "coder" {
 rm build.log
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
-code-server --auth none --port 13337  2>&1 | tee -a build.log &
+curl -fsSL https://code-server.dev/install.sh | sh 
+code-server --auth none --port 13337 &
 
 # start rstudio
-/usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1 2>&1 | tee -a build.log
+/usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1
 
 # add some Python libraries
-pip3 install --user pandas numpy 2>&1 | tee -a build.log
+pip3 install --user pandas numpy
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a build.log
+coder dotfiles -y ${var.dotfiles_uri} 
 
 # clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee -a build.log
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo}
 
 EOT
 }

@@ -2,11 +2,11 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.2"
+      version = "~> 0.4.4"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.11"
+      version = "~> 2.12.1"
     }
   }
 }
@@ -61,11 +61,11 @@ resource "coder_agent" "coder" {
 
 # use coder CLI to clone and install dotfiles
 
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri}
 
 # configure script to set up 2 intellij configs and start intellij IDEs
 #
-/coder/configure  2>&1 > ~/configure.log
+/coder/configure
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh

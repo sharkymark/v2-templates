@@ -49,10 +49,10 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/pandas-automl.git"
+  default = "sharkymark/pandas_automl.git"
   validation {
     condition = contains([
-      "mark-theshark/pandas-automl.git"
+      "sharkymark/pandas_automl.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -100,21 +100,22 @@ resource "coder_agent" "dev" {
 #!/bin/bash
 
 # start jupyter notebook
-jupyter notebook --no-browser --NotebookApp.token='' --ip='*' --NotebookApp.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/jupyter-notebook/ 2>&1 | tee jupyter.log &
+jupyter notebook --no-browser --NotebookApp.token='' --ip='*' --NotebookApp.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/jupyter-notebook/ &
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)} 2>&1 | tee code-server.log
-code-server --auth none --port 13337 2>&1 | tee -a code-server.log &
-
-# clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee -a repo-clone.log
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
+code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles-clone.log 
+coder dotfiles -y ${var.dotfiles_uri} 2>&1
+
+# clone repo
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone git@github.com:${var.repo}
 
 # install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} 2>&1 | tee extension-install.log
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension}
 
   EOT  
 }

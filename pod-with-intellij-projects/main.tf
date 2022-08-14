@@ -69,7 +69,7 @@ variable "image" {
 variable "repo" {
   description = <<-EOF
   Code repository to clone with SSH
-  e.g., mark-theshark/java_helloworld.git
+  e.g., sharkymark/java_helloworld.git
   EOF
   default = ""
 }
@@ -142,11 +142,12 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri} 
 
 # clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log &
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo} &
 
 # install projector into /home/coder
 
@@ -154,34 +155,34 @@ PROJECTOR_BINARY=/home/coder/.local/bin/projector
 
 if [ -f $PROJECTOR_BINARY ]; then
     echo 'projector has already been installed - check for update'
-    /home/coder/.local/bin/projector self-update 2>&1 | tee projector.log
+    /home/coder/.local/bin/projector self-update 
 else
     echo 'installing projector'
-    pip3 install projector-installer --user 2>&1 | tee projector.log
+    pip3 install projector-installer --user
 fi
 
 echo 'access projector license terms'
-/home/coder/.local/bin/projector --accept-license 2>&1 | tee -a projector.log
+/home/coder/.local/bin/projector --accept-license 
 
 PROJECTOR_CONFIG_PATH=/home/coder/.projector/configs/intellij1
 
 if [ -d "$PROJECTOR_CONFIG_PATH" ]; then
-    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step' 2>&1 | tee -a projector.log
+    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step' 
 else
     echo 'autoinstalling IDE and creating projector config folder'
-    /home/coder/.local/bin/projector ide autoinstall --config-name "intellij1" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder 2>&1 | tee -a projector.log
+    /home/coder/.local/bin/projector ide autoinstall --config-name "intellij1" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder 
 
-    /home/coder/.local/bin/projector ide autoinstall --config-name "intellij2" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8998 --use-separate-config --password coder 2>&1 | tee -a projector.log    
+    /home/coder/.local/bin/projector ide autoinstall --config-name "intellij2" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8998 --use-separate-config --password coder 
 
     # delete the configuration's run.sh input parameters that check password tokens since tokens do not work with coder_app yet passed in the querystring
 
-    grep -iv "HANDSHAKE_TOKEN" /home/coder/.projector/configs/intellij1/run.sh > temp && mv temp /home/coder/.projector/configs/intellij1/run.sh 2>&1 | tee -a projector.log
-    chmod +x /home/coder/.projector/configs/intellij1/run.sh 2>&1 | tee -a projector.log
+    grep -iv "HANDSHAKE_TOKEN" /home/coder/.projector/configs/intellij1/run.sh > temp && mv temp /home/coder/.projector/configs/intellij1/run.sh 
+    chmod +x /home/coder/.projector/configs/intellij1/run.sh
 
-    grep -iv "HANDSHAKE_TOKEN" /home/coder/.projector/configs/intellij2/run.sh > temp && mv temp /home/coder/.projector/configs/intellij2/run.sh 2>&1 | tee -a projector.log
-    chmod +x /home/coder/.projector/configs/intellij2/run.sh 2>&1 | tee -a projector.log
+    grep -iv "HANDSHAKE_TOKEN" /home/coder/.projector/configs/intellij2/run.sh > temp && mv temp /home/coder/.projector/configs/intellij2/run.sh 
+    chmod +x /home/coder/.projector/configs/intellij2/run.sh 
 
-    echo "creation of intellij configuration complete" 2>&1 | tee -a projector.log
+    echo "creation of intellij configuration complete" 
     
 fi
 
@@ -192,7 +193,7 @@ sudo apt-get update && \
     libxrender1 \
     libfontconfig1 \
     libxi6 \
-    libgtk-3-0 | tee -a projector.log
+    libgtk-3-0 
 
 
 # start JetBrains projector-based IDE

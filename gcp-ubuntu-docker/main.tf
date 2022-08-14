@@ -69,10 +69,10 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/flask-redis-docker-compose.git"
+  default = "sharkmark/flask-redis-docker-compose.git"
   validation {
     condition = contains([
-      "mark-theshark/flask-redis-docker-compose.git"
+      "sharkymark/flask-redis-docker-compose.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -88,15 +88,16 @@ resource "coder_agent" "dev" {
 #!/bin/bash
 
 # clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>&1 | tee ~/build.log
-git clone --progress git@github.com:${var.repo} 2>&1 | tee -a ~/build.log
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo}
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a ~/build.log
+coder dotfiles -y ${var.dotfiles_uri}
 
 # install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh | tee -a ~/build.log
-code-server --auth none --port 13337 2>&1 | tee -a ~/build.log &
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 &
 
 EOT
 }  

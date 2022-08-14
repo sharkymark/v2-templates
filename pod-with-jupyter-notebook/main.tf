@@ -2,11 +2,11 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.2"
+      version = "~> 0.4.4"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.11"
+      version = "~> 2.12.1"
     }
   }
 }
@@ -53,10 +53,10 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/pandas_automl.git"
+  default = "sharkymark/pandas_automl.git"
   validation {
     condition = contains([
-      "mark-theshark/pandas_automl.git"
+      "sharkymark/pandas_automl.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -118,21 +118,22 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
-code-server --auth none --port 13337 2>&1 | tee -a build.log &
+curl -fsSL https://code-server.dev/install.sh | sh 
+code-server --auth none --port 13337  &
 
 # start jupyter notebook
-jupyter notebook --no-browser --NotebookApp.token='' --ip='*' --NotebookApp.base_url=/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/jupyter-notebook/ 2>&1 | tee -a build.log &
+jupyter notebook --no-browser --NotebookApp.token='' --ip='*' --NotebookApp.base_url=/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/jupyter-notebook/ &
 
 # add some Python libraries
-pip3 install --user pandas numpy 2>&1 | tee -a build.log
+pip3 install --user pandas numpy 
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a build.log
+coder dotfiles -y ${var.dotfiles_uri} 
 
 # clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee -a build.log
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo} 
 
 EOT
 }

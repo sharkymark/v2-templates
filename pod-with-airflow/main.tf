@@ -2,11 +2,11 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.2"
+      version = "~> 0.4.4"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.11"
+      version = "~> 2.12.1"
     }
   }
 }
@@ -123,26 +123,27 @@ rm build.log
 export PATH=$PATH:$HOME/.local/bin
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee -a build.log
-code-server --auth none --port 13337 2>&1 | tee -a build.log &
+curl -fsSL https://code-server.dev/install.sh |
+code-server --auth none --port 13337 &
 
 # install and start airflow
-pip3 install apache-airflow 2>&1 | tee -a build.log
+pip3 install apache-airflow
 
 # AIRFLOW__WEBSERVER__BASE_URL may be the solution, but commenting out for now
 #export AIRFLOW__WEBSERVER__BASE_URL="/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/airflow/"
 
-/home/coder/.local/bin/airflow standalone 2>&1 | tee -a build.log &
+/home/coder/.local/bin/airflow standalone &
 
 # add some Python libraries
-pip3 install --user pandas numpy 2>&1 | tee -a build.log
+pip3 install --user pandas numpy
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee -a build.log
+coder dotfiles -y ${var.dotfiles_uri}
 
 # clone repo
-ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee -a build.log
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo}
 
 EOT
 }
