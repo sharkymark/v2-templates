@@ -4,6 +4,11 @@
 These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
+
+8-20-22 mark@coder.com
+1. updated Coder Terraform provider to 0.4.9
+1. aws templates still do not work - VMs created but workspaces in `connecting` status with no IDE icons. [Filed issue #3611](https://github.com/coder/coder/issues/3611)
+
 8-13-22 mark@coder.com 
 1. bug: added `mkdir -p ~/.ssh` before `ssh-keyscan` and `git clone`
 1. updated kubernetes, docker and coder Terraform provider releases

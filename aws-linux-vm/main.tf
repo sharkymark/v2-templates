@@ -4,7 +4,15 @@ terraform {
       source  = "coder/coder"
       version = "0.4.9"
     }
+    aws = {
+      source = "hashicorp/aws"
+      version = "4.27.0"
+    }   
   }
+}
+
+provider "aws" {
+  region = var.region
 }
 
 #
@@ -39,10 +47,6 @@ variable "instance_type" {
   }
 }
 
-provider "aws" {
-  region = var.region
-}
-
 data "coder_workspace" "me" {
 }
 
@@ -62,6 +66,7 @@ data "aws_ami" "ubuntu" {
 resource "coder_agent" "coder" {
   arch = "amd64"
   auth = "aws-instance-identity"
+  #auth = "token"  
   os   = "linux"
 
   startup_script = <<EOT
@@ -113,9 +118,17 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment; filename="userdata.txt"
 
+
 #!/bin/bash
-sudo -u ${local.linux_user} sh -c '${coder_agent.coder.init_script}'
+# default template info
+# sudo -u ${local.linux_user} sh -c '${coder_agent.coder.init_script}'
+
+# passing token, since changing agent auth to token from aws-instance-identity
+export CODER_AGENT_TOKEN=${coder_agent.coder.token}
+sudo --preserve-env=CODER_AGENT_TOKEN -u ${lower(data.coder_workspace.me.owner)} /bin/bash -c '${coder_agent.coder.init_script}'
+
 --//--
+
 EOT
 
   user_data_end = <<EOT
