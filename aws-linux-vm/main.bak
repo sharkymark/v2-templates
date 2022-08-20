@@ -4,52 +4,47 @@ terraform {
       source  = "coder/coder"
       version = "0.4.9"
     }
-  }
-}
-
-variable "region" {
-  description = "What region should your workspace live in?"
-  default     = "us-east-1"
-  validation {
-    condition = contains([
-      "eu-central-1",
-      "us-west-2",
-      "us-east-1"
-    ], var.region)
-    error_message = "Invalid region!"
-  }
-}
-
-locals {
-  aws_instances = {
-    "2 Cores, 1 GB RAM"  = "t3.micro"      
-    "2 Cores, 2 GB RAM"  = "t3.small"      
-    "2 Cores, 4 GB RAM"  = "t3.medium"    
-    "2 Cores, 8 GB RAM"  = "t3.large"
-    "4 Cores, 16 GB RAM" = "t3.xlarge"
-    "8 Cores, 32 GB RAM" = "t3.2xlarge"
-  }
-}
-
-variable "type" {
-  description = "Instance size"
-  default     = "2 Cores, 1 GB RAM"
-  validation {
-    condition = contains(
-      [
-        "2 Cores, 1 GB RAM",        
-        "2 Cores, 2 GB RAM",        
-        "2 Cores, 4 GB RAM",        
-        "2 Cores, 8 GB RAM",
-        "4 Cores, 16 GB RAM",
-        "8 Cores, 32 GB RAM"
-    ], var.type)
-    error_message = "Invalid type!"
+    aws = {
+      source = "hashicorp/aws"
+      version = "4.27.0"
+    }   
   }
 }
 
 provider "aws" {
   region = var.region
+}
+
+#
+# aws ec2 describe-regions | jq -r '[.Regions[].RegionName] | sort'
+variable "region" {
+  description = "What region should your workspace live in?"
+  default     = "us-east-1"
+  validation {
+    condition = contains([
+      "us-east-1",
+      "us-east-2",
+      "us-west-1",
+      "us-west-2"
+    ], var.region)
+    error_message = "Invalid region!"
+  }
+}
+
+variable "instance_type" {
+  description = "What instance type should your workspace use?"
+  default     = "t3.micro"
+  validation {
+    condition = contains([
+      "t3.micro",
+      "t3.small",
+      "t3.medium",
+      "t3.large",
+      "t3.xlarge",
+      "t3.2xlarge",
+    ], var.instance_type)
+    error_message = "Invalid instance type!"
+  }
 }
 
 data "coder_workspace" "me" {
@@ -68,26 +63,29 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
-resource "coder_agent" "dev" {
-  arch           = "amd64"
-  auth           = "token"
-#  dir            = "/home/${lower(data.coder_workspace.me.owner)}"
-  os             = "linux"
+resource "coder_agent" "coder" {
+  arch = "amd64"
+  auth = "aws-instance-identity"
+  #auth = "token"  
+  os   = "linux"
+
   startup_script = <<EOT
-#!/bin/sh
-#export HOME=/home/${lower(data.coder_workspace.me.owner)}
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337
-  EOT
+  #!/bin/bash
+
+  # install code-server
+  curl -fsSL https://code-server.dev/install.sh | sh
+  code-server --auth none --port 13337 &
+
+    EOT 
 }
 
 # code-server
 resource "coder_app" "code-server" {
-  agent_id      = coder_agent.dev.id
+  agent_id      = coder_agent.coder.id
   name          = "code-server"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:13337/?folder=/home/ubuntu"
-  relative_path = true
+  url           = "http://localhost:13337?folder=/home/coder"
+  relative_path = true  
 }
 
 locals {
@@ -106,9 +104,9 @@ Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment; filename="cloud-config.txt"
 
 #cloud-config
-hostname: ${lower(data.coder_workspace.me.name)}
 cloud_final_modules:
-- [scripts-user, always]
+- [scripts-user, always]  
+hostname: ${lower(data.coder_workspace.me.name)}
 
 --//
 Content-Type: text/x-shellscript; charset="us-ascii"
@@ -116,10 +114,17 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment; filename="userdata.txt"
 
+
 #!/bin/bash
-export CODER_AGENT_TOKEN=${coder_agent.dev.token}
-sudo --preserve-env=CODER_AGENT_TOKEN -u ubuntu sh -c '${coder_agent.dev.init_script}'
+# default template info
+sudo -u ${local.linux_user} sh -c '${coder_agent.coder.init_script}'
+
+# passing token, since changing agent auth to token from aws-instance-identity
+# export CODER_AGENT_TOKEN=${coder_agent.coder.token}
+# sudo --preserve-env=CODER_AGENT_TOKEN -u ${lower(data.coder_workspace.me.owner)} /bin/bash -c '${coder_agent.coder.init_script}'
+
 --//--
+
 EOT
 
   user_data_end = <<EOT
@@ -146,36 +151,21 @@ Content-Disposition: attachment; filename="userdata.txt"
 sudo shutdown -h now
 --//--
 EOT
+
+  # Ensure Coder username is a valid Linux username
+  linux_user = lower(substr(data.coder_workspace.me.owner, 0, 32))
+
 }
 
-resource "aws_spot_instance_request" "dev" {
-  ami                            = data.aws_ami.ubuntu.id
-  availability_zone              = "${var.region}a"
-  instance_type                  = lookup(local.aws_instances, var.type)
-  instance_interruption_behavior = "stop"
-
-  wait_for_fulfillment = true
+resource "aws_instance" "dev" {
+  ami               = data.aws_ami.ubuntu.id
+  availability_zone = "${var.region}a"
+  instance_type     = "${var.instance_type}"
 
   user_data = data.coder_workspace.me.transition == "start" ? local.user_data_start : local.user_data_end
   tags = {
     Name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     # Required if you are using our example policy, see template README
     Coder_Provisioned = "true"
-  }
-}
-
-resource "coder_metadata" "workspace_info" {
-  resource_id = aws_spot_instance_request.dev.id
-  item {
-    key   = "region"
-    value = var.region
-  }
-  item {
-    key   = "instance type"
-    value = aws_spot_instance_request.dev.instance_type
-  }
-  item {
-    key   = "disk"
-    value = "${aws_spot_instance_request.dev.root_block_device[0].volume_size} GiB"
   }
 }

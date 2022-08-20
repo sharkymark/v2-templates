@@ -4,24 +4,29 @@ terraform {
       source  = "coder/coder"
       version = "0.4.9"
     }
-    aws = {
-      source = "hashicorp/aws"
-      version = "4.27.0"
-    }   
   }
 }
 
-provider "aws" {
-  region = var.region
-}
-
-#
+# Last updated 2022-05-31
 # aws ec2 describe-regions | jq -r '[.Regions[].RegionName] | sort'
 variable "region" {
   description = "What region should your workspace live in?"
   default     = "us-east-1"
   validation {
     condition = contains([
+      "ap-northeast-1",
+      "ap-northeast-2",
+      "ap-northeast-3",
+      "ap-south-1",
+      "ap-southeast-1",
+      "ap-southeast-2",
+      "ca-central-1",
+      "eu-central-1",
+      "eu-north-1",
+      "eu-west-1",
+      "eu-west-2",
+      "eu-west-3",
+      "sa-east-1",
       "us-east-1",
       "us-east-2",
       "us-west-1",
@@ -47,6 +52,10 @@ variable "instance_type" {
   }
 }
 
+provider "aws" {
+  region = var.region
+}
+
 data "coder_workspace" "me" {
 }
 
@@ -63,29 +72,60 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
-resource "coder_agent" "coder" {
+variable "dotfiles_uri" {
+  description = <<-EOF
+  Dotfiles repo URI (optional)
+
+  see https://dotfiles.github.io
+  EOF
+  default = ""
+}
+
+locals {
+  code-server-releases = {
+    "4.6.0 | Code 1.70.1" = "4.6.0"    
+    "4.5.1 | Code 1.68.1" = "4.5.1"
+    "4.4.0 | Code 1.66.2" = "4.4.0"
+  }
+}
+
+variable "code-server" {
+  description = "code-server release"
+  default     = "4.6.0 | Code 1.70.1"
+  validation {
+    condition = contains([
+      "4.6.0 | Code 1.70.1",
+      "4.5.1 | Code 1.68.1",
+      "4.4.0 | Code 1.66.2"
+    ], var.code-server)
+    error_message = "Invalid code-server!"   
+}
+}
+
+resource "coder_agent" "main" {
   arch = "amd64"
   auth = "aws-instance-identity"
-  #auth = "token"  
   os   = "linux"
 
   startup_script = <<EOT
   #!/bin/bash
 
   # install code-server
-  curl -fsSL https://code-server.dev/install.sh | sh
+  curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
   code-server --auth none --port 13337 &
 
+  # use coder CLI to clone and install dotfiles
+  coder dotfiles -y ${var.dotfiles_uri}
+
     EOT 
+
 }
 
-# code-server
 resource "coder_app" "code-server" {
-  agent_id      = coder_agent.coder.id
-  name          = "code-server"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
-  relative_path = true  
+  agent_id = coder_agent.main.id
+  name     = "code-server ${var.code-server}"
+  url      = "http://localhost:13337/?folder=/home/ubuntu"
+  icon     = "/icon/code.svg"
 }
 
 locals {
@@ -107,10 +147,6 @@ Content-Disposition: attachment; filename="cloud-config.txt"
 cloud_final_modules:
 - [scripts-user, always]
 hostname: ${lower(data.coder_workspace.me.name)}
-users:
-- name: ${local.linux_user}
-  sudo: ALL=(ALL) NOPASSWD:ALL
-  shell: /bin/bash
 
 --//
 Content-Type: text/x-shellscript; charset="us-ascii"
@@ -118,17 +154,9 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment; filename="userdata.txt"
 
-
 #!/bin/bash
-# default template info
-# sudo -u ${local.linux_user} sh -c '${coder_agent.coder.init_script}'
-
-# passing token, since changing agent auth to token from aws-instance-identity
-export CODER_AGENT_TOKEN=${coder_agent.coder.token}
-sudo --preserve-env=CODER_AGENT_TOKEN -u ${lower(data.coder_workspace.me.owner)} /bin/bash -c '${coder_agent.coder.init_script}'
-
+sudo -u ubuntu sh -c '${coder_agent.main.init_script}'
 --//--
-
 EOT
 
   user_data_end = <<EOT
@@ -164,12 +192,28 @@ EOT
 resource "aws_instance" "dev" {
   ami               = data.aws_ami.ubuntu.id
   availability_zone = "${var.region}a"
-  instance_type     = "${var.instance_type}"
+  instance_type     = var.instance_type
 
   user_data = data.coder_workspace.me.transition == "start" ? local.user_data_start : local.user_data_end
   tags = {
     Name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     # Required if you are using our example policy, see template README
     Coder_Provisioned = "true"
+  }
+}
+
+resource "coder_metadata" "workspace_info" {
+  resource_id = aws_instance.dev.id
+  item {
+    key   = "region"
+    value = var.region
+  }
+  item {
+    key   = "instance type"
+    value = aws_instance.dev.instance_type
+  }
+  item {
+    key   = "disk"
+    value = "${aws_instance.dev.root_block_device[0].volume_size} GiB"
   }
 }
