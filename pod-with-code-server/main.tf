@@ -113,6 +113,7 @@ variable "memory" {
 
 locals {
   code-server-releases = {
+    "4.6.0 | Code 1.70.1" = "4.6.0"    
     "4.5.1 | Code 1.68.1" = "4.5.1"
     "4.5.0 | Code 1.68.1" = "4.5.0"
     "4.4.0 | Code 1.66.2" = "4.4.0"
@@ -123,9 +124,10 @@ locals {
 
 variable "code-server" {
   description = "code-server release"
-  default     = "4.5.1 | Code 1.68.1"
+  default     = "4.6.0 | Code 1.70.1"
   validation {
     condition = contains([
+      "4.6.0 | Code 1.70.1",
       "4.5.1 | Code 1.68.1",      
       "4.5.0 | Code 1.68.1",
       "4.4.0 | Code 1.66.2",

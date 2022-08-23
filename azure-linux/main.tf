@@ -133,7 +133,7 @@ resource "coder_agent" "main" {
 resource "coder_app" "code-server" {
   agent_id = coder_agent.main.id
   name     = "code-server ${var.code-server}"
-  url      = "http://localhost:13337/?folder=/home/ubuntu"
+  url      = "http://localhost:13337/?folder=/home/${lower(substr(data.coder_workspace.me.owner, 0, 32))}"
   icon     = "/icon/code.svg"
 }
 
@@ -142,8 +142,8 @@ locals {
   prefix = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
 
   userdata = templatefile("cloud-config.yaml.tftpl", {
-#    username          = lower(substr(data.coder_workspace.me.owner, 0, 32))
-    username          = "ubuntu"   
+    username          = lower(substr(data.coder_workspace.me.owner, 0, 32))
+#    username          = "ubuntu"   
     init_script       = base64encode(coder_agent.main.init_script)
     hostname          = lower(data.coder_workspace.me.name)
   })
@@ -159,16 +159,16 @@ resource "azurerm_resource_group" "main" {
 }
 
 // Uncomment here and in the azurerm_network_interface resource to obtain a public IP
-#resource "azurerm_public_ip" "main" {
-#  name                = "publicip"
-#  resource_group_name = azurerm_resource_group.main.name
-#  location            = azurerm_resource_group.main.location
-#  allocation_method   = "Static"
-#
-#  tags = {
-#    Coder_Provisioned = "true"
-#  }
-#}
+resource "azurerm_public_ip" "main" {
+  name                = "publicip"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  allocation_method   = "Static"
+
+  tags = {
+    Coder_Provisioned = "true"
+  }
+}
 
 resource "azurerm_virtual_network" "main" {
   name                = "network"
@@ -198,7 +198,7 @@ resource "azurerm_network_interface" "main" {
     subnet_id                     = azurerm_subnet.internal.id
     private_ip_address_allocation = "Dynamic"
     // Uncomment for public IP address as well as azurerm_public_ip resource above
-    //public_ip_address_id = azurerm_public_ip.main.id
+    public_ip_address_id = azurerm_public_ip.main.id
   }
 
   tags = {
@@ -262,4 +262,23 @@ resource "azurerm_virtual_machine_data_disk_attachment" "home" {
   virtual_machine_id = azurerm_linux_virtual_machine.main[0].id
   lun                = "10"
   caching            = "ReadWrite"
+}
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = azurerm_linux_virtual_machine.main[0].id
+
+  item {
+    key   = "type"
+    value = azurerm_linux_virtual_machine.main[0].size
+  }
+}
+
+resource "coder_metadata" "home_info" {
+  resource_id = azurerm_managed_disk.home.id
+
+  item {
+    key   = "size"
+    value = "${var.home_size} GiB"
+  }
 }

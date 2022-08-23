@@ -5,6 +5,9 @@ These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
 
+8-23-22 mark@coder.com
+1. aws and azure templates can only run with users other than admin@coder.com (will be fixed in a future release)
+
 8-20-22 mark@coder.com
 1. updated Coder Terraform provider to 0.4.9
 1. aws templates have temporary fix - use `ubuntu` user and do not create a user in the VM to resolve `connecting` stuck status [Filed issue #3611](https://github.com/coder/coder/issues/3611)

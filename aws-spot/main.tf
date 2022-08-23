@@ -71,7 +71,7 @@ data "aws_ami" "ubuntu" {
 resource "coder_agent" "dev" {
   arch           = "amd64"
   auth           = "token"
-#  dir            = "/home/${lower(data.coder_workspace.me.owner)}"
+  dir            = "/home/${lower(data.coder_workspace.me.owner)}"
   os             = "linux"
   startup_script = <<EOT
 #!/bin/sh
@@ -86,7 +86,7 @@ resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
   name          = "code-server"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:13337/?folder=/home/ubuntu"
+  url           = "http://localhost:13337/?folder=/home/${lower(data.coder_workspace.me.owner)}"
   relative_path = true
 }
 
@@ -107,6 +107,10 @@ Content-Disposition: attachment; filename="cloud-config.txt"
 
 #cloud-config
 hostname: ${lower(data.coder_workspace.me.name)}
+users:
+- name: ${lower(data.coder_workspace.me.owner)}
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  shell: /bin/bash
 cloud_final_modules:
 - [scripts-user, always]
 
@@ -118,7 +122,7 @@ Content-Disposition: attachment; filename="userdata.txt"
 
 #!/bin/bash
 export CODER_AGENT_TOKEN=${coder_agent.dev.token}
-sudo --preserve-env=CODER_AGENT_TOKEN -u ubuntu sh -c '${coder_agent.dev.init_script}'
+sudo --preserve-env=CODER_AGENT_TOKEN -u ${lower(data.coder_workspace.me.owner)} /bin/bash -c '${coder_agent.dev.init_script}'
 --//--
 EOT
 

@@ -124,7 +124,7 @@ resource "coder_agent" "main" {
 resource "coder_app" "code-server" {
   agent_id = coder_agent.main.id
   name     = "code-server ${var.code-server}"
-  url      = "http://localhost:13337/?folder=/home/ubuntu"
+  url      = "http://localhost:13337/?folder=/home/${lower(data.coder_workspace.me.owner)}"
   icon     = "/icon/code.svg"
 }
 
@@ -144,9 +144,13 @@ Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment; filename="cloud-config.txt"
 
 #cloud-config
+hostname: ${lower(data.coder_workspace.me.name)}
+users:
+- name: ${lower(data.coder_workspace.me.owner)}
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  shell: /bin/bash
 cloud_final_modules:
 - [scripts-user, always]
-hostname: ${lower(data.coder_workspace.me.name)}
 
 --//
 Content-Type: text/x-shellscript; charset="us-ascii"
@@ -155,7 +159,7 @@ Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment; filename="userdata.txt"
 
 #!/bin/bash
-sudo -u ubuntu sh -c '${coder_agent.main.init_script}'
+sudo --preserve-env=CODER_AGENT_TOKEN -u ${lower(data.coder_workspace.me.owner)} /bin/bash -c '${coder_agent.main.init_script}'
 --//--
 EOT
 

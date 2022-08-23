@@ -1,0 +1,33 @@
+resource "coder_metadata" "workspace_info" {
+  resource_id = azurerm_linux_virtual_machine.main[0].id
+  item {
+    key   = "location"
+    value = var.location
+  }
+  item {
+    key   = "instance type"
+    value = azurerm_linux_virtual_machine.main[0].size
+  }
+  item {
+    key   = "disk"
+    value = "${azurerm_managed_disk.home.disk_size_gb} GiB"
+  }
+}
+
+
+
+resource "coder_metadata" "workspace_info" {
+  resource_id = azurerm_linux_virtual_machine.main[0].id
+  item {
+    key   = "location"
+    value = var.location
+  }
+  item {
+    key   = "instance type"
+    value = var.instance_type
+  }
+  item {
+    key   = "disk"
+    value = "${azurerm_managed_disk.home.disk_size_gb} GiB"
+  }
+}
