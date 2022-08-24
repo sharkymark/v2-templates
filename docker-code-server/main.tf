@@ -151,7 +151,6 @@ resource "docker_container" "workspace" {
   command = [
     "sh", "-c",
     <<EOT
-    trap '[ $? -ne 0 ] && echo === Agent script exited with non-zero code. Sleeping infinitely to preserve logs... && sleep infinity' EXIT
     ${replace(coder_agent.dev.init_script, "localhost", "host.docker.internal")}
     EOT
   ]
