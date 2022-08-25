@@ -5,6 +5,13 @@ These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
 
+8-25-22 mark@coder.com
+1. kubernetes pod templates that put the jetbrains IDE and projector in the image
+1. Incl. IntelliJ IDEA Ultimate [Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/idea-ult-vscode) | [DockerHub](https://hub.docker.com/repository/docker/marktmilligan/idea-vscode)
+1. Inc. IntelliJ IDEA Community [Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/idea-ult-comm-vscode) | [DockerHub](https://hub.docker.com/repository/docker/marktmilligan/idea-comm-vscode)
+1. Incl. PyCharm Professional [Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/pycharm-pro-vscode) | [DockerHub](https://hub.docker.com/repository/docker/marktmilligan/pycharm-pro-vscode)
+1. Incl. PyCharm Community [Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/pycharm-comm-vscode) | [DockerHub](https://hub.docker.com/repository/docker/marktmilligan/pycharm-comm-vscode)
+
 8-23-22 mark@coder.com
 1. aws and azure templates can only run with users other than admin@coder.com (will be fixed in a future release)
 
