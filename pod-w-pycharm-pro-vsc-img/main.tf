@@ -54,13 +54,10 @@ variable "image" {
   Container images from coder-com
 
   EOF
-  default = "codercom/enterprise-node:ubuntu"
+  default = "marktmilligan/pycharm-pro-vscode:latest"
   validation {
     condition = contains([
-      "codercom/enterprise-node:ubuntu",
-      "codercom/enterprise-golang:ubuntu",
-      "codercom/enterprise-java:ubuntu",
-      "codercom/enterprise-base:ubuntu"
+      "marktmilligan/pycharm-pro-vscode:latest"
     ], var.image)
     error_message = "Invalid image!"   
 }  
@@ -68,28 +65,17 @@ variable "image" {
 
 variable "repo" {
   description = <<-EOF
-  Code repository to clone
+  Source code repo URI (optional)
 
   EOF
-  default = "mark-theshark/coder-react.git"
-  validation {
-    condition = contains([
-      "mark-theshark/coder-react.git",
-      "mark-theshark/commissions.git",
-      "mark-theshark/java_helloworld.git",
-      "mark-theshark/python-commissions.git"
-    ], var.repo)
-    error_message = "Invalid repo!"   
-}  
+  default = "sharkymark/python_commissions.git"
 }
 
 variable "cpu" {
   description = "CPU (__ cores)"
-  default     = 1
+  default     = 4
   validation {
     condition = contains([
-      "1",
-      "2",
       "4",
       "6"
     ], var.cpu)
@@ -99,11 +85,9 @@ variable "cpu" {
 
 variable "memory" {
   description = "Memory (__ GB)"
-  default     = 2
+  default     = 4
   validation {
     condition = contains([
-      "1",
-      "2",
       "4",
       "8"
     ], var.memory)
@@ -111,36 +95,9 @@ variable "memory" {
 }
 }
 
-locals {
-  code-server-releases = {
-    "4.6.0 | Code 1.70.1" = "4.6.0"    
-    "4.5.1 | Code 1.68.1" = "4.5.1"
-    "4.5.0 | Code 1.68.1" = "4.5.0"
-    "4.4.0 | Code 1.66.2" = "4.4.0"
-    "4.3.0 | Code 1.65.2" = "4.3.0"
-    "4.2.0 | Code 1.64.2" = "4.2.0"
-  }
-}
-
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.6.0 | Code 1.70.1"
-  validation {
-    condition = contains([
-      "4.6.0 | Code 1.70.1",
-      "4.5.1 | Code 1.68.1",      
-      "4.5.0 | Code 1.68.1",
-      "4.4.0 | Code 1.66.2",
-      "4.3.0 | Code 1.65.2",
-      "4.2.0 | Code 1.64.2"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
-}
-
 variable "disk_size" {
   description = "Disk size (__ GB)"
-  default     = 10
+  default     = 20
 }
 
 resource "coder_agent" "coder" {
@@ -150,9 +107,14 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
+# start code-server IDE
 code-server --auth none --port 13337 &
+
+# run configure script to add VS Code extensions and copy JetBrains projector files to $HOME
+/coder/configure
+
+# start JetBrains projector-based IDE
+~/.local/bin/projector run PyCharm &
 
 # clone repo
 mkdir -p ~/.ssh
@@ -168,10 +130,18 @@ coder dotfiles -y ${var.dotfiles_uri}
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server ${var.code-server}"
+  name          = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  
+}
+
+resource "coder_app" "jetbrains" {
+  agent_id      = coder_agent.coder.id
+  name          = "PyCharm Professional"
+  icon          = "/icon/pycharm.svg"
+  url           = "http://localhost:8997/"
+  relative_path = true
 }
 
 resource "kubernetes_pod" "main" {
@@ -191,7 +161,7 @@ resource "kubernetes_pod" "main" {
     container {
       name    = "coder-container"
       image   = "docker.io/${var.image}"
-      image_pull_policy = "Always"
+      image_pull_policy = "Always"      
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"
