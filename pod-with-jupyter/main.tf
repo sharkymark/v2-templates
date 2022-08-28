@@ -129,7 +129,7 @@ variable "workspaces_namespace" {
   type        = string
   sensitive   = true
   description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "coder-oss"
+  default     = "oss"
 }
 
 provider "kubernetes" {
