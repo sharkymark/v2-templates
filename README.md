@@ -5,6 +5,10 @@ These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
 
+8-28-22 mark@coder.com
+1. Created a Kubernetes pod template that prompts the user to install Jupyter Lab or Jupyter Notebook IDE.
+1. There is removed TF code in a separate file. It appears I found a bug with `coder_metadata` working with Kubernetes pods. [Issue 3721](https://github.com/coder/coder/issues/3721)
+
 8-25-22 mark@coder.com
 1. kubernetes pod templates that put the jetbrains IDE and projector in the image
 1. Incl. IntelliJ IDEA Ultimate [Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/idea-ult-vscode) | [DockerHub](https://hub.docker.com/repository/docker/marktmilligan/idea-vscode)
