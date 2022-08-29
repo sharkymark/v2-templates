@@ -6,7 +6,7 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.11"
+      version = "~> 2.12.1"
     }
   }
 }
@@ -85,11 +85,11 @@ resource "coder_agent" "coder" {
 
 # install rustup and dependencies
 
-/coder/configure 2>&1 > ~/configure.log
+/coder/configure
 
 # use coder CLI to clone and install dotfiles
 
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 > ~/dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri}
 
 PROJECTOR_BINARY=/home/coder/.local/bin/projector
 
@@ -132,10 +132,10 @@ code-server --auth none --port 13337 &
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:mark-theshark/rust-hw.git 2>&1 | tee repo-clone.log
+git clone --progress git@github.com:mark-theshark/rust-hw.git
 
 # install Rust and rust-analyzer VS Code extensions into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} | tee extension-rust.log
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension}
 
 EOT
 }

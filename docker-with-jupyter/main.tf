@@ -6,7 +6,7 @@ terraform {
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.20.0"
+      version = "~> 2.20.2"
     }
   }
 }
@@ -71,27 +71,7 @@ variable "extension" {
 }
 
 locals {
-  code-server-releases = {
-    "4.5.1 | Code 1.68.1" = "4.5.1"
-    "4.4.0 | Code 1.66.2" = "4.4.0"
-    "4.3.0 | Code 1.65.2" = "4.3.0"
-    "4.2.0 | Code 1.64.2" = "4.2.0"
-  }
   jupyter-type-arg = "${var.jupyter == "notebook" ? "Notebook" : "Server"}"
-}
-
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.5.1 | Code 1.68.1"
-  validation {
-    condition = contains([
-      "4.5.1 | Code 1.68.1",
-      "4.4.0 | Code 1.66.2",
-      "4.3.0 | Code 1.65.2",
-      "4.2.0 | Code 1.64.2"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
 }
 
 variable "jupyter" {
@@ -116,14 +96,14 @@ resource "coder_agent" "dev" {
 jupyter ${var.jupyter} --no-browser --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/jupyter-${var.jupyter}/ &
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
+curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1
+coder dotfiles -y ${var.dotfiles_uri}
 
-# install pandas and numpy
-pip3 install pandas numpy --user
+# install pandas
+pip3 install pandas --user
 
 # clone repo
 mkdir -p ~/.ssh
@@ -138,7 +118,7 @@ SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vs
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "code-server ${var.code-server}"
+  name     = "code-server"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
 }
@@ -159,14 +139,7 @@ resource "docker_container" "workspace" {
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
   # Use the docker gateway if the access URL is 127.0.0.1
-  # entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
-
-  command = [
-    "sh", "-c",
-    <<EOT
-    ${replace(coder_agent.dev.init_script, "localhost", "host.docker.internal")}
-    EOT
-  ]
+  entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {

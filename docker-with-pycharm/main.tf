@@ -6,7 +6,7 @@ terraform {
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.20.0"
+      version = "~> 2.20.2"
     }
   }
 }
@@ -48,7 +48,7 @@ variable "extension" {
 variable "repo" {
   description = <<-EOF
   Code repository to clone with SSH
-  e.g., mark-theshark/python_commissions.git
+  e.g., sharkymark/python_commissions.git
   EOF
   default = ""
 }
@@ -60,20 +60,6 @@ e.g.,
 /home/coder (default)
   EOF
   default = "/home/coder"
-}
-
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.5.1"
-  validation {
-    condition = contains([
-      "4.5.1",
-      "4.4.0",
-      "4.3.0",
-      "4.2.0"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
 }
 
 variable "jetbrains-ide" {
@@ -191,14 +177,7 @@ resource "docker_container" "workspace" {
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
   # Use the docker gateway if the access URL is 127.0.0.1
-  # entrypoint = ["sh", "-c", replace(coder_agent.coder.init_script, "127.0.0.1", "host.docker.internal")]
-
-  command = [
-    "sh", "-c",
-    <<EOT
-    ${replace(coder_agent.coder.init_script, "localhost", "host.docker.internal")}
-    EOT
-  ]
+  entrypoint = ["sh", "-c", replace(coder_agent.coder.init_script, "127.0.0.1", "host.docker.internal")]
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.coder.token}"]
   volumes {

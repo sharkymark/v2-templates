@@ -91,20 +91,6 @@ variable "memory" {
 }
 }
 
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.5.0"
-  validation {
-    condition = contains([
-      "4.5.0",
-      "4.4.0",
-      "4.3.0",
-      "4.2.0"
-    ], var.code-server)
-    error_message = "Invalid code-server!"
-  }  
-}
-
 variable "disk_size" {
   description = "Disk size (__ GB)"
   default     = 10
@@ -118,7 +104,7 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${var.code-server}
+curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
@@ -139,7 +125,7 @@ nohup supervisord
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server ${var.code-server}"
+  name          = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   relative_path = true  

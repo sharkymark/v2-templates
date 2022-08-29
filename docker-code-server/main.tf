@@ -6,7 +6,7 @@ terraform {
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.20.0"
+      version = "~> 2.20.2"
     }
   }
 }
@@ -86,6 +86,7 @@ variable "extension" {
 
 locals {
   code-server-releases = {
+    "4.6.0 | Code 1.70.1" = "4.6.0"    
     "4.5.1 | Code 1.68.1" = "4.5.1"
     "4.4.0 | Code 1.66.2" = "4.4.0"
     "4.3.0 | Code 1.65.2" = "4.3.0"
@@ -95,9 +96,10 @@ locals {
 
 variable "code-server" {
   description = "code-server release"
-  default     = "4.5.1 | Code 1.68.1"
+  default     = "4.6.0 | Code 1.70.1"
   validation {
     condition = contains([
+      "4.6.0 | Code 1.70.1",      
       "4.5.1 | Code 1.68.1",
       "4.4.0 | Code 1.66.2",
       "4.3.0 | Code 1.65.2",
@@ -145,15 +147,9 @@ resource "docker_container" "workspace" {
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
-  # Use the docker gateway if the access URL is 127.0.0.1
-  # entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
 
-  command = [
-    "sh", "-c",
-    <<EOT
-    ${replace(coder_agent.dev.init_script, "localhost", "host.docker.internal")}
-    EOT
-  ]
+  # Use the docker gateway if the access URL is 127.0.0.1
+  entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {

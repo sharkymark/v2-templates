@@ -123,7 +123,7 @@ rm build.log
 export PATH=$PATH:$HOME/.local/bin
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh |
+curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 2>&1 &
 
 # install and start airflow

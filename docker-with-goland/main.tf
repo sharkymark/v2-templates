@@ -6,7 +6,7 @@ terraform {
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.20.0"
+      version = "~> 2.20.2"
     }
   }
 }
@@ -62,20 +62,6 @@ e.g.,
   default = "/home/coder"
 }
 
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.5.0"
-  validation {
-    condition = contains([
-      "4.5.0",
-      "4.4.0",
-      "4.3.0",
-      "4.2.0"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
-}
-
 variable "jetbrains-ide" {
   description = "JetBrains GoLand IDE (oldest are Projector-tested by JetBrains s.r.o., Na Hrebenech II 1718/10, Prague, 14000, Czech Republic)"
   default     = "GoLand 2022.1.3"
@@ -108,7 +94,7 @@ resource "coder_agent" "coder" {
 
 # use coder CLI to clone and install dotfiles
 
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles.log
+coder dotfiles -y ${var.dotfiles_uri}
 
 # install projector into /home/coder
 
@@ -116,29 +102,29 @@ PROJECTOR_BINARY=/home/coder/.local/bin/projector
 
 if [ -f $PROJECTOR_BINARY ]; then
     echo 'projector has already been installed - check for update'
-    /home/coder/.local/bin/projector self-update 2>&1 | tee projector.log
+    /home/coder/.local/bin/projector self-update
 else
     echo 'installing projector'
-    pip3 install projector-installer --user 2>&1 | tee projector.log
+    pip3 install projector-installer --user
 fi
 
 echo 'access projector license terms'
-/home/coder/.local/bin/projector --accept-license 2>&1 | tee -a projector.log
+/home/coder/.local/bin/projector --accept-license
 
 PROJECTOR_CONFIG_PATH=/home/coder/.projector/configs/goland
 
 if [ -d "$PROJECTOR_CONFIG_PATH" ]; then
-    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step' | tee -a projector.log
+    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step'
 else
     echo 'autoinstalling IDE and creating projector config folder'
-    /home/coder/.local/bin/projector ide autoinstall --config-name "goland" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder | tee -a projector.log
+    /home/coder/.local/bin/projector ide autoinstall --config-name "goland" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder
 
     # delete the configuration's run.sh input parameters that check password tokens since tokens do not work with coder_app yet passed in the querystring
 
-    grep -iv "HANDSHAKE_TOKEN" $PROJECTOR_CONFIG_PATH/run.sh > temp && mv temp $PROJECTOR_CONFIG_PATH/run.sh | tee -a projector.log
-    chmod +x $PROJECTOR_CONFIG_PATH/run.sh | tee -a projector.log
+    grep -iv "HANDSHAKE_TOKEN" $PROJECTOR_CONFIG_PATH/run.sh > temp && mv temp $PROJECTOR_CONFIG_PATH/run.sh
+    chmod +x $PROJECTOR_CONFIG_PATH/run.sh
 
-    echo "creation of goland configuration complete" | tee -a projector.log
+    echo "creation of goland configuration complete"
     
 fi
 
@@ -149,21 +135,21 @@ sudo apt-get update && \
     libxrender1 \
     libfontconfig1 \
     libxi6 \
-    libgtk-3-0 | tee -a projector.log
+    libgtk-3-0
 
 # start JetBrains projector-based IDE
 /home/coder/.local/bin/projector run goland &
 
 # install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh 2>&1 | tee code-server-install.log
-code-server --auth none --port 13337 2>&1 | tee code-server-install.log &
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 &
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
+git clone --progress git@github.com:${var.repo} 
 
 # install VS Code extensions into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} 2>&1 | tee vs-code-extension.log
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension}
 
 EOT
 }
@@ -192,16 +178,9 @@ resource "docker_container" "workspace" {
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
-  # Use the docker gateway if the access URL is 127.0.0.1
-  # entrypoint = ["sh", "-c", replace(coder_agent.coder.init_script, "127.0.0.1", "host.docker.internal")]
 
-  command = [
-    "sh", "-c",
-    <<EOT
-    trap '[ $? -ne 0 ] && echo === Agent script exited with non-zero code. Sleeping infinitely to preserve logs... && sleep infinity' EXIT
-    ${replace(coder_agent.coder.init_script, "localhost", "host.docker.internal")}
-    EOT
-  ]
+  # Use the docker gateway if the access URL is 127.0.0.1
+  entrypoint = ["sh", "-c", replace(coder_agent.coder.init_script, "127.0.0.1", "host.docker.internal")]
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.coder.token}"]
   volumes {

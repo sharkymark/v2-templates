@@ -5,6 +5,12 @@ These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
 
+8-29-22 mark@coder.com
+1. adjusted Docker template entrypoint 
+1. removed code-server release input variable from most templates
+1. adjust Docker Terraform provider version to `2.20.2`
+1. updated `pod-with-rubymine` template adding `mkdir -p ~/.ssh` for `git clone` to work; changed `rubyonrails` app port to `3001` to not conflict with a `coder server` running on `3000`
+
 8-28-22 mark@coder.com
 1. Created a Kubernetes pod template that prompts the user to install Jupyter Lab or Jupyter Notebook IDE.
 1. There is removed TF code in a separate file. It appears I found a bug with `coder_metadata` working with Kubernetes pods. [Issue 3721](https://github.com/coder/coder/issues/3721)

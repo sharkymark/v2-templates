@@ -129,7 +129,7 @@ code-server --auth none --port 13337 &
 /usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1
 
 # add some Python libraries
-pip3 install --user pandas numpy
+pip3 install --user pandas
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri} 

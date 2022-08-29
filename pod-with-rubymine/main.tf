@@ -82,7 +82,7 @@ variable "repo" {
   Code repository to clone with SSH
   e.g., sharkymark/rubyonrails.git
   EOF
-  default = ""
+  default = "sharkymark/rubyonrails.git"
 }
 
 variable "folder_path" {
@@ -153,11 +153,11 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=4.5.1 2>&1 | tee ~/code-server.log
-code-server --auth none --port 13337 2>&1 | tee -a ~/coder-server.log &
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 2>&1 | tee dotfiles.log &
+coder dotfiles -y ${var.dotfiles_uri} &
 
 # install projector into /home/coder
 
@@ -165,29 +165,29 @@ PROJECTOR_BINARY=/home/coder/.local/bin/projector
 
 if [ -f $PROJECTOR_BINARY ]; then
     echo 'projector has already been installed - check for update'
-    /home/coder/.local/bin/projector self-update 2>&1 | tee projector.log
+    /home/coder/.local/bin/projector self-update
 else
     echo 'installing projector'
-    pip3 install projector-installer --user 2>&1 | tee projector.log
+    pip3 install projector-installer --user
 fi
 
 echo 'access projector license terms'
-/home/coder/.local/bin/projector --accept-license 2>&1 | tee -a projector.log
+/home/coder/.local/bin/projector --accept-license
 
 PROJECTOR_CONFIG_PATH=/home/coder/.projector/configs/rubymine
 
 if [ -d "$PROJECTOR_CONFIG_PATH" ]; then
-    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step' 2>&1 | tee -a projector.log
+    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step'
 else
     echo 'autoinstalling IDE and creating projector config folder'
-    /home/coder/.local/bin/projector ide autoinstall --config-name "rubymine" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder 2>&1 | tee -a projector.log
+    /home/coder/.local/bin/projector ide autoinstall --config-name "rubymine" --ide-name "${var.jetbrains-ide}" --hostname=localhost --port 8997 --use-separate-config --password coder
 
     # delete the configuration's run.sh input parameters that check password tokens since tokens do not work with coder_app yet passed in the querystring
 
-    grep -iv "HANDSHAKE_TOKEN" $PROJECTOR_CONFIG_PATH/run.sh > temp && mv temp $PROJECTOR_CONFIG_PATH/run.sh 2>&1 | tee -a projector.log
-    chmod +x $PROJECTOR_CONFIG_PATH/run.sh 2>&1 | tee -a projector.log
+    grep -iv "HANDSHAKE_TOKEN" $PROJECTOR_CONFIG_PATH/run.sh > temp && mv temp $PROJECTOR_CONFIG_PATH/run.sh
+    chmod +x $PROJECTOR_CONFIG_PATH/run.sh
 
-    echo "creation of intellij configuration complete" 2>&1 | tee -a projector.log
+    echo "creation of intellij configuration complete"
     
 fi
 
@@ -198,24 +198,25 @@ sudo apt-get update && \
     libxrender1 \
     libfontconfig1 \
     libxi6 \
-    libgtk-3-0 | tee -a projector.log
+    libgtk-3-0
 
 
 # start JetBrains projector-based IDE
 /home/coder/.local/bin/projector run rubymine &
 
 # clone repo
+mkdir -p ~/.ssh
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 2>&1 | tee repo-clone.log
+git clone --progress git@github.com:${var.repo}
 
 # bundle Ruby gems
 cd ~/rubyonrails
 bundle install  
 # start Rails server as daemon
-rails s -p 3000 -b 0.0.0.0 -d
+rails s -p 3001 -b 0.0.0.0 -d
 
 # install VS Code extensions into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension} 2>&1 | tee vs-code-extension.log
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension}
 
 EOT
 }

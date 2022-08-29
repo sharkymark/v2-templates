@@ -153,7 +153,7 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=4.5.1 
+curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
