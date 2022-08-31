@@ -5,6 +5,9 @@ These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
 
+8-31-22 mark@coder.com
+1. added a PhpStorm template with the xDebug extension
+
 8-29-22 mark@coder.com
 1. adjusted Docker template entrypoint 
 1. removed code-server release input variable from most templates
