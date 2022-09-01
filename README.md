@@ -5,6 +5,8 @@ These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
 
+9-1-22 mark@coder.com
+1. removed # symbol from `pod-with-intellij-projects` template which causes `Application not found` error on IDE launch
 8-31-22 mark@coder.com
 1. added a PhpStorm template with the xDebug extension
 
