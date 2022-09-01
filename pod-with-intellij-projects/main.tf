@@ -18,7 +18,7 @@ variable "disk_size" {
 
 variable "cpu" {
   description = "CPU (__ cores)"
-  default     = 4
+  default     = 6
   validation {
     condition = contains([
       "4",
@@ -31,13 +31,14 @@ variable "cpu" {
 
 variable "memory" {
   description = "Memory (__ GB)"
-  default     = 4
+  default     = 10
   validation {
     condition = contains([
       "4",
       "6",
       "8",
-      "10"
+      "10",
+      "12"
     ], var.memory)
     error_message = "Invalid memory!"  
 }
@@ -66,14 +67,6 @@ variable "image" {
 }  
 }
 
-variable "repo" {
-  description = <<-EOF
-  Code repository to clone with SSH
-  e.g., sharkymark/java_helloworld.git
-  EOF
-  default = ""
-}
-
 variable "folder_path" {
   description = <<-EOF
  Folder to add to VS Code (optional)
@@ -86,21 +79,21 @@ e.g.,
 locals {
   jetbrains-releases = {
       "IntelliJ IDEA Community Edition 2022.1.4" = "IntelliJ CE 2022.1.4"
-      "IntelliJ IDEA Community Edition 2021.3" = "IntelliJ CE 2021.3"
+      "IntelliJ IDEA Community Edition 2022.2.1" = "IntelliJ CE 2022.2.1"
       "IntelliJ IDEA Ultimate 2022.1.4" = "IntelliJ U 2022.1.4"
-      "IntelliJ IDEA Ultimate 2021.3" = "IntelliJ U 2021.3"
+      "IntelliJ IDEA Ultimate 2022.2.1" = "IntelliJ U 2021.2.1"
   }
 }
 
 variable "jetbrains-ide" {
   description = "JetBrains IntelliJ IDE (oldest are Projector-tested by JetBrains s.r.o., Na Hrebenech II 1718/10, Prague, 14000, Czech Republic)"
-  default     = "IntelliJ IDEA Community Edition 2022.1.4"
+  default     = "IntelliJ IDEA Community Edition 2022.2.1"
   validation {
     condition = contains([
       "IntelliJ IDEA Community Edition 2022.1.4",
-      "IntelliJ IDEA Community Edition 2021.3",
+      "IntelliJ IDEA Community Edition 2022.2.1",
       "IntelliJ IDEA Ultimate 2022.1.4",
-      "IntelliJ IDEA Ultimate 2021.3"
+      "IntelliJ IDEA Ultimate 2022.2.1"
     ], var.jetbrains-ide)
     error_message = "Invalid JetBrains IDE!"   
 }
@@ -147,7 +140,9 @@ coder dotfiles -y ${var.dotfiles_uri}
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} &
+git clone --progress git@github.com:sharkymark/java_helloworld.git &
+git clone --progress git@github.com:iluwatar/java-design-patterns.git &
+
 
 # install projector into /home/coder
 
@@ -205,7 +200,7 @@ EOT
 
 resource "coder_app" "intellij-1" {
   agent_id      = coder_agent.coder.id
-  name          = "${lookup(local.jetbrains-releases, var.jetbrains-ide)} #1"
+  name          = "${lookup(local.jetbrains-releases, var.jetbrains-ide)} 1"
   icon          = "/icon/intellij.svg"
   url           = "http://localhost:8997/"
   relative_path = true
@@ -213,7 +208,7 @@ resource "coder_app" "intellij-1" {
 
 resource "coder_app" "intellij-2" {
   agent_id      = coder_agent.coder.id
-  name          = "${lookup(local.jetbrains-releases, var.jetbrains-ide)} #2"
+  name          = "${lookup(local.jetbrains-releases, var.jetbrains-ide)} 2"
   icon          = "/icon/intellij.svg"
   url           = "http://localhost:8998/"
   relative_path = true
