@@ -108,21 +108,21 @@ resource "coder_agent" "dev" {
     # PyCharm (/opt/pycharm), and pip3 installed in
     # your image and the "coder" user has filesystem
     # permissions for "/opt/*"
-    # ex. https://github.com/sharkymark/v2-templates/blob/main/multi-jetbrains/multi-intellij/Dockerfile
+    # ex. https://github.com/sharkymark/v2-templates/blob/main/multi-jetbrains/multi-pycharm/Dockerfile
     pip3 install projector-installer --user
     /home/coder/.local/bin/projector --accept-license 
     
-    /home/coder/.local/bin/projector config add intellij1 /opt/idea --force --use-separate-config --port 9001 --hostname localhost
-    /home/coder/.local/bin/projector run intellij1 &
+    /home/coder/.local/bin/projector config add pycharm1 /opt/pycharm --force --use-separate-config --port 9001  --hostname localhost
+    /home/coder/.local/bin/projector run pycharm1 &
 
-    /home/coder/.local/bin/projector config add intellij2 /opt/idea --force --use-separate-config --port 9002  --hostname localhost
-    /home/coder/.local/bin/projector run intellij2 &
+    /home/coder/.local/bin/projector config add pycharm2 /opt/pycharm --force --use-separate-config --port 9002  --hostname localhost
+    /home/coder/.local/bin/projector run pycharm2 &
 
-    # clone 2 Java repos
+    # clone 2 Python repos
     mkdir -p ~/.ssh
     ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-    git clone --progress git@github.com:sharkymark/java_helloworld.git &
-    git clone --progress git@github.com:iluwatar/java-design-patterns.git &
+    git clone --progress git@github.com:sharkymark/python_commissions.git &
+    git clone --progress git@github.com:lalithpolepeddi/learning-flask.git &
 
 
     ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri}" : ""}
@@ -137,17 +137,17 @@ resource "coder_app" "code-server" {
   url      = "http://localhost:13337"
 }
 
-resource "coder_app" "intellij1" {
+resource "coder_app" "pycharm1" {
   agent_id = coder_agent.dev.id
-  name     = "IDEA 1"
-  icon     = "/icon/intellij.svg"
+  name     = "PyCharm 1"
+  icon     = "/icon/pycharm.svg"
   url      = "http://localhost:9001"
 }
 
-resource "coder_app" "intellij2" {
+resource "coder_app" "pycharm2" {
   agent_id = coder_agent.dev.id
-  name     = "IDEA 2"
-  icon     = "/icon/intellij.svg"
+  name     = "PyCharm 2"
+  icon     = "/icon/pycharm.svg"
   url      = "http://localhost:9002"
 }
 
@@ -167,7 +167,7 @@ resource "kubernetes_pod" "main" {
     }
     container {
       name    = "dev"
-      image   = "docker.io/marktmilligan/idea-comm-multi-vscode:user-config"
+      image   = "docker.io/marktmilligan/pycharm-comm-multi-vscode:user-config"
       image_pull_policy = "Always"       
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
