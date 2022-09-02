@@ -199,7 +199,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }     
     container {
-      name    = "jupyterlab"
+      name    = "coder-container"
       image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
