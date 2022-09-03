@@ -27,10 +27,19 @@ variable "use_kubeconfig" {
 
 
 variable "workspaces_namespace" {
-  type        = string
-  sensitive   = true
-  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "oss"
+  description = <<-EOF
+  Kubernetes namespace to deploy the workspace into
+
+  EOF
+  default = "oss"
+  validation {
+    condition = contains([
+      "oss",
+      "coder-oss",
+      "coder-workspaces"
+    ], var.workspaces_namespace)
+    error_message = "Invalid namespace!"   
+}  
 }
 
 provider "kubernetes" {
