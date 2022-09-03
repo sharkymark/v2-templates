@@ -122,6 +122,8 @@ variable "memory" {
 
 locals {
   code-server-releases = {
+    "latest" = "" 
+    "4.6.1 | Code 1.70.2" = "4.6.1" 
     "4.6.0 | Code 1.70.1" = "4.6.0"    
     "4.5.1 | Code 1.68.1" = "4.5.1"
     "4.5.0 | Code 1.68.1" = "4.5.0"
@@ -133,9 +135,11 @@ locals {
 
 variable "code-server" {
   description = "code-server release"
-  default     = "4.6.0 | Code 1.70.1"
+  default     = "latest"
   validation {
     condition = contains([
+      "latest",
+      "4.6.1 | Code 1.70.2",      
       "4.6.0 | Code 1.70.1",
       "4.5.1 | Code 1.68.1",      
       "4.5.0 | Code 1.68.1",
@@ -160,7 +164,13 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
+echo "CS_REL value: " ${var.code-server}
+
+if [[ "${var.code-server}" != "latest" ]]; then
+  CS_REL=" -s -- --version=${lookup(local.code-server-releases, var.code-server)}"
+fi
+
+curl -fsSL https://code-server.dev/install.sh | sh $CS_REL
 code-server --auth none --port 13337 &
 
 # clone repo

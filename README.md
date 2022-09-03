@@ -5,11 +5,15 @@ These are Coder v2 templates that have been customized for demonstrations
 
 ##### Last updated
 
+9-3-22 mark@coder.com
+1. updated `pod-with-code-server` to prompt for namespace and added bash logic to install `latest` or a specific release of `code-server` VS Code IDE
+
 9-2-22 mark@coder.com
 1. new multi IntelliJ & PyCharm templates `multi-projector-intellij` and `multi-projector-pycharm` - `chmod` technique of `projector config add` - thank you [bpmct](https://github.com/bpmct)
 
 9-1-22 mark@coder.com
 1. removed # symbol from `pod-with-intellij-projects` template which causes `Application not found` error on IDE launch
+
 8-31-22 mark@coder.com
 1. added a PhpStorm template with the xDebug extension
 
