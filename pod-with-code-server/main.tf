@@ -84,6 +84,8 @@ variable "repo" {
   validation {
     condition = contains([
       "mark-theshark/coder-react.git",
+      "coder/coder.git",
+      "coder/code-server.git",      
       "mark-theshark/commissions.git",
       "mark-theshark/java_helloworld.git",
       "mark-theshark/python-commissions.git"
