@@ -86,21 +86,28 @@ variable "extension" {
 
 locals {
   code-server-releases = {
+    "latest" = "" 
+    "4.6.1 | Code 1.70.2" = "4.6.1" 
     "4.6.0 | Code 1.70.1" = "4.6.0"    
     "4.5.1 | Code 1.68.1" = "4.5.1"
+    "4.5.0 | Code 1.68.1" = "4.5.0"
     "4.4.0 | Code 1.66.2" = "4.4.0"
     "4.3.0 | Code 1.65.2" = "4.3.0"
     "4.2.0 | Code 1.64.2" = "4.2.0"
   }
 }
 
+
 variable "code-server" {
   description = "code-server release"
-  default     = "4.6.0 | Code 1.70.1"
+  default     = "latest"
   validation {
     condition = contains([
-      "4.6.0 | Code 1.70.1",      
-      "4.5.1 | Code 1.68.1",
+      "latest",
+      "4.6.1 | Code 1.70.2",      
+      "4.6.0 | Code 1.70.1",
+      "4.5.1 | Code 1.68.1",      
+      "4.5.0 | Code 1.68.1",
       "4.4.0 | Code 1.66.2",
       "4.3.0 | Code 1.65.2",
       "4.2.0 | Code 1.64.2"
@@ -121,7 +128,13 @@ ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 git clone git@github.com:${var.repo}
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
+echo "CS_REL value: " ${var.code-server}
+
+if [[ "${var.code-server}" != "latest" ]]; then
+  CS_REL=" -s -- --version=${lookup(local.code-server-releases, var.code-server)}"
+fi
+
+curl -fsSL https://code-server.dev/install.sh | sh $CS_REL
 code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
