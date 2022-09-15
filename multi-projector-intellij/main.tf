@@ -168,7 +168,7 @@ resource "kubernetes_pod" "main" {
     container {
       name    = "dev"
       image   = "docker.io/marktmilligan/idea-comm-multi-vscode:user-config"
-      image_pull_policy = "Always"       
+      #image_pull_policy = "Always"       
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
         run_as_user = "1000"
