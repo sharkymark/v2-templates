@@ -4,8 +4,8 @@ These are Coder OSS templates (Terraform scripts) that have been customized for 
 
 ##### Last updated
 
-9-3-22 mark@coder.com
-1. updated `pod-with-code-server` to prompt for namespace and added bash logic to install `latest` or a specific release of `code-server` VS Code IDE
+9-17-22 mark@coder.com
+1. updated `pod-with-code-server` to include `coder_metadata` resource to surface helpful data like image, repo cloned, cpu, memory, disk, volume.
 
 [Changelog](changelog.md)
 

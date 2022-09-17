@@ -1,5 +1,9 @@
 # Changelog
 
+9-3-22 mark@coder.com
+1. updated `pod-with-code-server` to prompt for namespace and added bash logic to install `latest` or a specific release of `code-server` VS Code IDE
+
+
 9-2-22 mark@coder.com
 1. new multi IntelliJ & PyCharm templates `multi-projector-intellij` and `multi-projector-pycharm` - `chmod` technique of `projector config add` - thank you [bpmct](https://github.com/bpmct)
 

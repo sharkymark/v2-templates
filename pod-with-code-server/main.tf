@@ -259,3 +259,32 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     }
   }
 }
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = kubernetes_pod.main[0].id
+  item {
+    key   = "CPU"
+    value = "${var.cpu} cores"
+  }
+  item {
+    key   = "memory"
+    value = "${var.memory}GB"
+  }  
+  item {
+    key   = "image"
+    value = "docker.io/${var.image}"
+  }
+  item {
+    key   = "repo cloned"
+    value = "docker.io/${var.repo}"
+  }  
+  item {
+    key   = "disk"
+    value = "${var.disk_size}GiB"
+  }
+  item {
+    key   = "volume"
+    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+  }  
+}
