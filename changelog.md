@@ -1,5 +1,8 @@
 # Changelog
 
+10-2-22 mark@coder.com
+1. updated pod-with-code-server to remove image pull policy always and move clone steps above code-server install and start
+
 9-3-22 mark@coder.com
 1. updated `pod-with-code-server` to prompt for namespace and added bash logic to install `latest` or a specific release of `code-server` VS Code IDE
 

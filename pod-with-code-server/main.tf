@@ -165,6 +165,14 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
+# clone repo
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${var.repo}
+
+# use coder CLI to clone and install dotfiles
+coder dotfiles -y ${var.dotfiles_uri}
+
 # install code-server
 echo "CS_REL value: " ${var.code-server}
 
@@ -174,14 +182,6 @@ fi
 
 curl -fsSL https://code-server.dev/install.sh | sh $CS_REL
 code-server --auth none --port 13337 &
-
-# clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo}
-
-# use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
 
   EOT  
 }
@@ -212,7 +212,7 @@ resource "kubernetes_pod" "main" {
     container {
       name    = "coder-container"
       image   = "docker.io/${var.image}"
-      image_pull_policy = "Always"
+      #image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"
