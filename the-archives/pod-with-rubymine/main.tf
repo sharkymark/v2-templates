@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.9"
+      version = "~> 0.4.15"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -18,9 +18,10 @@ variable "disk_size" {
 
 variable "cpu" {
   description = "CPU (__ cores)"
-  default     = 4
+  default     = 2
   validation {
     condition = contains([
+      "2",
       "4",
       "6",
       "8"
@@ -34,6 +35,7 @@ variable "memory" {
   default     = 4
   validation {
     condition = contains([
+      "2",
       "4",
       "6",
       "8",
@@ -266,7 +268,7 @@ resource "kubernetes_pod" "main" {
       resources {
         requests = {
           cpu    = "500m"
-          memory = "1000Mi"
+          memory = "500Mi"
         }        
         limits = {
           cpu    = "${var.cpu}"

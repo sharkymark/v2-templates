@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.9"
+      version = "~> 0.4.15"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -52,9 +52,10 @@ data "coder_workspace" "me" {}
 
 variable "cpu" {
   description = "CPU (__ cores)"
-  default     = 6
+  default     = 2
   validation {
     condition = contains([
+      "2",
       "4",
       "6",
       "8"
@@ -65,9 +66,10 @@ variable "cpu" {
 
 variable "memory" {
   description = "Memory (__ GB)"
-  default     = 10
+  default     = 4
   validation {
     condition = contains([
+      "2",
       "4",
       "6",
       "8",
@@ -104,11 +106,11 @@ resource "coder_agent" "dev" {
 
     # Configure and run JetBrains IDEs
 
-    # Assumes you have IntelliJ (/opt/idea),
-    # PyCharm (/opt/pycharm), and pip3 installed in
+    # Assumes you have IntelliJ (/opt/idea)
+    # and pip3 installed in
     # your image and the "coder" user has filesystem
     # permissions for "/opt/*"
-    # ex. https://github.com/sharkymark/v2-templates/blob/main/multi-jetbrains/multi-intellij/Dockerfile
+   
     pip3 install projector-installer --user
     /home/coder/.local/bin/projector --accept-license 
     
@@ -167,8 +169,8 @@ resource "kubernetes_pod" "main" {
     }
     container {
       name    = "dev"
-      image   = "docker.io/marktmilligan/idea-comm-multi-vscode:user-config"
-      #image_pull_policy = "Always"       
+      image   = "docker.io/marktmilligan/idea-community:latest"
+      image_pull_policy = "Always"       
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
         run_as_user = "1000"
@@ -180,7 +182,7 @@ resource "kubernetes_pod" "main" {
       resources {
         requests = {
           cpu    = "500m"
-          memory = "3500Mi"
+          memory = "500Mi"
         }        
         limits = {
           cpu    = "${var.cpu}"

@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.9"
+      version = "~> 0.4.15"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -185,10 +185,10 @@ resource "kubernetes_pod" "main" {
       resources {
         requests = {
           cpu    = "500m"
-          memory = "3000Mi"
+          memory = "500Mi"
         }        
         limits = {
-          cpu    = "4"
+          cpu    = "2"
           memory = "4G"
         }
       }        
