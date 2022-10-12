@@ -1,5 +1,8 @@
 # Changelog
 
+10-12-22 mark@coder.com
+1. added `coder_metadata` resource to pycharm and intellij - showing pod security context, cpu and memory limits and requests, image, etc.
+
 10-3-22 mark@coder.com
 1. moved some templates to a new dir `the-archives` which are using older techniques or not as often used. Goal is to free up the `v2-templates` dir for primary templates
 2. added new JetBrains templates using the `chusr` approach of granting `coder` user as the owner of the `/opt` dir so the projector CLI can just create configs and reference the IDE installed in the image versus the `startup_script`

@@ -216,3 +216,44 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     }
   }
 }
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = kubernetes_pod.main[0].id
+  item {
+    key   = "kubernetes namespace"
+    value = "${var.workspaces_namespace}"
+  }    
+  item {
+    key   = "CPU (limits, requests)"
+    value = "${var.cpu} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
+  }
+  item {
+    key   = "memory (limits, requests)"
+    value = "${var.memory}GB, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
+  }  
+  item {
+    key   = "image"
+    value = kubernetes_pod.main[0].spec[0].container[0].image
+  }
+  item {
+    key   = "container image pull policy"
+    value = kubernetes_pod.main[0].spec[0].container[0].image_pull_policy
+  }   
+  item {
+    key   = "disk"
+    value = "${var.disk_size}GiB"
+  }
+  item {
+    key   = "volume"
+    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+  }  
+  item {
+    key   = "security context - container"
+    value = "run_as_user ${kubernetes_pod.main[0].spec[0].container[0].security_context[0].run_as_user}"
+  }   
+  item {
+    key   = "security context - pod"
+    value = "run_as_user ${kubernetes_pod.main[0].spec[0].security_context[0].run_as_user} fs_group ${kubernetes_pod.main[0].spec[0].security_context[0].fs_group}"
+  }     
+}
