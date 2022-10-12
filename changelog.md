@@ -1,5 +1,10 @@
 # Changelog
 
+10-3-22 mark@coder.com
+1. moved some templates to a new dir `the-archives` which are using older techniques or not as often used. Goal is to free up the `v2-templates` dir for primary templates
+2. added new JetBrains templates using the `chusr` approach of granting `coder` user as the owner of the `/opt` dir so the projector CLI can just create configs and reference the IDE installed in the image versus the `startup_script`
+
+
 10-2-22 mark@coder.com
 1. updated pod-with-code-server to remove image pull policy always and move clone steps above code-server install and start
 
