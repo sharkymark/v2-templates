@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.4.9"
+      version = "0.5.2"
     }
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -86,27 +86,6 @@ variable "dotfiles_uri" {
   default = ""
 }
 
-locals {
-  code-server-releases = {
-    "4.6.0 | Code 1.70.1" = "4.6.0"    
-    "4.5.1 | Code 1.68.1" = "4.5.1"
-    "4.4.0 | Code 1.66.2" = "4.4.0"
-  }
-}
-
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.6.0 | Code 1.70.1"
-  validation {
-    condition = contains([
-      "4.6.0 | Code 1.70.1",
-      "4.5.1 | Code 1.68.1",
-      "4.4.0 | Code 1.66.2"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
-}
-
 
 data "coder_workspace" "me" {
 }
@@ -120,7 +99,7 @@ resource "coder_agent" "main" {
   #!/bin/bash
 
   # install code-server
-  curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
+  curl -fsSL https://code-server.dev/install.sh | sh
   code-server --auth none --port 13337 &
 
   # use coder CLI to clone and install dotfiles
@@ -132,7 +111,7 @@ resource "coder_agent" "main" {
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.main.id
-  name     = "code-server ${var.code-server}"
+  name     = "VS Code"
   url      = "http://localhost:13337/?folder=/home/${lower(substr(data.coder_workspace.me.owner, 0, 32))}"
   icon     = "/icon/code.svg"
 }
@@ -281,4 +260,5 @@ resource "coder_metadata" "home_info" {
     key   = "size"
     value = "${var.home_size} GiB"
   }
+
 }

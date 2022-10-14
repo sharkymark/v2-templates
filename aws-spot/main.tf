@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.4.9"
+      version = "0.5.2"
     }
   }
 }
@@ -55,6 +55,16 @@ provider "aws" {
 data "coder_workspace" "me" {
 }
 
+variable "dotfiles_uri" {
+  description = <<-EOF
+  Dotfiles repo URI (optional)
+
+  see https://dotfiles.github.io
+  EOF
+  default = ""
+}
+
+
 data "aws_ami" "ubuntu" {
   most_recent = true
   filter {
@@ -77,14 +87,18 @@ resource "coder_agent" "dev" {
 #!/bin/sh
 #export HOME=/home/${lower(data.coder_workspace.me.owner)}
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337
+code-server --auth none --port 13337 &
+
+# use coder CLI to clone and install dotfiles
+coder dotfiles -y ${var.dotfiles_uri}
+
   EOT
 }
 
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
-  name          = "code-server"
+  name          = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337/?folder=/home/${lower(data.coder_workspace.me.owner)}"
   relative_path = true
@@ -169,7 +183,7 @@ resource "aws_spot_instance_request" "dev" {
 }
 
 resource "coder_metadata" "workspace_info" {
-  resource_id = aws_spot_instance_request.dev.id
+  resource_id = aws_spot_infworkstance_request.dev.id
   item {
     key   = "region"
     value = var.region
@@ -178,6 +192,10 @@ resource "coder_metadata" "workspace_info" {
     key   = "instance type"
     value = aws_spot_instance_request.dev.instance_type
   }
+  item {
+    key   = "vm image"
+    value = data.aws_ami.ubuntu.name
+  }  
   item {
     key   = "disk"
     value = "${aws_spot_instance_request.dev.root_block_device[0].volume_size} GiB"

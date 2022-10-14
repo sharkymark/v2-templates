@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.4.9"
+      version = "0.5.2"
     }
   }
 }
@@ -81,27 +81,6 @@ variable "dotfiles_uri" {
   default = ""
 }
 
-locals {
-  code-server-releases = {
-    "4.6.0 | Code 1.70.1" = "4.6.0"    
-    "4.5.1 | Code 1.68.1" = "4.5.1"
-    "4.4.0 | Code 1.66.2" = "4.4.0"
-  }
-}
-
-variable "code-server" {
-  description = "code-server release"
-  default     = "4.6.0 | Code 1.70.1"
-  validation {
-    condition = contains([
-      "4.6.0 | Code 1.70.1",
-      "4.5.1 | Code 1.68.1",
-      "4.4.0 | Code 1.66.2"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
-}
-
 resource "coder_agent" "main" {
   arch = "amd64"
   auth = "aws-instance-identity"
@@ -111,7 +90,7 @@ resource "coder_agent" "main" {
   #!/bin/bash
 
   # install code-server
-  curl -fsSL https://code-server.dev/install.sh | sh -s -- --version=${lookup(local.code-server-releases, var.code-server)}
+  curl -fsSL https://code-server.dev/install.sh | sh
   code-server --auth none --port 13337 &
 
   # use coder CLI to clone and install dotfiles
@@ -123,7 +102,7 @@ resource "coder_agent" "main" {
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.main.id
-  name     = "code-server ${var.code-server}"
+  name     = "VS Code"
   url      = "http://localhost:13337/?folder=/home/${lower(data.coder_workspace.me.owner)}"
   icon     = "/icon/code.svg"
 }
@@ -216,6 +195,10 @@ resource "coder_metadata" "workspace_info" {
     key   = "instance type"
     value = aws_instance.dev.instance_type
   }
+  item {
+    key   = "vm image"
+    value = data.aws_ami.ubuntu.name
+  }  
   item {
     key   = "disk"
     value = "${aws_instance.dev.root_block_device[0].volume_size} GiB"

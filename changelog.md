@@ -1,5 +1,8 @@
 # Changelog
 
+10-14-22 mark@coder.com 
+1. Updated AWS and Azure templates with more current Coder provider and additional meta_data; also installing latest code-server/VS Code versus as an input parameter
+
 10-12-22 mark@coder.com
 1. added `coder_metadata` resource to pycharm and intellij - showing pod security context, cpu and memory limits and requests, image, etc.
 
