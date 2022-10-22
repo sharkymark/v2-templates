@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.15"
+      version = "~> 0.5.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -136,6 +136,14 @@ resource "coder_app" "code-server" {
   name     = "VS Code"
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }   
 }
 
 resource "coder_app" "pycharm1" {
@@ -143,6 +151,14 @@ resource "coder_app" "pycharm1" {
   name     = "PyCharm 1"
   icon     = "/icon/pycharm.svg"
   url      = "http://localhost:9001"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:9001/healthz"
+    interval  = 3
+    threshold = 10
+  }    
 }
 
 resource "coder_app" "pycharm2" {
@@ -150,6 +166,14 @@ resource "coder_app" "pycharm2" {
   name     = "PyCharm 2"
   icon     = "/icon/pycharm.svg"
   url      = "http://localhost:9002"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:9002/healthz"
+    interval  = 3
+    threshold = 10
+  }    
 }
 
 resource "kubernetes_pod" "main" {

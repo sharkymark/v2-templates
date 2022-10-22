@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.15"
+      version = "~> 0.5.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -137,20 +137,45 @@ resource "coder_app" "code-server" {
   name     = "VS Code"
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }  
+
 }
 
 resource "coder_app" "intellij1" {
   agent_id = coder_agent.dev.id
-  name     = "IDEA 1"
+  name     = "IntelliJ 1"
   icon     = "/icon/intellij.svg"
   url      = "http://localhost:9001"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:9001/healthz"
+    interval  = 3
+    threshold = 10
+  }    
 }
 
 resource "coder_app" "intellij2" {
   agent_id = coder_agent.dev.id
-  name     = "IDEA 2"
+  name     = "IntelliJ 2"
   icon     = "/icon/intellij.svg"
   url      = "http://localhost:9002"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:9002/healthz"
+    interval  = 3
+    threshold = 10
+  }   
 }
 
 resource "kubernetes_pod" "main" {

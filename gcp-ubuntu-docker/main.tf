@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.4.9"
+      version = "0.5.3"
     }
     google = {
       source  = "hashicorp/google"
@@ -72,7 +72,8 @@ variable "repo" {
   default = "sharkmark/flask-redis-docker-compose.git"
   validation {
     condition = contains([
-      "sharkymark/flask-redis-docker-compose.git"
+      "sharkymark/flask-redis-docker-compose.git",
+      "sharkmark/flask-redis-docker-compose.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -105,10 +106,17 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
-  name          = "code-server"
+  name          = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/root"
-  relative_path = true  
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  } 
 }
 
 resource "google_compute_instance" "dev" {
@@ -148,3 +156,25 @@ export HOME=/root
 
 EOMETA
 }
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = google_compute_instance.dev[0].id
+  item {
+    key   = "zone"
+    value = "${var.zone}"
+  }
+  item {
+    key   = "machine-type"
+    value = "${var.machine-type}"
+  }  
+  item {
+    key   = "image"
+    value = "${google_compute_disk.root.image}"
+  } 
+  item {
+    key   = "repo"
+    value = "${var.repo}"
+  }  
+}
+

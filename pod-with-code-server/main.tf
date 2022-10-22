@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.2"
+      version = "~> 0.5.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -192,7 +192,14 @@ resource "coder_app" "code-server" {
   name          = "code-server ${var.code-server}"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  relative_path = true  
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }  
 }
 
 resource "kubernetes_pod" "main" {
@@ -223,7 +230,7 @@ resource "kubernetes_pod" "main" {
       }  
       resources {
         requests = {
-          cpu    = "250m"
+          cpu    = "500m"
           memory = "500Mi"
         }        
         limits = {

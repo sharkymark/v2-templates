@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.9"
+      version = "~> 0.5.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -54,10 +54,10 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/airflow_wac.git"
+  default = "sharkymark/airflow_wac.git"
   validation {
     condition = contains([
-      "mark-theshark/airflow_wac.git"
+      "sharkymark/airflow_wac.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -118,8 +118,6 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
-rm build.log
-
 export PATH=$PATH:$HOME/.local/bin
 
 # install code-server
@@ -150,7 +148,30 @@ resource "coder_app" "code-server" {
   name          = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  relative_path = true  
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  } 
+}
+
+# airflow
+resource "coder_app" "airflow" {
+  agent_id      = coder_agent.coder.id
+  name          = "airflow"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/d/de/AirflowLogo.png"
+  url           = "http://localhost:8080"
+  subdomain = true
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:8080/healthz"
+    interval  = 3
+    threshold = 10
+  } 
 }
 
 resource "kubernetes_pod" "main" {
@@ -213,4 +234,29 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
       }
     }
   }
+}
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = kubernetes_pod.main[0].id
+  item {
+    key   = "CPU"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].limits.cpu} cores"
+  }
+  item {
+    key   = "memory"
+    value = "${var.memory}GB"
+  }  
+  item {
+    key   = "image"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].image}"
+  } 
+  item {
+    key   = "disk"
+    value = "${var.disk_size}GiB"
+  }
+  item {
+    key   = "volume"
+    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+  }  
 }

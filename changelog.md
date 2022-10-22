@@ -1,5 +1,10 @@
 # Changelog
 
+10-22-22 mark@coder.com
+1. Added path to coder_apps of Airflow and RStudio to launch from an icon
+1. Hid resources in Azure template
+1. Updated Eclipse and VNC templates
+
 10-14-22 mark@coder.com 
 1. Updated AWS and Azure templates with more current Coder provider and additional meta_data; also installing latest code-server/VS Code versus as an input parameter
 

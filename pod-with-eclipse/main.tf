@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.9"
+      version = "~> 0.5.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -53,10 +53,10 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/pandas_automl.git"
+  default = "sharkymark/java_helloworld.git"
   validation {
     condition = contains([
-      "mark-theshark/pandas_automl.git"
+      "sharkymark/java_helloworld.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -97,10 +97,19 @@ variable "disk_size" {
 
 
 variable "workspaces_namespace" {
-  type        = string
-  sensitive   = true
-  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "oss"
+  description = <<-EOF
+  Kubernetes namespace to deploy the workspace into
+
+  EOF
+  default = "oss"
+  validation {
+    condition = contains([
+      "oss",
+      "coder-oss",
+      "coder-workspaces"
+    ], var.workspaces_namespace)
+    error_message = "Invalid namespace!"   
+}  
 }
 
 provider "kubernetes" {
@@ -149,10 +158,17 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server"
+  name          = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  relative_path = true  
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }   
 }
 
 resource "coder_app" "eclipse" {
@@ -160,7 +176,14 @@ resource "coder_app" "eclipse" {
   name          = "Eclipse"
   icon          = "https://upload.wikimedia.org/wikipedia/commons/c/cf/Eclipse-SVG.svg"
   url           = "http://localhost:6081"
-  relative_path = true
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:6081/healthz"
+    interval  = 6
+    threshold = 20
+  } 
 }
 
 resource "kubernetes_pod" "main" {
@@ -175,7 +198,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }     
     container {
-      name    = "jupyterlab"
+      name    = "eclipse"
       image   = "docker.io/${var.image}"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
@@ -223,4 +246,29 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
       }
     }
   }
+}
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = kubernetes_pod.main[0].id
+  item {
+    key   = "CPU"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].limits.cpu} cores"
+  }
+  item {
+    key   = "memory"
+    value = "${var.memory}GB"
+  }  
+  item {
+    key   = "image"
+    value = "${var.image}"
+  } 
+  item {
+    key   = "disk"
+    value = "${var.disk_size}GiB"
+  }
+  item {
+    key   = "volume"
+    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+  }  
 }

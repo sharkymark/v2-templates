@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.15"
+      version = "~> 0.5.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -157,7 +157,30 @@ resource "coder_app" "code-server" {
   name          = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  relative_path = true  
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  } 
+}
+
+# rstudio
+resource "coder_app" "rstudio" {
+  agent_id      = coder_agent.coder.id
+  name          = "rstudio"
+  icon          = "/icon/rstudio.svg"
+  url           = "http://localhost:8787"
+  subdomain = true
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:8787/healthz"
+    interval  = 3
+    threshold = 10
+  } 
 }
 
 resource "kubernetes_pod" "main" {
