@@ -185,7 +185,7 @@ resource "coder_app" "soysoys" {
   icon     = "https://www.pngfind.com/pngs/m/20-200857_bookmark-icon-png-download-pdf-bookmark-icon-transparent.png"
   url      = "http://localhost:3000"
   subdomain = true
-  share     = "public"
+  share     = "authenticated"
 
   healthcheck {
     url       = "http://localhost:3000/healthz"
@@ -202,7 +202,7 @@ resource "coder_app" "fifthster" {
   icon     = "https://cdn-icons-png.flaticon.com/512/1217/1217026.png"
   url      = "http://localhost:3001"
   subdomain = true
-  share     = "owner"
+  share     = "authenticated"
 
   healthcheck {
     url       = "http://localhost:3001/healthz"
