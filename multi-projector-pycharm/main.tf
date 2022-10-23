@@ -156,8 +156,8 @@ resource "coder_app" "pycharm1" {
 
   healthcheck {
     url       = "http://localhost:9001/healthz"
-    interval  = 3
-    threshold = 10
+    interval  = 6
+    threshold = 20
   }    
 }
 
@@ -171,8 +171,8 @@ resource "coder_app" "pycharm2" {
 
   healthcheck {
     url       = "http://localhost:9002/healthz"
-    interval  = 3
-    threshold = 10
+    interval  = 6
+    threshold = 20
   }    
 }
 

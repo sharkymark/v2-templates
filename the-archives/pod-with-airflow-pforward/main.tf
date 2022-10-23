@@ -120,6 +120,9 @@ resource "coder_agent" "coder" {
 
 export PATH=$PATH:$HOME/.local/bin
 
+# add some Python libraries
+pip3 install --user pandas numpy
+
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 2>&1 &
@@ -127,9 +130,6 @@ code-server --auth none --port 13337 2>&1 &
 # install and start airflow
 pip3 install apache-airflow
 /home/coder/.local/bin/airflow standalone
-
-# add some Python libraries
-pip3 install --user pandas numpy
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri}
@@ -145,7 +145,7 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server"
+  name          = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -169,8 +169,8 @@ resource "coder_app" "airflow" {
 
   healthcheck {
     url       = "http://localhost:8080/healthz"
-    interval  = 3
-    threshold = 10
+    interval  = 10
+    threshold = 60
   } 
 }
 
@@ -249,7 +249,7 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "image"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].image}"
+    value = "${var.image}"
   } 
   item {
     key   = "disk"

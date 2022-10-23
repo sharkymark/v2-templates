@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.9"
+      version = "~> 0.5.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -176,7 +176,14 @@ resource "coder_app" "code-server" {
   name          = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  relative_path = true  
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }   
 }
 
 resource "coder_app" "jupyter" {
@@ -184,7 +191,14 @@ resource "coder_app" "jupyter" {
   name          = "jupyter-${var.jupyter}"
   icon          = "/icon/jupyter.svg"
   url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/jupyter-${var.jupyter}/"
-  relative_path = true
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:8888/healthz"
+    interval  = 6
+    threshold = 20
+  }   
 }
 
 resource "kubernetes_pod" "main" {
