@@ -57,7 +57,8 @@ variable "image" {
   default = "marktmilligan/phpstorm-vscode:latest"
   validation {
     condition = contains([
-      "marktmilligan/phpstorm-vscode:latest"
+      "marktmilligan/phpstorm-vscode:latest",
+      "marktmilligan/php-vscode:latest"
     ], var.image)
     error_message = "Invalid image!"   
 }  

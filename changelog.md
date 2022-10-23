@@ -1,5 +1,8 @@
 # Changelog
 
+10-23-22 mark@coder.com
+1. php, ruby on rails, and phpstorm templates
+
 10-22-22 mark@coder.com
 1. Added path to coder_apps of Airflow and RStudio to launch from an icon
 1. Hid resources in Azure template
