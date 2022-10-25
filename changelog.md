@@ -1,5 +1,8 @@
 # Changelog
 
+10-25-22 mark@coder.com
+1. update git repos in pod-with-code-server
+
 10-23-22 mark@coder.com
 1. php, ruby on rails, and phpstorm templates
 

@@ -55,7 +55,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 variable "image" {
@@ -80,15 +80,15 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "mark-theshark/coder-react.git"
+  default = "sharkymark/coder-react.git"
   validation {
     condition = contains([
-      "mark-theshark/coder-react.git",
+      "sharkymark/coder-react.git",
       "coder/coder.git",
       "coder/code-server.git",      
-      "mark-theshark/commissions.git",
-      "mark-theshark/java_helloworld.git",
-      "mark-theshark/python-commissions.git"
+      "sharkymark/commissions.git",
+      "sharkymark/java_helloworld.git",
+      "sharkymark/python-commissions.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -189,7 +189,7 @@ code-server --auth none --port 13337 &
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server ${var.code-server}"
+  name          = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
