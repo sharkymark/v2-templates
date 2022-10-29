@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.15"
+      version = "~> 0.5.3"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -22,7 +22,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 variable "extension" {
@@ -45,7 +45,7 @@ e.g.,
 /home/coder/rust-hw
 /home/coder/rust-hw/rocket/hello-rocket
   EOF
-  default = "/home/coder/rust-hw/rocket/hello-rocket"
+  default = "/home/coder/"
 }
 
 variable "use_kubeconfig" {
@@ -63,10 +63,11 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
-  type        = string
-  sensitive   = true
-  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "oss"
+  description = <<-EOF
+  Kubernetes namespace to create the workspace pod (required)
+
+  EOF
+  default = "oss"
 }
 
 provider "kubernetes" {
@@ -91,40 +92,18 @@ resource "coder_agent" "coder" {
 
 coder dotfiles -y ${var.dotfiles_uri}
 
-PROJECTOR_BINARY=/home/coder/.local/bin/projector
+# Configure and run JetBrains IDEs
 
-# install projector into /home/coder
-if [ -f $PROJECTOR_BINARY ]; then
-    echo 'projector has already been installed - check for update'
-    /home/coder/.local/bin/projector self-update
-else
-    echo 'installing projector'
-    pip3 install projector-installer --user
-fi
+# Assumes you have CLion (/opt/clion)
+# and pip3 installed in
+# your image and the "coder" user has filesystem
+# permissions for "/opt/*"
 
-echo 'access projector license terms'
-/home/coder/.local/bin/projector --accept-license
+pip3 install projector-installer --user
+/home/coder/.local/bin/projector --accept-license 
 
-PROJECTOR_CONFIG_PATH=/home/coder/.projector/configs/CLion
-
-if [ -d $PROJECTOR_CONFIG_PATH ]; then
-    echo 'projector has already been configured and the JetBrains IDE downloaded - skip step'
-else
-    echo 'autoinstalling IDE and creating projector config folder'
-    /home/coder/.local/bin/projector ide autoinstall --config-name CLion --ide-name "CLion 2022.1.3" --hostname=localhost --port 8997 --use-separate-config --password coder
-
-    # delete the config directory because it has password tokens
-    rm -rf /home/coder/.projector/configs
-
-    # create the config
-    /home/coder/.local/bin/projector config add CLion /home/coder/.projector/apps/clion-2022.1.3 --port 8997 --hostname=localhost --use-separate-config
-
-fi
-
-# start JetBrains projector-based IDE
-#/home/coder/.projector/configs/CLion/run.sh &
-
-/home/coder/.local/bin/projector run CLion &
+/home/coder/.local/bin/projector config add clion /opt/clion --force --use-separate-config --port 9001 --hostname localhost
+/home/coder/.local/bin/projector run clion &
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -143,18 +122,32 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server"
+  name          = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=${var.folder_path}"
-  relative_path = true  
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 5
+    threshold = 15
+  }   
 }
 
 resource "coder_app" "jetbrains-clion" {
   agent_id      = coder_agent.coder.id
-  name          = "jetbrains-clion"
+  name          = "CLion"
   icon          = "/icon/clion.svg"
-  url           = "http://localhost:8997/"
-  relative_path = true
+  url           = "http://localhost:9001/"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:9001/healthz"
+    interval  = 10
+    threshold = 30
+  } 
 }
 
 resource "kubernetes_pod" "main" {
@@ -164,13 +157,14 @@ resource "kubernetes_pod" "main" {
   ]    
   metadata {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = "oss"
+    namespace = var.workspaces_namespace
   }
   spec {
     security_context {
       run_as_user = "1000"
       fs_group    = "1000"
     }     
+    # https://github.com/sharkymark/dockerfiles/tree/main/clion/latest
     container {
       name    = "clion"
       image   = "docker.io/marktmilligan/clion-rust:latest"
@@ -188,7 +182,7 @@ resource "kubernetes_pod" "main" {
           memory = "500Mi"
         }        
         limits = {
-          cpu    = "2"
+          cpu    = "4"
           memory = "4G"
         }
       }        

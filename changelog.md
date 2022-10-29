@@ -1,7 +1,10 @@
 # Changelog
 
+10-29-22 mark@coder.com
+1. updated clion rust template with simplier jetbrains projector and refined input parameters
+
 10-25-22 mark@coder.com
-1. update git repos in pod-with-code-server
+1. updated git repos in pod-with-code-server
 
 10-23-22 mark@coder.com
 1. php, ruby on rails, and phpstorm templates
