@@ -2,17 +2,17 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.4.9"
+      version = "~> 0.5.3"
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.20.2"
+      version = "~> 2.22.0"
     }
   }
 }
 
 provider "docker" {
-  host = "unix:///var/run/docker.sock"
+
 }
 
 provider "coder" {
@@ -27,7 +27,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 variable "image" {
@@ -87,13 +87,8 @@ variable "extension" {
 locals {
   code-server-releases = {
     "latest" = "" 
+    "4.7.1 | Code 1.71.2" = "4.7.1"
     "4.6.1 | Code 1.70.2" = "4.6.1" 
-    "4.6.0 | Code 1.70.1" = "4.6.0"    
-    "4.5.1 | Code 1.68.1" = "4.5.1"
-    "4.5.0 | Code 1.68.1" = "4.5.0"
-    "4.4.0 | Code 1.66.2" = "4.4.0"
-    "4.3.0 | Code 1.65.2" = "4.3.0"
-    "4.2.0 | Code 1.64.2" = "4.2.0"
   }
 }
 
@@ -104,13 +99,8 @@ variable "code-server" {
   validation {
     condition = contains([
       "latest",
-      "4.6.1 | Code 1.70.2",      
-      "4.6.0 | Code 1.70.1",
-      "4.5.1 | Code 1.68.1",      
-      "4.5.0 | Code 1.68.1",
-      "4.4.0 | Code 1.66.2",
-      "4.3.0 | Code 1.65.2",
-      "4.2.0 | Code 1.64.2"
+      "4.7.1 | Code 1.71.2",
+      "4.6.1 | Code 1.70.2"      
     ], var.code-server)
     error_message = "Invalid code-server!"   
 }
@@ -151,6 +141,14 @@ resource "coder_app" "code-server" {
   name     = "code-server ${var.code-server}"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 5
+    threshold = 15
+  }  
 }
 
 resource "docker_container" "workspace" {
@@ -162,7 +160,17 @@ resource "docker_container" "workspace" {
   dns      = ["1.1.1.1"]
 
   # Use the docker gateway if the access URL is 127.0.0.1
-  entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
+  #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
+
+  # Use the docker gateway if the access URL is 127.0.0.1
+  command = [
+    "sh", "-c",
+    <<EOT
+    trap '[ $? -ne 0 ] && echo === Agent script exited with non-zero code. Sleeping infinitely to preserve logs... && sleep infinity' EXIT
+    ${replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}
+    EOT
+  ]
+
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {

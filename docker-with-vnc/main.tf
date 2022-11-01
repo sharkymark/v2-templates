@@ -2,17 +2,17 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.4.9"
+      version = "0.5.3"
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.20.2"
+      version = "~> 2.22.0"
     }
   }
 }
 
 provider "docker" {
-  host = "unix:///var/run/docker.sock"
+
 }
 
 provider "coder" {
@@ -27,7 +27,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 resource "coder_agent" "dev" {
@@ -57,16 +57,32 @@ nohup supervisord
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
+  name     = "VS Code"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 5
+    threshold = 15
+  }  
 }
 
 resource "coder_app" "novnc" {
   agent_id      = coder_agent.dev.id
   name          = "noVNC Desktop"
-  icon          = "/icon/novnc-icon.svg"
+  icon          = "/icon/novnc.svg"
   url           = "http://localhost:6081"
-  relative_path = true
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:6081/healthz"
+    interval  = 5
+    threshold = 15
+  } 
 }
 
 resource "docker_image" "vnc" {
@@ -86,7 +102,15 @@ resource "docker_container" "workspace" {
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
   # Use the docker gateway if the access URL is 127.0.0.1
-  entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
+  #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
+
+  command = [
+    "sh", "-c",
+    <<EOT
+    trap '[ $? -ne 0 ] && echo === Agent script exited with non-zero code. Sleeping infinitely to preserve logs... && sleep infinity' EXIT
+    ${replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}
+    EOT
+  ]
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {
