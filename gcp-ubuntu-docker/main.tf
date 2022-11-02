@@ -6,7 +6,7 @@ terraform {
     }
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.34.0"
+      version = "~> 4.42.0"
     }
   }
 }
@@ -33,6 +33,17 @@ variable "machine-type" {
   }
 }
 
+variable "image" {
+  description = "VM Image"
+  default     = "coder-ubuntu-2004-lts-with-docker-engine"
+  validation {
+    condition = contains([
+      "coder-ubuntu-2004-lts-with-docker-engine"
+    ], var.image)
+    error_message = "Invalid VM image!"  
+}
+}
+
 provider "google" {
   zone    = var.zone
   project = var.project_id
@@ -47,9 +58,8 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
-
 data "coder_workspace" "me" {
 }
 
@@ -58,7 +68,8 @@ resource "google_compute_disk" "root" {
   type  = "pd-ssd"
   zone  = var.zone
   #image = "debian-cloud/debian-9"
-  image = "projects/coder-demo-1/global/images/coder-ubuntu-2004-lts-with-docker-engine"
+  image = "https://www.googleapis.com/compute/v1/projects/coder-demo-1/global/images/coder-ubuntu-2004-lts-with-docker-engine"
+  #image = "projects/coder-demo-1/global/images/coder-ubuntu-2004-lts-with-docker-engine"
   lifecycle {
     ignore_changes = [image]
   }
@@ -170,7 +181,7 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "image"
-    value = "${google_compute_disk.root.image}"
+    value = "${var.image}"
   } 
   item {
     key   = "repo"

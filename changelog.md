@@ -1,5 +1,8 @@
 # Changelog
 
+11-2-22 mark@coder.com
+1. adjust metadata resource to handle image URL
+
 10-31-22 mark@coder.com
 1. moved jetbrains templates for docker to the-archives dir which means do not use
 1. updated docker-code-server, docker-with-jupyter, docker-with-vnc to have recent code-servers, correct entrypoint, coder_app healthchecks, and updated terraform provider releases
