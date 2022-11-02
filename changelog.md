@@ -2,6 +2,7 @@
 
 11-2-22 mark@coder.com
 1. adjust metadata resource to handle image URL
+1. refactor Docker templates for IntelliJ, PyCharm, and GoLand to use the `chown` projector approach in Kubernetes examples, for simplicity
 
 10-31-22 mark@coder.com
 1. moved jetbrains templates for docker to the-archives dir which means do not use
