@@ -1,5 +1,8 @@
 # Changelog
 
+11-3-22 mark@coder.com
+1. created a docker and pod template showcasing dashboard port forwarding with `coder_app` -[docs](https://github.com/coder/coder/blob/main/docs/networking/port-forwarding.md)
+
 11-2-22 mark@coder.com
 1. adjust metadata resource to handle image URL
 1. refactor Docker templates for IntelliJ, PyCharm, and GoLand to use the `chown` projector approach in Kubernetes examples, for simplicity
