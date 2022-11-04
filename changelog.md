@@ -1,5 +1,8 @@
 # Changelog
 
+11-4-22 mark@coder.com
+1. updated jupyter pod and docker templates to work with coder terraform provider 0.6.0 - missing `slug` in `coder_app` was preventing it from working. Also removed several input parameters.
+
 11-3-22 mark@coder.com
 1. created a docker and pod template showcasing dashboard port forwarding with `coder_app` -[docs](https://github.com/coder/coder/blob/main/docs/networking/port-forwarding.md)
 

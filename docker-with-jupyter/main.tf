@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
@@ -30,46 +30,6 @@ variable "dotfiles_uri" {
   default = "git@github.com:sharkymark/dotfiles.git"
 }
 
-variable "image" {
-  description = <<-EOF
-  Container images from coder-com
-
-  EOF
-  default = "codercom/enterprise-jupyter:ubuntu"
-  validation {
-    condition = contains([
-      "codercom/enterprise-jupyter:ubuntu"
-    ], var.image)
-    error_message = "Invalid image!"   
-}  
-}
-
-variable "repo" {
-  description = <<-EOF
-  Code repository to clone
-
-  EOF
-  default = "sharkymark/pandas_automl.git"
-  validation {
-    condition = contains([
-      "sharkymark/pandas_automl.git"
-    ], var.repo)
-    error_message = "Invalid repo!"   
-}  
-}
-
-variable "extension" {
-  description = "VS Code extension"
-  default     = "ms-toolsai.jupyter"
-  validation {
-    condition = contains([
-      "ms-python.python",
-      "ms-toolsai.jupyter"
-    ], var.extension)
-    error_message = "Invalid VS Code extension!"  
-}
-}
-
 locals {
   jupyter-type-arg = "${var.jupyter == "notebook" ? "Notebook" : "Server"}"
 }
@@ -93,62 +53,65 @@ resource "coder_agent" "dev" {
 #!/bin/bash
 
 # start jupyter 
-jupyter ${var.jupyter} --no-browser --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/jupyter-${var.jupyter}/ &
+jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' &
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
-# use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+# add some Python libraries
+pip3 install --user pandas &
 
-# install pandas
-pip3 install pandas --user
+# use coder CLI to clone and install dotfiles
+coder dotfiles -y ${var.dotfiles_uri} &
 
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone git@github.com:${var.repo}
+git clone --progress git@github.com:sharkymark/pandas_automl.git &
 
 # install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension}
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter
 
   EOT  
 }
 
+# code-server
 resource "coder_app" "code-server" {
-  agent_id = coder_agent.dev.id
-  name     = "VS Code"
-  url      = "http://localhost:13337/?folder=/home/coder"
-  icon     = "/icon/code.svg"
-  subdomain = false
-  share     = "owner"
+  agent_id      = coder_agent.dev.id
+  slug          = "code-server"  
+  display_name  = "VS Code"
+  icon          = "/icon/code.svg"
+  url           = "http://localhost:13337?folder=/home/coder"
+  share         = "owner"
+  subdomain     = false  
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
     interval  = 5
-    threshold = 15
-  }  
+    threshold = 6
+  }   
 }
 
 resource "coder_app" "jupyter" {
   agent_id      = coder_agent.dev.id
-  name          = "jupyter-${var.jupyter}"
+  slug          = "jupyter-${var.jupyter}"  
+  display_name  = "jupyter-${var.jupyter}"
   icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/jupyter-${var.jupyter}/"
-  subdomain = false
-  share     = "owner"
+  url           = "http://localhost:8888/"
+  share         = "owner"
+  subdomain     = true  
 
   healthcheck {
     url       = "http://localhost:8888/healthz"
-    interval  = 5
-    threshold = 15
+    interval  = 10
+    threshold = 20
   }  
 }
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = "${var.image}"
+  image = "codercom/enterprise-jupyter:ubuntu"
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
@@ -178,4 +141,22 @@ resource "docker_container" "workspace" {
 
 resource "docker_volume" "coder_volume" {
   name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+}
+
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = docker_container.workspace[0].id   
+  item {
+    key   = "image"
+    value = "codercom/enterprise-jupyter:ubuntu"
+  }
+  item {
+    key   = "repo cloned"
+    value = "docker.io/sharkymark/pandas_automl.git"
+  }  
+  item {
+    key   = "jupyter"
+    value = "${var.jupyter}"
+  }    
 }

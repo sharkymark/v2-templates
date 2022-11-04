@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -25,54 +25,20 @@ variable "use_kubeconfig" {
   EOF
 }
 
+variable "workspaces_namespace" {
+  type        = string
+  sensitive   = true
+  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
+  default     = "oss"
+}
+
 variable "dotfiles_uri" {
   description = <<-EOF
   Dotfiles repo URI (optional)
 
   see https://dotfiles.github.io
   EOF
-  default = ""
-}
-
-variable "image" {
-  description = <<-EOF
-  Container image with Jupyter Lab
-
-  EOF
-  default = "codercom/enterprise-jupyter:ubuntu"
-  validation {
-    condition = contains([
-      "marktmilligan/jupyterlab:latest",
-      "codercom/enterprise-jupyter:ubuntu"
-    ], var.image)
-    error_message = "Invalid image!"   
-}  
-}
-
-variable "repo" {
-  description = <<-EOF
-  Code repository to clone
-
-  EOF
-  default = "sharkymark/pandas_automl.git"
-  validation {
-    condition = contains([
-      "sharkymark/pandas_automl.git"
-    ], var.repo)
-    error_message = "Invalid repo!"   
-}  
-}
-
-variable "extension" {
-  description = "VS Code extension"
-  default     = "ms-toolsai.jupyter"
-  validation {
-    condition = contains([
-      "ms-python.python",
-      "ms-toolsai.jupyter"
-    ], var.extension)
-    error_message = "Invalid VS Code extension!"  
-}
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 locals {
@@ -98,8 +64,6 @@ variable "cpu" {
     condition = contains([
       "1",
       "2",
-      "4",
-      "6"
     ], var.cpu)
     error_message = "Invalid cpu!"   
 }
@@ -112,8 +76,7 @@ variable "memory" {
     condition = contains([
       "1",
       "2",
-      "4",
-      "8"
+      "4"
     ], var.memory)
     error_message = "Invalid memory!"  
 }
@@ -124,13 +87,6 @@ variable "disk_size" {
   default     = 10
 }
 
-
-variable "workspaces_namespace" {
-  type        = string
-  sensitive   = true
-  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "oss"
-}
 
 provider "kubernetes" {
   # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
@@ -147,25 +103,25 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # start jupyter 
-jupyter ${var.jupyter} --no-browser --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/jupyter-${var.jupyter}/ &
+jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' &
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # add some Python libraries
-pip3 install --user pandas
+pip3 install --user pandas &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+coder dotfiles -y ${var.dotfiles_uri} &
 
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} 
+git clone --progress git@github.com:sharkymark/pandas_automl.git &
 
 # install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension}
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter
 
 EOT
 }
@@ -173,11 +129,12 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  subdomain = false
-  share     = "owner"
+  share         = "owner"
+  subdomain     = false  
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
@@ -188,17 +145,18 @@ resource "coder_app" "code-server" {
 
 resource "coder_app" "jupyter" {
   agent_id      = coder_agent.coder.id
-  name          = "jupyter-${var.jupyter}"
+  slug          = "jupyter-${var.jupyter}"  
+  display_name  = "jupyter-${var.jupyter}"
   icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/jupyter-${var.jupyter}/"
-  subdomain = false
-  share     = "owner"
+  url           = "http://localhost:8888/"
+  share         = "owner"
+  subdomain     = true  
 
   healthcheck {
     url       = "http://localhost:8888/healthz"
-    interval  = 6
+    interval  = 10
     threshold = 20
-  }   
+  }  
 }
 
 resource "kubernetes_pod" "main" {
@@ -214,7 +172,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "coder-container"
-      image   = "docker.io/${var.image}"
+      image   = "docker.io/codercom/enterprise-jupyter:ubuntu"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {
@@ -227,7 +185,7 @@ resource "kubernetes_pod" "main" {
       resources {
         requests = {
           cpu    = "250m"
-          memory = "1000Mi"
+          memory = "250Mi"
         }        
         limits = {
           cpu    = "${var.cpu}"
@@ -261,6 +219,39 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
       }
     }
   }
+}
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = kubernetes_pod.main[0].id
+  item {
+    key   = "CPU"
+    value = "${var.cpu} cores"
+  }
+  item {
+    key   = "memory"
+    value = "${var.memory}GB"
+  }  
+  item {
+    key   = "disk"
+    value = "${var.disk_size}GiB"
+  }  
+  item {
+    key   = "image"
+    value = "codercom/enterprise-jupyter:ubuntu"
+  }
+  item {
+    key   = "repo cloned"
+    value = "docker.io/sharkymark/pandas_automl.git"
+  }  
+  item {
+    key   = "jupyter"
+    value = "${var.jupyter}"
+  }
+  item {
+    key   = "volume"
+    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+  }  
 }
 
 

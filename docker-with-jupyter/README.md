@@ -13,19 +13,19 @@ tags: [local, docker]
 
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
-1. `pip3 install --user` some packages like `pandas` and `numpy`
 1. Prompt user to install Jupyter Lab or Jupyter Notebook (Terraform checks for which type then substitutes arguments when starting the IDE and adding the name into the UI's IDE name)
-1. Prompt user for compute options (CPU core, memory, and disk)
-1. Prompt user for container image to use
-1. Prompt user for repo to clone
-1. Clone repo
-1. Start Jupyter IDE 
+1. `pip3 install --user` some packages like `pandas`
+1. Clone pandas repo
+1. Install Jupyter VS Code extension
+1. Start Jupyter Lab (or Notebook) (it is installed as part of the image)
 1. Download, install and start code-server (VS Code-in-a-browser)
 
 ### Known limitations
 1. Alternatively, developers can run localhost and either use `coder port-forward <workspace name> --tcp 8888:8888` or `ssh -L 8888:localhost:8888 coder.<workspace name>`
-1. A `--NotebookApp.base_url` or `--ServerApp.base_url` parameter in the `startup_script` where Jupyter Notebook or Lab is started, must be set to owner and workspace path for the browser to know how to reach the workspace.
-1. A `coder_app` resource `url` for Jupyter Notebook must be set to owner and workspace path for the browser to know how to reach the workspace.
+
+### Breaking changes
+1. This template uses functionality in the Coder provider 0.6.0 for the `coder_app` called `slug` and `display_name`
+1. Also removed the baseURL from the Jupyter startup script and the owner and workspace names from the `coder_app`
 
 ### Authentication
 
@@ -33,3 +33,4 @@ tags: [local, docker]
 ### Resources
 [coder-react repo](https://github.com/mark-theshark/coder-react)
 [code-server releases](https://github.com/coder/code-server/releases)
+[Coder Terraform Provider](https://registry.terraform.io/providers/coder/coder/latest/docs/resources/app)
