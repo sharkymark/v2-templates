@@ -1,5 +1,8 @@
 # Changelog
 
+11-5-22 mark@coder.com
+1. added an API examples page to `curl`
+
 11-4-22 mark@coder.com
 1. updated jupyter pod and docker templates to work with coder terraform provider 0.6.0 - missing `slug` in `coder_app` was preventing it from working. Also removed several input parameters.
 
