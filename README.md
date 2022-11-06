@@ -1,4 +1,4 @@
-# Coder v2 OSS and v2 Enterprise un-official onboarding zone
+# Coder v2 OSS and v2 Enterprise help
 
 This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Enterprise (paid). If you're looking for an v2 enterprise trial key, contact sales@coder.com
 
