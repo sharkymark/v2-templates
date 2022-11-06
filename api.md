@@ -2,8 +2,8 @@
 
 At the present time, Coder does not have a published API, so I'm using this page to document common endpoint examples.
 
-> Pro tip: While navigating the Coder Ui, use your browser's `inspect` to review
-> API endpoint calls as move around UI pages. Click `network` and the `response`
+> Pro tip: While navigating the Coder UI, use your browser's `inspect` feature to review
+> API endpoint calls as you move around UI pages. Click `network` and the `response`
 > tabs to see structured JSON API responses.
 
 You can also `grep` or control/command-F the [Go chi routes in the OSS repo](https://github.com/coder/coder/blob/main/coderd/coderd.go) to figure out API endpoints.
@@ -103,8 +103,8 @@ curl --request GET \
 <details>
     <summary>See the templates you have access to</summary>
 <br/><br/>
-
-Retrieve your organization id with the `/users/me` API call 
+ 
+ To see details about a template, use the template id from the `organizations/<org-id>/templates` endpoint.
 
 ```sh    
 curl --request GET \
@@ -176,8 +176,6 @@ curl --request GET \
     <summary>Get your workspaces</summary>
 <br/><br/>
 
-To 
-
 ```sh    
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/workspaces?\
@@ -221,7 +219,7 @@ q=owner:$USER_NAME" \
     <summary>Details about a workspace</summary>
 <br/><br/>
 
-To see workspace details like its template, owner, and resources
+To see workspace details like its template, owner, and resources.
 
 ```sh    
 curl --request GET \
