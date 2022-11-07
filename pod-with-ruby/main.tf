@@ -144,17 +144,17 @@ resource "coder_agent" "dev" {
 
     # Ruby on Rails app - bookmarking app called soysoys
     # bundle Ruby gems
-    cd ~/soysoys
-    bundle install
+    # cd ~/soysoys
+    # bundle install
     # start Rails server as daemon
-    rails s -p 3000 -b 0.0.0.0 -d 
+    # rails s -p 3000 -b 0.0.0.0 -d 
 
     # Ruby on Rails app - list app called fifthster
     # bundle Ruby gems
-    cd ~/fifthster
-    bundle install
+    # cd ~/fifthster
+    # bundle install
     # start Rails server as daemon
-    rails s -p 3001 -b 0.0.0.0 -d 
+    # rails s -p 3001 -b 0.0.0.0 -d 
 
 
 
@@ -178,6 +178,7 @@ resource "coder_app" "code-server" {
 
 }
 
+/*
 # soysoys bookmarking app
 resource "coder_app" "soysoys" {
   agent_id = coder_agent.dev.id
@@ -211,6 +212,7 @@ resource "coder_app" "fifthster" {
   }  
 
 }
+*/
 
 # employee survey
 resource "coder_app" "employeesurvey" {
