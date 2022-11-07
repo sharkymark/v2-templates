@@ -27,7 +27,7 @@ variable "use_kubeconfig" {
 
 variable "workspaces_namespace" {
   type        = string
-  sensitive   = true
+  sensitive   = false
   description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
   default     = "oss"
 }

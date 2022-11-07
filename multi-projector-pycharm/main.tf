@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -32,15 +32,8 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "oss"
-  validation {
-    condition = contains([
-      "oss",
-      "coder-oss",
-      "coder-workspaces"
-    ], var.workspaces_namespace)
-    error_message = "Invalid namespace!"   
-}  
+  default     = ""  
+
 }
 
 provider "kubernetes" {
@@ -91,7 +84,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default     = ""
+  default     = "git@github.com:sharkymark/dotfiles.git"
 }
 
 resource "coder_agent" "dev" {
@@ -133,7 +126,8 @@ resource "coder_agent" "dev" {
 # code-server
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"  
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -143,36 +137,39 @@ resource "coder_app" "code-server" {
     url       = "http://localhost:13337/healthz"
     interval  = 3
     threshold = 10
-  }   
+  }  
+
 }
 
 resource "coder_app" "pycharm1" {
   agent_id = coder_agent.dev.id
-  name     = "PyCharm 1"
-  icon     = "/icon/pycharm.svg"
-  url      = "http://localhost:9001"
-  subdomain = false
-  share     = "owner"
+  slug          = "pycharm1"  
+  display_name  = "PyCharm 1"  
+  icon          = "/icon/pycharm.svg"
+  url           = "http://localhost:9001"
+  subdomain     = false
+  share         = "owner"
 
   healthcheck {
-    url       = "http://localhost:9001/healthz"
-    interval  = 6
-    threshold = 20
+    url         = "http://localhost:9001/healthz"
+    interval    = 6
+    threshold   = 20
   }    
 }
 
 resource "coder_app" "pycharm2" {
   agent_id = coder_agent.dev.id
-  name     = "PyCharm 2"
-  icon     = "/icon/pycharm.svg"
-  url      = "http://localhost:9002"
-  subdomain = false
-  share     = "owner"
+  slug          = "pycharm2"  
+  display_name  = "PyCharm 2"  
+  icon          = "/icon/pycharm.svg"
+  url           = "http://localhost:9001"
+  subdomain     = false
+  share         = "owner"
 
   healthcheck {
-    url       = "http://localhost:9002/healthz"
-    interval  = 6
-    threshold = 20
+    url         = "http://localhost:9002/healthz"
+    interval    = 6
+    threshold   = 20
   }    
 }
 
