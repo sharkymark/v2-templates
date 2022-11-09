@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -122,37 +122,6 @@ variable "memory" {
 }
 }
 
-locals {
-  code-server-releases = {
-    "latest" = "" 
-    "4.6.1 | Code 1.70.2" = "4.6.1" 
-    "4.6.0 | Code 1.70.1" = "4.6.0"    
-    "4.5.1 | Code 1.68.1" = "4.5.1"
-    "4.5.0 | Code 1.68.1" = "4.5.0"
-    "4.4.0 | Code 1.66.2" = "4.4.0"
-    "4.3.0 | Code 1.65.2" = "4.3.0"
-    "4.2.0 | Code 1.64.2" = "4.2.0"
-  }
-}
-
-variable "code-server" {
-  description = "code-server release"
-  default     = "latest"
-  validation {
-    condition = contains([
-      "latest",
-      "4.6.1 | Code 1.70.2",      
-      "4.6.0 | Code 1.70.1",
-      "4.5.1 | Code 1.68.1",      
-      "4.5.0 | Code 1.68.1",
-      "4.4.0 | Code 1.66.2",
-      "4.3.0 | Code 1.65.2",
-      "4.2.0 | Code 1.64.2"
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
-}
-
 variable "disk_size" {
   description = "Disk size (__ GB)"
   default     = 10
@@ -173,14 +142,8 @@ git clone --progress git@github.com:${var.repo}
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri}
 
-# install code-server
-echo "CS_REL value: " ${var.code-server}
-
-if [[ "${var.code-server}" != "latest" ]]; then
-  CS_REL=" -s -- --version=${lookup(local.code-server-releases, var.code-server)}"
-fi
-
-curl -fsSL https://code-server.dev/install.sh | sh $CS_REL
+# install and start code-server
+curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
   EOT  
@@ -189,7 +152,8 @@ code-server --auth none --port 13337 &
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false

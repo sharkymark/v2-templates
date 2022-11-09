@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.5.2"
+      version = "0.6.0"
     }
   }
 }
@@ -58,8 +58,8 @@ data "coder_workspace" "me" {
 variable "dotfiles_uri" {
   description = <<-EOF
   Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
+  
+  e.g., git@github.com:sharkymark/dotfiles.git
   EOF
   default = ""
 }
@@ -98,10 +98,18 @@ coder dotfiles -y ${var.dotfiles_uri}
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
-  name          = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:13337/?folder=/home/${lower(data.coder_workspace.me.owner)}"
-  relative_path = true
+  url           = "http://localhost:13337?folder=/home/${lower(data.coder_workspace.me.owner)}"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }  
 }
 
 locals {
@@ -183,7 +191,7 @@ resource "aws_spot_instance_request" "dev" {
 }
 
 resource "coder_metadata" "workspace_info" {
-  resource_id = aws_spot_infworkstance_request.dev.id
+  resource_id = aws_spot_instance_request.dev.id
   item {
     key   = "region"
     value = var.region

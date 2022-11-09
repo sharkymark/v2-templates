@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -31,35 +31,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
-}
-
-variable "image" {
-  description = <<-EOF
-  Container image with Jupyter Lab
-
-  EOF
-  default = "marktmilligan/eclipse-vnc:latest"
-  validation {
-    condition = contains([
-      "marktmilligan/eclipse-vnc:latest"
-    ], var.image)
-    error_message = "Invalid image!"   
-}  
-}
-
-variable "repo" {
-  description = <<-EOF
-  Code repository to clone
-
-  EOF
-  default = "sharkymark/java_helloworld.git"
-  validation {
-    condition = contains([
-      "sharkymark/java_helloworld.git"
-    ], var.repo)
-    error_message = "Invalid repo!"   
-}  
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 variable "cpu" {
@@ -101,15 +73,8 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "oss"
-  validation {
-    condition = contains([
-      "oss",
-      "coder-oss",
-      "coder-workspaces"
-    ], var.workspaces_namespace)
-    error_message = "Invalid namespace!"   
-}  
+  default     = ""  
+
 }
 
 provider "kubernetes" {
@@ -150,17 +115,18 @@ coder dotfiles -y ${var.dotfiles_uri}
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo}
+git clone --progress git@github.com:sharkymark/java_helloworld.git
 
 EOT
 }
 
 # code-server
 resource "coder_app" "code-server" {
-  agent_id      = coder_agent.coder.id
-  name          = "VS Code"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
+  agent_id = coder_agent.coder.id
+  slug          = "code-server"  
+  display_name  = "VS Code"  
+  icon     = "/icon/code.svg"
+  url      = "http://localhost:13337"
   subdomain = false
   share     = "owner"
 
@@ -168,12 +134,14 @@ resource "coder_app" "code-server" {
     url       = "http://localhost:13337/healthz"
     interval  = 3
     threshold = 10
-  }   
+  }  
+
 }
 
 resource "coder_app" "eclipse" {
   agent_id      = coder_agent.coder.id
-  name          = "Eclipse"
+  slug          = "eclipse"  
+  display_name  = "Eclipse"  
   icon          = "https://upload.wikimedia.org/wikipedia/commons/c/cf/Eclipse-SVG.svg"
   url           = "http://localhost:6081"
   subdomain = false
@@ -199,7 +167,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "eclipse"
-      image   = "docker.io/${var.image}"
+      image   = "docker.io/marktmilligan/eclipse-vnc:latest"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {
@@ -261,7 +229,7 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "image"
-    value = "${var.image}"
+    value = "docker.io/marktmilligan/eclipse-vnc:latest"
   } 
   item {
     key   = "disk"
