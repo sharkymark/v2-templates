@@ -171,7 +171,7 @@ resource "kubernetes_pod" "main" {
     container {
       name    = "coder-container"
       image   = "docker.io/${lookup(local.image, var.ide)}"
-      #image_pull_policy = "Always"
+      image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"
