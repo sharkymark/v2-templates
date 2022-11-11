@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.5.3"
+      version = "0.6.0"
     }
     google = {
       source  = "hashicorp/google"
@@ -31,17 +31,6 @@ variable "machine-type" {
     condition     = contains(["e2-micro", "e2-small"], var.machine-type)
     error_message = "Invalid machine type!"
   }
-}
-
-variable "image" {
-  description = "VM Image"
-  default     = "coder-ubuntu-2004-lts-with-docker-engine"
-  validation {
-    condition = contains([
-      "coder-ubuntu-2004-lts-with-docker-engine"
-    ], var.image)
-    error_message = "Invalid VM image!"  
-}
 }
 
 provider "google" {
@@ -75,23 +64,6 @@ resource "google_compute_disk" "root" {
   }
 }
 
-variable "repo" {
-  description = <<-EOF
-  Code repository to clone
-
-  EOF
-  default = "sharkmark/flask-redis-docker-compose.git"
-  validation {
-    condition = contains([
-      "sharkymark/flask-redis-docker-compose.git",
-      "sharkmark/flask-redis-docker-compose.git"
-    ], var.repo)
-    error_message = "Invalid repo!"   
-}  
-}
-
-
-
 resource "coder_agent" "dev" {
   auth = "google-instance-identity"
   arch = "amd64"
@@ -102,7 +74,7 @@ resource "coder_agent" "dev" {
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo}
+git clone --progress git@github.com:sharkmark/flask-redis-docker-compose.git
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri}
@@ -117,9 +89,10 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
-  name          = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/root"
+  url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
   share     = "owner"
 
@@ -127,7 +100,7 @@ resource "coder_app" "code-server" {
     url       = "http://localhost:13337/healthz"
     interval  = 3
     threshold = 10
-  } 
+  }  
 }
 
 resource "google_compute_instance" "dev" {
@@ -181,11 +154,11 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "image"
-    value = "${var.image}"
+    value = "coder-ubuntu-2004-lts-with-docker-engine"
   } 
   item {
     key   = "repo"
-    value = "${var.repo}"
+    value = "git@github.com:sharkmark/flask-redis-docker-compose.git"
   }  
 }
 
