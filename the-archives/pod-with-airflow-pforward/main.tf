@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -25,42 +25,21 @@ variable "use_kubeconfig" {
   EOF
 }
 
+variable "workspaces_namespace" {
+  description = <<-EOF
+  Kubernetes namespace to create the workspace pod (required)
+
+  EOF
+  default = ""
+}
+
 variable "dotfiles_uri" {
   description = <<-EOF
   Dotfiles repo URI (optional)
 
   see https://dotfiles.github.io
   EOF
-  default = ""
-}
-
-variable "image" {
-  description = <<-EOF
-  Container image with Python
-
-  EOF
-  default = "codercom/enterprise-base:ubuntu"
-  validation {
-    condition = contains([
-      "codercom/enterprise-base:ubuntu",
-      "codercom/enterprise-jupyter:ubuntu"
-    ], var.image)
-    error_message = "Invalid image!"   
-}  
-}
-
-variable "repo" {
-  description = <<-EOF
-  Code repository to clone
-
-  EOF
-  default = "sharkymark/airflow_wac.git"
-  validation {
-    condition = contains([
-      "sharkymark/airflow_wac.git"
-    ], var.repo)
-    error_message = "Invalid repo!"   
-}  
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 variable "cpu" {
@@ -96,14 +75,6 @@ variable "disk_size" {
   default     = 10
 }
 
-
-variable "workspaces_namespace" {
-  type        = string
-  sensitive   = true
-  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "oss"
-}
-
 provider "kubernetes" {
   # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
   config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
@@ -137,7 +108,7 @@ coder dotfiles -y ${var.dotfiles_uri}
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo}
+git clone --progress git@github.com:sharkymark/airflow_wac.git
 
 EOT
 }
@@ -145,7 +116,8 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -161,7 +133,8 @@ resource "coder_app" "code-server" {
 # airflow
 resource "coder_app" "airflow" {
   agent_id      = coder_agent.coder.id
-  name          = "airflow"
+  slug          = "airflow"  
+  display_name  = "Airflow"
   icon          = "https://upload.wikimedia.org/wikipedia/commons/d/de/AirflowLogo.png"
   url           = "http://localhost:8080"
   subdomain = true
@@ -187,7 +160,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "airflow"
-      image   = "docker.io/${var.image}"
+      image   = "docker.io/codercom/enterprise-base:ubuntu"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {
@@ -249,7 +222,7 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "image"
-    value = "${var.image}"
+    value = "codercom/enterprise-base:ubuntu"
   } 
   item {
     key   = "disk"

@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
@@ -57,7 +57,8 @@ yarn &
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
   subdomain = false
@@ -73,7 +74,8 @@ resource "coder_app" "code-server" {
 # node app
 resource "coder_app" "node-react-app" {
   agent_id = coder_agent.dev.id
-  name     = "node-react-app"
+  slug          = "node-app"  
+  display_name  = "Node React app"
   icon     = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
   url      = "http://localhost:3000"
   subdomain = true

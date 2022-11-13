@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.5.3"
+      version = "0.6.0"
     }
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -83,7 +83,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 
@@ -111,7 +111,8 @@ resource "coder_agent" "main" {
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.main.id
-  name     = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   url      = "http://localhost:13337/?folder=/home/${lower(substr(data.coder_workspace.me.owner, 0, 32))}"
   icon     = "/icon/code.svg"
   subdomain = false

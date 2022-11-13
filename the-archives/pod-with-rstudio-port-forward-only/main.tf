@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -31,37 +31,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
-}
-
-variable "image" {
-  description = <<-EOF
-  Container image with RStudio
-
-  EOF
-  default = "marktmilligan/rstudio:no-args"
-  validation {
-    condition = contains([
-      "marktmilligan/rstudio:latest",
-      "marktmilligan/rstudio:no-args"
-    ], var.image)
-    error_message = "Invalid image!"   
-}  
-}
-
-variable "repo" {
-  description = <<-EOF
-  Code repository to clone
-
-  EOF
-  default = "rstudio/connect-examples.git"
-  validation {
-    condition = contains([
-      "rstudio/connect-examples.git",
-      "rstudio/shiny-examples.git"
-    ], var.repo)
-    error_message = "Invalid repo!"   
-}  
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 variable "cpu" {
@@ -100,18 +70,10 @@ variable "disk_size" {
 
 variable "workspaces_namespace" {
   description = <<-EOF
-  Kubernetes namespace to deploy the workspace into
+  Kubernetes namespace to create the workspace pod (required)
 
   EOF
-  default = "oss"
-  validation {
-    condition = contains([
-      "oss",
-      "coder-oss",
-      "coder-workspaces"
-    ], var.workspaces_namespace)
-    error_message = "Invalid namespace!"   
-}  
+  default = ""
 }
 
 provider "kubernetes" {
@@ -127,8 +89,6 @@ resource "coder_agent" "coder" {
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
-
-rm build.log
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh 
@@ -146,7 +106,8 @@ coder dotfiles -y ${var.dotfiles_uri}
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo}
+git clone --progress git@github.com:rstudio/connect-examples.git
+git clone --progress git@github.com:rstudio/shiny-examples.git"
 
 EOT
 }
@@ -154,7 +115,8 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "code-server"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -170,7 +132,8 @@ resource "coder_app" "code-server" {
 # rstudio
 resource "coder_app" "rstudio" {
   agent_id      = coder_agent.coder.id
-  name          = "rstudio"
+  slug          = "rstudio"  
+  display_name  = "RStudio"
   icon          = "/icon/rstudio.svg"
   url           = "http://localhost:8787"
   subdomain = true
@@ -196,7 +159,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "rstudio"
-      image   = "docker.io/${var.image}"
+      image   = "docker.io/marktmilligan/rstudio:no-args"
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {

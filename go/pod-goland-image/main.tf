@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -32,15 +32,8 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "oss"
-  validation {
-    condition = contains([
-      "oss",
-      "coder-oss",
-      "coder-workspaces"
-    ], var.workspaces_namespace)
-    error_message = "Invalid namespace!"   
-}  
+  default     = ""  
+
 }
 
 provider "kubernetes" {
@@ -92,7 +85,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default     = ""
+  default     = "git@github.com:sharkymark/dotfiles.git"
 }
 
 resource "coder_agent" "dev" {
@@ -132,7 +125,8 @@ resource "coder_agent" "dev" {
 # code-server
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -147,7 +141,8 @@ resource "coder_app" "code-server" {
 
 resource "coder_app" "goland" {
   agent_id = coder_agent.dev.id
-  name     = "GoLand"
+  slug          = "goland"  
+  display_name  = "GoLand"
   icon     = "/icon/goland.svg"
   url      = "http://localhost:9001"
   subdomain = false

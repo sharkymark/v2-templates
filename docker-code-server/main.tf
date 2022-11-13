@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
@@ -53,11 +53,11 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "sharkymark/commissions.git"
+  default = "coder/coder.git"
   validation {
     condition = contains([
       "sharkymark/coder-react.git",
-      "sharkymark/commissions.git", 
+      "coder/coder.git", 
       "sharkymark/java_helloworld.git", 
       "sharkymark/python_commissions.git",                 
       "sharkymark/pandas_automl.git",
@@ -84,28 +84,6 @@ variable "extension" {
 }
 }
 
-locals {
-  code-server-releases = {
-    "latest" = "" 
-    "4.7.1 | Code 1.71.2" = "4.7.1"
-    "4.6.1 | Code 1.70.2" = "4.6.1" 
-  }
-}
-
-
-variable "code-server" {
-  description = "code-server release"
-  default     = "latest"
-  validation {
-    condition = contains([
-      "latest",
-      "4.7.1 | Code 1.71.2",
-      "4.6.1 | Code 1.70.2"      
-    ], var.code-server)
-    error_message = "Invalid code-server!"   
-}
-}
-
 resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"
@@ -118,13 +96,7 @@ ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 git clone git@github.com:${var.repo}
 
 # install code-server
-echo "CS_REL value: " ${var.code-server}
-
-if [[ "${var.code-server}" != "latest" ]]; then
-  CS_REL=" -s -- --version=${lookup(local.code-server-releases, var.code-server)}"
-fi
-
-curl -fsSL https://code-server.dev/install.sh | sh $CS_REL
+curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
@@ -138,7 +110,8 @@ SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vs
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "code-server ${var.code-server}"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
   subdomain = false

@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -31,15 +31,8 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "oss"
-  validation {
-    condition = contains([
-      "oss",
-      "coder-oss",
-      "coder-workspaces"
-    ], var.workspaces_namespace)
-    error_message = "Invalid namespace!"   
-}  
+  default     = ""  
+
 }
 
 provider "kubernetes" {
@@ -55,21 +48,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default = ""
-}
-
-variable "image" {
-  description = <<-EOF
-  Container images from coder-com
-
-  EOF
-  default = "marktmilligan/applications:latest"
-  validation {
-    condition = contains([
-      "marktmilligan/applications:latest"
-    ], var.image)
-    error_message = "Invalid image!"   
-}  
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 variable "cpu" {
@@ -133,30 +112,29 @@ cp /etc/zsh/newuser.zshrc.recommended $HOME/.zshrc
 echo "Initializing Supervisor..."
 nohup supervisord
 
-
-
   EOT  
 }
 
-# code-server
 resource "coder_app" "code-server" {
-  agent_id      = coder_agent.coder.id
-  name          = "VS Code"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
+  agent_id = coder_agent.coder.id
+  slug          = "code-server"  
+  display_name  = "VS Code"
+  url      = "http://localhost:13337/?folder=/home/coder"
+  icon     = "/icon/code.svg"
   subdomain = false
   share     = "owner"
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
-    interval  = 3
-    threshold = 10
-  }   
+    interval  = 5
+    threshold = 15
+  }  
 }
 
 resource "coder_app" "novnc" {
   agent_id      = coder_agent.coder.id
-  name          = "noVNC Desktop"
+  slug          = "vnc"  
+  display_name  = "NoVNC Desktop"
   icon          = "/icon/novnc.svg"
   url           = "http://localhost:6081"
   subdomain = false
@@ -164,8 +142,8 @@ resource "coder_app" "novnc" {
 
   healthcheck {
     url       = "http://localhost:6081/healthz"
-    interval  = 6
-    threshold = 20
+    interval  = 5
+    threshold = 15
   } 
 }
 
@@ -185,7 +163,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "docker.io/${var.image}"
+      image   = "docker.io/marktmilligan/applications:latest"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"

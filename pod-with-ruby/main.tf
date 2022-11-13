@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -29,18 +29,10 @@ variable "use_kubeconfig" {
 
 variable "workspaces_namespace" {
   description = <<-EOF
-  Kubernetes namespace to deploy the workspace into
+  Kubernetes namespace to create the workspace pod (required)
 
   EOF
-  default = "oss"
-  validation {
-    condition = contains([
-      "oss",
-      "coder-oss",
-      "coder-workspaces"
-    ], var.workspaces_namespace)
-    error_message = "Invalid namespace!"   
-}  
+  default = ""
 }
 
 provider "kubernetes" {
@@ -93,7 +85,7 @@ variable "dotfiles_uri" {
 
   see https://dotfiles.github.io
   EOF
-  default     = ""
+  default     = "git@github.com:sharkymark/dotfiles.git"
 }
 
 resource "coder_agent" "dev" {
@@ -164,7 +156,8 @@ resource "coder_agent" "dev" {
 # code-server
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -182,7 +175,8 @@ resource "coder_app" "code-server" {
 # soysoys bookmarking app
 resource "coder_app" "soysoys" {
   agent_id = coder_agent.dev.id
-  name     = "bookmarks"
+  slug          = "bookmarks"  
+  display_name  = "Bookmarks"
   icon     = "https://www.pngfind.com/pngs/m/20-200857_bookmark-icon-png-download-pdf-bookmark-icon-transparent.png"
   url      = "http://localhost:3000"
   subdomain = true
@@ -199,7 +193,8 @@ resource "coder_app" "soysoys" {
 # fifthster list app
 resource "coder_app" "fifthster" {
   agent_id = coder_agent.dev.id
-  name     = "lists"
+  slug          = "lists"  
+  display_name  = "Lists"
   icon     = "https://cdn-icons-png.flaticon.com/512/1217/1217026.png"
   url      = "http://localhost:3001"
   subdomain = true
@@ -217,7 +212,8 @@ resource "coder_app" "fifthster" {
 # employee survey
 resource "coder_app" "employeesurvey" {
   agent_id = coder_agent.dev.id
-  name     = "survey"
+  slug          = "survey"  
+  display_name  = "Survey"
   icon     = "https://cdn.iconscout.com/icon/free/png-256/hacker-news-3521477-2944921.png"
   url      = "http://localhost:3002"
   subdomain = true
@@ -259,8 +255,8 @@ resource "kubernetes_pod" "main" {
       }
       resources {
         requests = {
-          cpu    = "500m"
-          memory = "500Mi"
+          cpu    = "250m"
+          memory = "250Mi"
         }        
         limits = {
           cpu    = "${var.cpu}"

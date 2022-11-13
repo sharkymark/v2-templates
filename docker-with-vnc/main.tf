@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.5.3"
+      version = "0.6.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
@@ -57,7 +57,8 @@ nohup supervisord
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
   subdomain = false
@@ -72,7 +73,8 @@ resource "coder_app" "code-server" {
 
 resource "coder_app" "novnc" {
   agent_id      = coder_agent.dev.id
-  name          = "noVNC Desktop"
+  slug          = "vnc"  
+  display_name  = "NoVNC Desktop"
   icon          = "/icon/novnc.svg"
   url           = "http://localhost:6081"
   subdomain = false

@@ -74,7 +74,7 @@ resource "coder_agent" "dev" {
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:sharkmark/flask-redis-docker-compose.git
+git clone --progress git@github.com:sharkymark/flask-redis-docker-compose.git
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri}
@@ -82,6 +82,8 @@ coder dotfiles -y ${var.dotfiles_uri}
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
+
+DEBIAN_FRONTEND=noninteractive sudo apt install docker-compose &
 
 EOT
 }  
@@ -98,8 +100,8 @@ resource "coder_app" "code-server" {
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
-    interval  = 3
-    threshold = 10
+    interval  = 6
+    threshold = 20
   }  
 }
 
@@ -158,7 +160,7 @@ resource "coder_metadata" "workspace_info" {
   } 
   item {
     key   = "repo"
-    value = "git@github.com:sharkmark/flask-redis-docker-compose.git"
+    value = "git@github.com:sharkymark/flask-redis-docker-compose.git"
   }  
 }
 

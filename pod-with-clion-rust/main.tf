@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -67,7 +67,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to create the workspace pod (required)
 
   EOF
-  default = "oss"
+  default = ""
 }
 
 provider "kubernetes" {
@@ -122,7 +122,8 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=${var.folder_path}"
   subdomain = false
@@ -137,7 +138,8 @@ resource "coder_app" "code-server" {
 
 resource "coder_app" "jetbrains-clion" {
   agent_id      = coder_agent.coder.id
-  name          = "CLion"
+  slug          = "clion"  
+  display_name  = "CLion"
   icon          = "/icon/clion.svg"
   url           = "http://localhost:9001/"
   subdomain = false

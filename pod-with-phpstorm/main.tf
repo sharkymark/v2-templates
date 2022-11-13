@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -29,18 +29,19 @@ variable "use_kubeconfig" {
 
 variable "workspaces_namespace" {
   description = <<-EOF
-  Kubernetes namespace to deploy the workspace into
+  Kubernetes namespace to create the workspace pod (required)
 
   EOF
-  default = "oss"
-  validation {
-    condition = contains([
-      "oss",
-      "coder-oss",
-      "coder-workspaces"
-    ], var.workspaces_namespace)
-    error_message = "Invalid namespace!"   
-}  
+  default = ""
+}
+
+variable "dotfiles_uri" {
+  description = <<-EOF
+  Dotfiles repo URI (optional)
+
+  see https://dotfiles.github.io
+  EOF
+  default = "git@github.com:sharkymark/dotfiles.git"
 }
 
 provider "kubernetes" {
@@ -84,15 +85,6 @@ variable "memory" {
 variable "disk_size" {
   description = "Disk size (__ GB)"
   default     = 10
-}
-
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default     = ""
 }
 
 resource "coder_agent" "dev" {
@@ -148,7 +140,8 @@ resource "coder_agent" "dev" {
 # code-server
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -164,7 +157,8 @@ resource "coder_app" "code-server" {
 
 resource "coder_app" "php1" {
   agent_id = coder_agent.dev.id
-  name     = "PhpStorm 1"
+  slug          = "phpstorm1"  
+  display_name  = "PhpStorm 1"
   icon     = "/icon/phpstorm.svg"
   url      = "http://localhost:9001"
   subdomain = false
@@ -179,7 +173,8 @@ resource "coder_app" "php1" {
 
 resource "coder_app" "phpstorm2" {
   agent_id = coder_agent.dev.id
-  name     = "PhpStorm 2"
+  slug          = "phpstorm2"  
+  display_name  = "PhpStorm 2"
   icon     = "/icon/phpstorm.svg"
   url      = "http://localhost:9002"
   subdomain = false
@@ -220,8 +215,8 @@ resource "kubernetes_pod" "main" {
       }
       resources {
         requests = {
-          cpu    = "500m"
-          memory = "1000Mi"
+          cpu    = "250m"
+          memory = "500Mi"
         }        
         limits = {
           cpu    = "${var.cpu}"

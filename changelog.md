@@ -1,5 +1,8 @@
 # Changelog
 
+11-13-22 mark@coder.com
+1. updated all templates to latest coder terraform provider 0.6.0
+
 11-6-22 mark@coder.com
 1. added an FAQ page
 2. updated projector pod templates to coder provider 0.6.0

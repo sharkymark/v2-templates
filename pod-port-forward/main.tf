@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -35,7 +35,7 @@ variable "workspaces_namespace" {
   description = <<-EOF
   The Kubernetes namespace to create the workspace pod
   EOF
-  default = "oss"
+  default = ""
 }
 
 provider "kubernetes" {
@@ -72,14 +72,17 @@ coder dotfiles -y ${var.dotfiles_uri}
 
 # build node dependencies
 cd coder-react
+export NODE_OPTIONS=--openssl-legacy-provider
 yarn &
+
 
   EOT  
 }
 
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
-  name     = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
   subdomain = false
@@ -95,7 +98,8 @@ resource "coder_app" "code-server" {
 # node app
 resource "coder_app" "node-react-app" {
   agent_id = coder_agent.dev.id
-  name     = "node-react-app"
+  slug          = "nodeapp"  
+  display_name  = "Node React App"
   icon     = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
   url      = "http://localhost:3000"
   subdomain = true
@@ -126,7 +130,7 @@ resource "kubernetes_pod" "main" {
     container {
       name    = "coder-container"
       image   = "codercom/enterprise-node:ubuntu"
-      #image_pull_policy = "Always"
+      image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
         run_as_user = "1000"

@@ -31,15 +31,8 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "oss"
-  validation {
-    condition = contains([
-      "oss",
-      "coder-oss",
-      "coder-workspaces"
-    ], var.workspaces_namespace)
-    error_message = "Invalid namespace!"   
-}  
+  default     = ""  
+
 }
 
 provider "kubernetes" {

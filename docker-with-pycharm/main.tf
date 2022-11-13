@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.5.3"
+      version = "~> 0.6.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
@@ -18,17 +18,6 @@ variable "dotfiles_uri" {
   see https://dotfiles.github.io
   EOF
   default = "git@github.com:sharkymark/dotfiles.git"
-}
-
-variable "image" {
-  description = "Container Image"
-  default     = "codercom/enterprise-pycharm:ubuntu"
-  validation {
-    condition = contains([
-      "codercom/enterprise-pycharm:ubuntu"
-    ], var.image)
-    error_message = "Invalid container image!"  
-}
 }
 
 provider "docker" {
@@ -82,7 +71,8 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  name          = "VS Code"
+  slug          = "code-server"  
+  display_name  = "VS Code"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -97,7 +87,8 @@ resource "coder_app" "code-server" {
 
 resource "coder_app" "pycharm" {
   agent_id      = coder_agent.coder.id
-  name          = "PyCharm"
+  slug          = "pycharm"  
+  display_name  = "PyCharm"
   icon          = "/icon/pycharm.svg"
   url           = "http://localhost:9001/"
   subdomain = false
@@ -112,7 +103,7 @@ resource "coder_app" "pycharm" {
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = "${var.image}"
+  image = "codercom/enterprise-pycharm:ubuntu"
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
@@ -153,6 +144,6 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id   
   item {
     key   = "image"
-    value = "${var.image}"
+    value = "codercom/enterprise-pycharm:ubuntu"
   }     
 }
