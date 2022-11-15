@@ -1,5 +1,8 @@
 # Changelog
 
+11-15-22 mark@coder.com
+1. added a docker-in-docker template if sysbox is added to your docker host. When I get sysbox in K8s working, I'll post a template.
+
 11-13-22 mark@coder.com
 1. updated all templates to latest coder terraform provider 0.6.0
 
