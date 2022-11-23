@@ -1,5 +1,8 @@
 # Changelog
 
+11-23-22 mark@coder.com
+1. created a new Visual Studio, Windows AWS EC2 template.
+
 11-19-22 mark@coder.com
 1. added a docker-in-pod template if sysbox is added to your kubernetes cluster, in this case as a separate node pool. Note: The K8s provider is not official; We have an open PR with Terraform to update the Kubernetes provider for sysbox support.
 
