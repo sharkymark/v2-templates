@@ -1,5 +1,8 @@
 # Changelog
 
+11-25-22 mark@coder.com
+1. added another docker-in-pod template using the updated Kubernetes Terraform provider.
+
 11-23-22 mark@coder.com
 1. created a new Visual Studio, Windows AWS EC2 template.
 
