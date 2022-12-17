@@ -1,5 +1,8 @@
 # Changelog
 
+12-17-22 mark@coder.com
+1. added a Docker side-car pod template (so you do not have to use sysbox)
+
 12-3-22 mark@coder.com
 1. added a Google Cloud Windows and Visual Studio template which prompts user for WinOS and VS release
 
