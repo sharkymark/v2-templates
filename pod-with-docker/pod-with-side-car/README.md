@@ -22,7 +22,6 @@ tags: [cloud, kubernetes]
 ```sh
   spec { 
     security_context {
-      run_as_user = "1000"
       fs_group    = "1000"
     }  
     # Run a privileged dind (Docker in Docker) container
