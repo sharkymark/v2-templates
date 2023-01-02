@@ -132,6 +132,9 @@ resource "kubernetes_pod" "main" {
     namespace = var.workspaces_namespace
   }
   spec { 
+    security_context {
+      fs_group    = "1000"
+    }      
     # Run a privileged dind (Docker in Docker) container
     container {
       name  = "docker-sidecar"

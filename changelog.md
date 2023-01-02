@@ -1,5 +1,8 @@
 # Changelog
 
+01-02-23 mark@coder.com
+1. Updated pod-docker-side-car with correct group security context in pod spec
+
 12-17-22 mark@coder.com
 1. added a Docker side-car pod template and a Docker side-car Docker template (so you do not have to use sysbox)
 
