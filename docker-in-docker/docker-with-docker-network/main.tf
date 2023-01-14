@@ -5,7 +5,6 @@ terraform {
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.22.0"
     } 
   }
 }
@@ -104,6 +103,14 @@ resource "docker_volume" "coder_volume" {
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = docker_container.workspace[0].id
+  item {
+    key   = "Docker host name"
+    value = docker_container.dind.name
+  }     
+  item {
+    key   = "Docker network name"
+    value = docker_network.private_network.name
+  }   
   item {
     key   = "image"
     value = "docker.io/codercom/enterprise-golang:ubuntu"
