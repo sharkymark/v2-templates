@@ -1,5 +1,8 @@
 # Changelog
 
+01-19-23 mark@coder.com
+1. Added A LOT of emojis
+
 01-02-23 mark@coder.com
 1. Updated pod-docker-side-car with correct group security context in pod spec
 
