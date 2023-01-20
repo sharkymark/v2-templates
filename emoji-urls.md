@@ -90,11 +90,9 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [pink axolotls ](https://cdn.apexminecrafthosting.com/img/uploads/2021/07/02154317/axolotls.gif)
 
-[frogger]
-(https://uploads.gamedev.net/monthly_2018_11/dieeffect.gif.a9cd3ab99130b67ab2d767d0ec54ea59.gif)
+[frogger](https://uploads.gamedev.net/monthly_2018_11/dieeffect.gif.a9cd3ab99130b67ab2d767d0ec54ea59.gif)
 
-[pacman]
-(https://media0.giphy.com/media/d9QiBcfzg64Io/200w.gif?cid=6c09b952gx9m7ipofuvxgt1u58lmbk3vpzddbvgj737dckkr&rid=200w.gif&ct=g)
+[pacman](https://media0.giphy.com/media/d9QiBcfzg64Io/200w.gif?cid=6c09b952gx9m7ipofuvxgt1u58lmbk3vpzddbvgj737dckkr&rid=200w.gif&ct=g)
 
 [getting ghosts](https://media.tenor.com/2NwU1jFgGP8AAAAM/pacman.gif)
 
