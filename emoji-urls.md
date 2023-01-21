@@ -146,6 +146,14 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [smiling emoji](https://d1j8pt39hxlh3d.cloudfront.net/uploads/beaming_face_with_smiling_eyes_256_2.gif)
 
+[sponge bob](https://www.freeiconspng.com/uploads/spongebob-squarepants-png-7.png)
+
+[patrick the starfish](https://upload.wikimedia.org/wikipedia/en/thumb/3/33/Patrick_Star.svg/220px-Patrick_Star.svg.png)
+
+[mr krabs](https://nick-intl.mtvnimages.com/uri/mgid:file:gsp:kids-assets:/nick/properties/spongebob-squarepants/characters/mrkrabs-character-web-desktop.png?height=0&width=480&matte=true&crop=false)
+
+[squidward](https://i.pinimg.com/originals/69/0f/7b/690f7b84045be0c4e4214860cca15089.png)
+
 [crying emoji](https://d1j8pt39hxlh3d.cloudfront.net/uploads/tears_of_joy_256_2.gif)
 
 [asleep emoji](https://i.pinimg.com/originals/70/7d/c9/707dc9b916be7c467876a7f089c397f4.gif)
