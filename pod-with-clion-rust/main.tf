@@ -2,7 +2,6 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -84,12 +83,10 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
-# install rustup and dependencies
-
+# install vs code extension
 /coder/configure
 
 # use coder CLI to clone and install dotfiles
-
 coder dotfiles -y ${var.dotfiles_uri}
 
 # Configure and run JetBrains IDEs
@@ -105,13 +102,12 @@ pip3 install projector-installer --user
 /home/coder/.local/bin/projector config add clion /opt/clion --force --use-separate-config --port 9001 --hostname localhost
 /home/coder/.local/bin/projector run clion &
 
-# install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh
+# install and start code-server (it is in the image)
 code-server --auth none --port 13337 &
 
 # clone repo
 ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:mark-theshark/rust-hw.git
+git clone --progress git@github.com:sharkymark/rust-hw.git
 
 # install Rust and rust-analyzer VS Code extensions into code-server
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension}
@@ -170,6 +166,7 @@ resource "kubernetes_pod" "main" {
     container {
       name    = "clion"
       image   = "docker.io/marktmilligan/clion-rust:latest"
+      image_pull_policy = "Always"  
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"
@@ -185,7 +182,7 @@ resource "kubernetes_pod" "main" {
         }        
         limits = {
           cpu    = "4"
-          memory = "4G"
+          memory = "6G"
         }
       }        
       volume_mount {
@@ -215,4 +212,37 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
       }
     }
   }
+}
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = kubernetes_pod.main[0].id
+  item {
+    key   = "CPU"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].limits.cpu} cores"
+  }
+  item {
+    key   = "memory"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].limits.memory}"
+  }  
+  item {
+    key   = "image"
+    value = "docker.io/${kubernetes_pod.main[0].spec[0].container[0].image}"
+  }
+  item {
+    key   = "repo cloned"
+    value = "sharkymark/rust-hw.git"
+  }  
+  item {
+    key   = "disk"
+    value = "${var.disk_size}GiB"
+  }
+  item {
+    key   = "volume"
+    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+  } 
+  item {
+    key   = "jetbrains projector port"
+    value = "9001"
+  }     
 }
