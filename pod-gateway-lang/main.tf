@@ -2,7 +2,6 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -51,7 +50,7 @@ variable "dotfiles_uri" {
 
 variable "cpu" {
   description = "CPU (__ cores)"
-  default     = 2
+  default     = 4
   validation {
     condition = contains([
       "2",
@@ -64,7 +63,7 @@ variable "cpu" {
 
 variable "memory" {
   description = "Memory (__ GB)"
-  default     = 4
+  default     = 8
   validation {
     condition = contains([
       "4",
@@ -173,8 +172,8 @@ resource "kubernetes_pod" "main" {
       }  
       resources {
         requests = {
-          cpu    = "500m"
-          memory = "500Mi"
+          cpu    = "1"
+          memory = "1G"
         }        
         limits = {
           cpu    = "${var.cpu}"
@@ -214,13 +213,21 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
+    key   = "CPU limits"
     value = "${var.cpu} cores"
   }
   item {
-    key   = "memory"
+    key   = "memory limits"
     value = "${var.memory}GB"
-  }  
+  } 
+  item {
+    key   = "CPU requests"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
+  }
+  item {
+    key   = "memory requests"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
+  }    
   item {
     key   = "image"
     value = "docker.io/${lookup(local.image, var.lang)}"
