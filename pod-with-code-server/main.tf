@@ -2,7 +2,6 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -81,7 +80,7 @@ variable "repo" {
       "coder/code-server.git",      
       "sharkymark/commissions.git",
       "sharkymark/java_helloworld.git",
-      "sharkymark/python-commissions.git"
+      "sharkymark/python_commissions.git"
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -176,7 +175,7 @@ resource "kubernetes_pod" "main" {
     container {
       name    = "coder-container"
       image   = "docker.io/${var.image}"
-      #image_pull_policy = "Always"
+      image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"
@@ -187,7 +186,7 @@ resource "kubernetes_pod" "main" {
       }  
       resources {
         requests = {
-          cpu    = "500m"
+          cpu    = "250m"
           memory = "500Mi"
         }        
         limits = {
@@ -235,6 +234,14 @@ resource "coder_metadata" "workspace_info" {
     key   = "memory"
     value = "${var.memory}GB"
   }  
+  item {
+    key   = "CPU requests"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
+  }
+  item {
+    key   = "memory requests"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
+  }   
   item {
     key   = "image"
     value = "docker.io/${var.image}"

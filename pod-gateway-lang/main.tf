@@ -77,7 +77,7 @@ variable "memory" {
 locals {
   repo = {
     "Java" = "sharkymark/java_helloworld.git" 
-    "Python" = "sharkymark/python-commissions.git" 
+    "Python" = "sharkymark/python_commissions.git" 
     "Go" = "coder/coder.git"
   }  
   image = {
@@ -89,7 +89,7 @@ locals {
 
 variable "lang" {
   description = "Programming language"
-  default     = "Go"
+  default     = "Java"
   validation {
     condition = contains([
       "Go",
@@ -172,7 +172,7 @@ resource "kubernetes_pod" "main" {
       }  
       resources {
         requests = {
-          cpu    = "1"
+          cpu    = "250m"
           memory = "1G"
         }        
         limits = {

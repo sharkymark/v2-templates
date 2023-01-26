@@ -177,12 +177,12 @@ resource "kubernetes_pod" "main" {
       }
       resources {
         requests = {
-          cpu    = "500m"
+          cpu    = "250m"
           memory = "500Mi"
         }        
         limits = {
           cpu    = "4"
-          memory = "6G"
+          memory = "4G"
         }
       }        
       volume_mount {
