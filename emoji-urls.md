@@ -31,6 +31,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [donkey kong falling](https://thumbs.gfycat.com/PleasingDangerousGonolek-size_restricted.gif)
 
+[dunder mifflin corporate logo](https://www.pngkey.com/png/full/821-8218918_14theoffice01-dunder-mifflin.png)
+
 [eclipse](https://cdn.freebiesupply.com/logos/large/2x/eclipse-11-logo-png-transparent.png)
 
 [go](https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png)
@@ -71,6 +73,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [list app icon](https://cdn-icons-png.flaticon.com/512/1217/1217026.png)
 
 [microsoft windows](https://upload.wikimedia.org/wikipedia/commons/5/5f/Windows_logo_-_2012.svg)
+
+[classic microsoft windows](https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Windows_Logo_%281992-2001%29.svg/2362px-Windows_Logo_%281992-2001%29.svg.png)
 
 [minecraft - cat and dog](https://i.gifer.com/nS1.gif)
 
