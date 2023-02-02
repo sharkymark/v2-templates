@@ -124,6 +124,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [oracle](https://i0.wp.com/grbizm.com/wp-content/uploads/2021/07/oracle-cloud-logo.png?fit=1024%2C662&ssl=1)
 
+[pgadmin](https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Postgresql_elephant.svg/1200px-Postgresql_elephant.svg.png)
+
 [php](https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Webysther_20160423_-_Elephpant.svg/2560px-Webysther_20160423_-_Elephpant.svg.png)
 
 [phpstorm](https://resources.jetbrains.com/storage/products/company/brand/logos/PhpStorm_icon.svg)
