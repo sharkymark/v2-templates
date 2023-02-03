@@ -19,6 +19,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [cat eating noodles](https://thumbs.gfycat.com/AridDecisiveCrab-size_restricted.gif)
 
+[clion](https://resources.jetbrains.com/storage/products/company/brand/logos/CLion_icon.svg?_ga=2.213423890.785417507.1675279285-1717186880.1621809973&_gl=1*b8pf15*_ga*MTcxNzE4Njg4MC4xNjIxODA5OTcz*_ga_9J976DJZ68*MTY3NTM3MDk4OS44Ny4xLjE2NzUzNzI1NDUuNTcuMC4w)
+
 [digital ocean](https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/DigitalOcean_logo.svg/1024px-DigitalOcean_logo.svg.png)
 
 [docker](https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png)
@@ -181,6 +183,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [vs code](https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Visual_Studio_Code_1.35_icon.svg/2048px-Visual_Studio_Code_1.35_icon.svg.png)
 
 [vmware](https://1000logos.net/wp-content/uploads/2021/05/VMware-logo.png)
+
+[webstorm](https://resources.jetbrains.com/storage/products/company/brand/logos/WebStorm_icon.svg?_ga=2.222901149.785417507.1675279285-1717186880.1621809973&_gl=1*1x810c4*_ga*MTcxNzE4Njg4MC4xNjIxODA5OTcz*_ga_9J976DJZ68*MTY3NTM3MDk4OS44Ny4xLjE2NzUzNzA5OTkuNTAuMC4w)
 
 [zombie crying](https://thumbs.gfycat.com/DigitalFloweryEgg-max-1mb.gif)
 
