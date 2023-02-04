@@ -2,11 +2,9 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.12.1"
     }   
   }
 }
@@ -51,7 +49,7 @@ variable "dotfiles_uri" {
 
 variable "cpu" {
   description = "CPU (__ cores)"
-  default     = 2
+  default     = 4
   validation {
     condition = contains([
       "2",
@@ -77,30 +75,28 @@ variable "memory" {
 
 locals {
   ide-dir = {
-    "IntelliJ" = "idea" 
-    "PyCharm" = "pycharm" 
-    "GoLand" = "goland"
-  }
-  repo = {
-    "IntelliJ" = "sharkymark/java_helloworld.git" 
-    "PyCharm" = "sharkymark/python-commissions.git" 
-    "GoLand" = "coder/coder.git"
-  }  
+    "IntelliJ IDEA Ultimate" = "idea",
+    "PyCharm Professional" = "pycharm",
+    "GoLand" = "goland",
+    "WebStorm" = "webstorm" 
+  } 
   image = {
-    "IntelliJ" = "codercom/enterprise-intellij:ubuntu" 
-    "PyCharm" = "codercom/enterprise-pycharm:ubuntu" 
-    "GoLand" = "codercom/enterprise-goland:ubuntu"
+    "IntelliJ IDEA Ultimate" = "marktmilligan/intellij-idea-ultimate:2022.3.2",
+    "PyCharm Professional" = "marktmilligan/pycharm-pro:2022.3.2",
+    "GoLand" = "marktmilligan/goland:2022.3.2",
+    "WebStorm" = "marktmilligan/webstorm:2022.3.2"
   }  
 }
 
 variable "ide" {
-  description = "jetbrains ide"
-  default     = "IntelliJ"
+  description = "JetBrains IDE"
+  default     = "IntelliJ IDEA Ultimate"
   validation {
     condition = contains([
-      "IntelliJ",
-      "PyCharm",      
-      "GoLand"
+      "IntelliJ IDEA Ultimate",
+      "PyCharm Professional",
+      "GoLand",
+      "WebStorm"
     ], var.ide)
     error_message = "Invalid JetBrains IDE!"   
 }
@@ -118,40 +114,15 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
-# clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${lookup(local.repo, var.ide)}
-
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri}
 
-# install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
-
-# configure jetbrains gateway to installed ide
+# script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
+# More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
 cd /opt/${lookup(local.ide-dir, var.ide)}/bin
 ./remote-dev-server.sh registerBackendLocationForGateway
 
   EOT  
-}
-
-# code-server
-resource "coder_app" "code-server" {
-  agent_id      = coder_agent.coder.id
-  slug          = "code-server"  
-  display_name  = "VS Code"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
-  subdomain = false
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 3
-    threshold = 10
-  }  
 }
 
 resource "kubernetes_pod" "main" {
@@ -234,10 +205,6 @@ resource "coder_metadata" "workspace_info" {
     key   = "image"
     value = "docker.io/${lookup(local.image, var.ide)}"
   }
-  item {
-    key   = "repo cloned"
-    value = "docker.io/${lookup(local.repo, var.ide)}"
-  }  
   item {
     key   = "disk"
     value = "${var.disk_size}GiB"
