@@ -1,6 +1,6 @@
 # Coder v2 OSS and v2 Enterprise help
 
-This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Enterprise (paid). If you're looking for an v2 enterprise trial key, contact sales@coder.com
+This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Enterprise (paid). If you're looking for an v2 enterprise trial key, contact [Sales](https://coder.com/contact)
 
 > These templates are examples and are not supported. They are meant to show how Coder templates work and there is no service level agreement or support on them.
 
