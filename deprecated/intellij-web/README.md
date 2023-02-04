@@ -1,11 +1,13 @@
-## JetBrains IntelliJ Ultimate in a browser
+## JetBrains IntelliJ Ultimate or Community in a browser
 
 This is a Kubernetes pod with JetBrains IntelliJ Ultimate IDE and projector to run in a browser
 
 ## How it works
 
+- Ask user if they want Community or IDEA Ultimate
 - JetBrains and code-server IDEs are installed in the image.
 - Once the workspace starts, the JetBrains `projector` CLI configures and starts the JetBrains IDE and code-server (VS Code) IDE to run in a browser
+- If IDEA Ultimate, run `remote-dev-server.sh` in `/opt/<ide folder>/bin` to create symbolic link to point Gateway to container's JetBrains IDE
 
 ## Important notes
 
@@ -24,3 +26,11 @@ This is a Kubernetes pod with JetBrains IntelliJ Ultimate IDE and projector to r
 - [Coder's documentation on migrating from projector to JetBrains Gateway](https://coder.com/docs/v2/latest/ides/gateway)
 
 - [JetBrains product codes for Dockerfile install](https://plugins.jetbrains.com/docs/marketplace/product-codes.html)
+
+- [JetBrains IntelliJ versions](https://www.jetbrains.com/idea/download/other.html)
+
+- [Five required URLs to download JetBrains IDEs in Gateway - search on download.jetbrains.com](https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup)
+
+- [JetBrains point Gateway to container IDE and not download from JetBrains.com](https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup)
+
+- [JetBrains Gateway fully offline mode](https://www.jetbrains.com/help/idea/fully-offline-mode.html)

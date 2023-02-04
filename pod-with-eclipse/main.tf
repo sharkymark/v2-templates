@@ -98,6 +98,9 @@ cp /etc/zsh/newuser.zshrc.recommended $HOME/.zshrc
 echo "Initializing Supervisor..."
 nohup supervisord
 
+# the dockerfile with eclipse
+# https://github.com/sharkymark/dockerfiles/blob/main/eclipse/Dockerfile
+
 # eclipse
 DISPLAY=:90 /opt/eclipse/eclipse -data /home/coder sh &
 

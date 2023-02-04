@@ -1,5 +1,8 @@
 # Changelog
 
+02-03-23 mark@coder.com
+1. Moved all JetBrains `projector` templates to the deprecated along with others that may not work
+
 01-19-23 mark@coder.com
 1. Added A LOT of emojis
 

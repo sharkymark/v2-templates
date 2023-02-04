@@ -67,6 +67,22 @@ variable "memory" {
 }
 }
 
+variable "edition" {
+  description = "JetBrains IntelliJ Edition"
+  default     = "ultimate"
+  validation {
+    condition = contains([
+      "community",
+      "ultimate"
+    ], var.edition)
+    error_message = "Invalid edition!"  
+}
+}
+
+locals {
+  image-tag = "${var.edition == "community" ? "marktmilligan/idea-community:2022.1.4" : "marktmilligan/idea-ultimate-chown:2022.3.2"}"
+}
+
 variable "disk_size" {
   description = "Disk size (__ GB)"
   default     = 10
@@ -93,11 +109,12 @@ resource "coder_agent" "dev" {
     code-server --auth none --port 13337 &
 
     # Configure and run JetBrains IDEs in a web browser
+    # https://www.jetbrains.com/idea/download/other.html
     # Using JetBrains projector; please migrate to Gateway
     # https://lp.jetbrains.com/projector/
     # https://coder.com/docs/v2/latest/ides/gateway
 
-    # Assumes you have IntelliJ (/opt/idea)
+    # Assumes you have JetBrains IDE installed in /opt
     # and pip3 installed in
     # your image and the "coder" user has filesystem
     # permissions for "/opt/*"
@@ -114,6 +131,10 @@ resource "coder_agent" "dev" {
     git clone --progress git@github.com:sharkymark/java_helloworld.git &
     git clone --progress git@github.com:iluwatar/java-design-patterns.git &
 
+    # create symbolic link for JetBrains Gateway
+    if [[ ${var.edition} = "ultimate" ]]; then
+      /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
+    fi
 
     ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri}" : ""}
   EOF
@@ -140,7 +161,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "intellij1" {
   agent_id = coder_agent.dev.id
   slug          = "intellij1"  
-  display_name  = "IntelliJ Ultimate"  
+  display_name  = "${var.edition}"  
   icon          = "/icon/intellij.svg"
   url           = "http://localhost:9001"
   subdomain     = false
@@ -169,7 +190,7 @@ resource "kubernetes_pod" "main" {
     }
     container {
       name    = "dev"
-      image   = "docker.io/marktmilligan/idea-ultimate-chmod:latest"
+      image   = "docker.io/${local.image-tag}"
       image_pull_policy = "Always"       
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
