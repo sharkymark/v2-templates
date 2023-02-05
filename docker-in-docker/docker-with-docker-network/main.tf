@@ -34,10 +34,10 @@ resource "coder_agent" "coder" {
 # clone coder/coder repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:coder/coder.git
+git clone --progress git@github.com:sharkymark/flask-redis-docker-compose.git &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+coder dotfiles -y ${var.dotfiles_uri} &
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -67,7 +67,8 @@ resource "docker_network" "private_network" {
   name = "network-${data.coder_workspace.me.id}"
 }
 
-resource "docker_container" "dind" {
+resource "docker_container" "dind" {  
+  count   = data.coder_workspace.me.start_count  
   image      = "docker:dind"
   privileged = true
   name       = "dind-${data.coder_workspace.me.id}"
@@ -79,12 +80,12 @@ resource "docker_container" "dind" {
 
 resource "docker_container" "workspace" {
   count   = data.coder_workspace.me.start_count
-  image   = "codercom/enterprise-golang:ubuntu"
+  image   = "codercom/enterprise-base:ubuntu"
   name    = "dev-${data.coder_workspace.me.id}"
   command = ["sh", "-c", coder_agent.coder.init_script]
   env = [
     "CODER_AGENT_TOKEN=${coder_agent.coder.token}",
-    "DOCKER_HOST=${docker_container.dind.name}:2375"
+    "DOCKER_HOST=${docker_container.dind[0].name}:2375"
   ]
   volumes {
     container_path = "/home/coder/"
@@ -105,7 +106,7 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id
   item {
     key   = "Docker host name"
-    value = docker_container.dind.name
+    value = docker_container.dind[0].name
   }     
   item {
     key   = "Docker network name"
@@ -113,10 +114,10 @@ resource "coder_metadata" "workspace_info" {
   }   
   item {
     key   = "image"
-    value = "docker.io/codercom/enterprise-golang:ubuntu"
+    value = "docker.io/codercom/enterprise-base:ubuntu"
   }
   item {
     key   = "repo cloned"
-    value = "docker.io/coder/coder.git"
+    value = "docker.io/sharkymark/flask-redis-docker-compose.git"
   }     
 }

@@ -34,10 +34,10 @@ resource "coder_agent" "coder" {
 # clone coder/coder repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:coder/coder.git
+git clone --progress git@github.com:sharkymark/flask-redis-docker-compose.git &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+coder dotfiles -y ${var.dotfiles_uri} &
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -50,7 +50,7 @@ code-server --auth none --port 13337 &
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code"
+  display_name  = "VS Code Web"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -64,6 +64,7 @@ resource "coder_app" "code-server" {
 }
 
 resource "docker_container" "dind" {
+  count   = data.coder_workspace.me.start_count  
   image      = "docker:dind"
   privileged = true
   network_mode = "host"
@@ -73,7 +74,7 @@ resource "docker_container" "dind" {
 
 resource "docker_container" "workspace" {
   count   = data.coder_workspace.me.start_count
-  image   = "codercom/enterprise-golang:ubuntu"
+  image   = "codercom/enterprise-base:ubuntu"
   name    = "dev-${data.coder_workspace.me.id}"
   command = ["sh", "-c", coder_agent.coder.init_script]
   network_mode = "host"
@@ -101,10 +102,10 @@ resource "coder_metadata" "workspace_info" {
   }       
   item {
     key   = "image"
-    value = "docker.io/codercom/enterprise-golang:ubuntu"
+    value = "docker.io/codercom/enterprise-base:ubuntu"
   }
   item {
     key   = "repo cloned"
-    value = "docker.io/coder/coder.git"
+    value = "docker.io/coder/sharkymark/flask-redis-docker-compose.git"
   }     
 }

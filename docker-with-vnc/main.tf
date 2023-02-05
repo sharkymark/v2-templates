@@ -2,11 +2,9 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.6.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.22.0"
     }
   }
 }
@@ -41,7 +39,7 @@ curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+coder dotfiles -y ${var.dotfiles_uri} &
 
 # start VNC
 echo "Creating desktop..."
@@ -58,7 +56,7 @@ nohup supervisord
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code"
+  display_name  = "VS Code Web"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
   subdomain = false
@@ -87,24 +85,13 @@ resource "coder_app" "novnc" {
   } 
 }
 
-resource "docker_image" "vnc" {
-  name = "vnc:latest"
-  build {
-    path  = "./image/"
-    #tag   = ["vnc:latest"]
-  }
-  #keep_locally = true
-}
-
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = docker_image.vnc.latest
+  image = "codercom/enterprise-vnc:ubuntu"
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
-  # Use the docker gateway if the access URL is 127.0.0.1
-  #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
 
   command = [
     "sh", "-c",
@@ -128,4 +115,13 @@ resource "docker_container" "workspace" {
 
 resource "docker_volume" "coder_volume" {
   name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+}
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = docker_container.workspace[0].id   
+  item {
+    key   = "image"
+    value = "codercom/enterprise-vnc:ubuntu"
+  }     
 }
