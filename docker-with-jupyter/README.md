@@ -25,5 +25,7 @@ tags: [local, docker]
 
 ### Resources
 [JupyterLab docs](https://jupyter-server.readthedocs.io/en/latest/index.html)
+
 [Jupyter Notebook docs](https://jupyter-notebook.readthedocs.io/en/stable/)
+
 [Coder Terraform Provider](https://registry.terraform.io/providers/coder/coder/latest/docs/resources/app)
