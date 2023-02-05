@@ -5,7 +5,6 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.12.1"
     }   
   }
 }
@@ -50,76 +49,6 @@ variable "dotfiles_uri" {
   default = "git@github.com:sharkymark/dotfiles.git"
 }
 
-variable "image" {
-  description = <<-EOF
-  Container images from coder-com
-
-  EOF
-  default = "codercom/enterprise-node:ubuntu"
-  validation {
-    condition = contains([
-      "codercom/enterprise-node:ubuntu",
-      "codercom/enterprise-golang:ubuntu",
-      "codercom/enterprise-java:ubuntu",
-      "codercom/enterprise-base:ubuntu"
-    ], var.image)
-    error_message = "Invalid image!"   
-}  
-}
-
-variable "repo" {
-  description = <<-EOF
-  Code repository to clone
-
-  EOF
-  default = "sharkymark/coder-react.git"
-  validation {
-    condition = contains([
-      "sharkymark/coder-react.git",
-      "coder/coder.git",
-      "coder/code-server.git",      
-      "sharkymark/commissions.git",
-      "sharkymark/java_helloworld.git",
-      "sharkymark/python_commissions.git",
-      "sharkymark/rust-hw.git"
-    ], var.repo)
-    error_message = "Invalid repo!"   
-}  
-}
-
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 1
-  validation {
-    condition = contains([
-      "1",
-      "2",
-      "4",
-      "6"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
-}
-
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 2
-  validation {
-    condition = contains([
-      "1",
-      "2",
-      "4",
-      "8"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
-  default     = 10
-}
-
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
@@ -130,41 +59,17 @@ resource "coder_agent" "coder" {
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${var.repo} &
+git clone --progress git@github.com:sharkymark/rust-hw.git
+
+# install rust programming language
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 # use coder CLI to clone and install dotfiles
-if [[ ${var.dotfiles_uri} != "" ]]; then
-  coder dotfiles -y ${var.dotfiles_uri}
-fi
-
-# if rust is the desired programming languge, install
-if [[ ${var.repo} = "sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
-fi
-
-# install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+coder dotfiles -y ${var.dotfiles_uri}
 
   EOT  
 }
 
-# code-server
-resource "coder_app" "code-server" {
-  agent_id      = coder_agent.coder.id
-  slug          = "code-server"  
-  display_name  = "VS Code Web"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
-  subdomain = false
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 3
-    threshold = 10
-  }  
-}
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
@@ -182,7 +87,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "docker.io/${var.image}"
+      image   = "docker.io/codercom/enterprise-base:ubuntu"
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -195,11 +100,11 @@ resource "kubernetes_pod" "main" {
       resources {
         requests = {
           cpu    = "250m"
-          memory = "500Mi"
+          memory = "2"
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = "4"
+          memory = "4G"
         }
       }                       
       volume_mount {
@@ -225,7 +130,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "10Gi"
       }
     }
   }
@@ -236,11 +141,11 @@ resource "coder_metadata" "workspace_info" {
   resource_id = kubernetes_pod.main[0].id
   item {
     key   = "CPU"
-    value = "${var.cpu} cores"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].limits.cpu} cores"
   }
   item {
     key   = "memory"
-    value = "${var.memory}GB"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].limits.memory}"
   }  
   item {
     key   = "CPU requests"
@@ -248,19 +153,19 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory requests"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}G"
   }   
   item {
     key   = "image"
-    value = "docker.io/${var.image}"
+    value = "docker.io/${kubernetes_pod.main[0].spec[0].container[0].name}"
   }
   item {
     key   = "repo cloned"
-    value = "docker.io/${var.repo}"
+    value = "https://github.com/sharkymark/rust-hw"
   }  
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = "${kubernetes_persistent_volume_claim.home-directory.spec[0].resources[0].requests.storage}"
   }
   item {
     key   = "volume"

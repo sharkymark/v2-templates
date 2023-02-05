@@ -2,11 +2,9 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.22.0"
     }
   }
 }
@@ -55,10 +53,6 @@ resource "coder_agent" "dev" {
 # start jupyter 
 jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' &
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
-
 # add some Python libraries
 pip3 install --user pandas &
 
@@ -70,27 +64,7 @@ mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 git clone --progress git@github.com:sharkymark/pandas_automl.git &
 
-# install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter
-
   EOT  
-}
-
-# code-server
-resource "coder_app" "code-server" {
-  agent_id      = coder_agent.dev.id
-  slug          = "code-server"  
-  display_name  = "VS Code"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
-  share         = "owner"
-  subdomain     = false  
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 5
-    threshold = 6
-  }   
 }
 
 resource "coder_app" "jupyter" {

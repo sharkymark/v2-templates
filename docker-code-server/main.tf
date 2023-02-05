@@ -2,11 +2,9 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.22.0"
     }
   }
 }
@@ -35,14 +33,13 @@ variable "image" {
   Container images from coder-com
 
   EOF
-  default = "codercom/enterprise-golang:ubuntu"
+  default = "codercom/enterprise-node:ubuntu"
   validation {
     condition = contains([
       "codercom/enterprise-node:ubuntu",
       "codercom/enterprise-golang:ubuntu",
       "codercom/enterprise-java:ubuntu",
-      "codercom/enterprise-base:ubuntu",
-      "marktmilligan/clion-rust:latest"
+      "codercom/enterprise-base:ubuntu"
     ], var.image)
     error_message = "Invalid image!"   
 }  
@@ -53,15 +50,16 @@ variable "repo" {
   Code repository to clone
 
   EOF
-  default = "coder/coder.git"
+  default = "sharkymark/coder-react.git"
   validation {
     condition = contains([
       "sharkymark/coder-react.git",
-      "coder/coder.git", 
-      "sharkymark/java_helloworld.git", 
-      "sharkymark/python_commissions.git",                 
-      "sharkymark/pandas_automl.git",
-      "sharkymark/rust-hw.git"     
+      "coder/coder.git",
+      "coder/code-server.git",      
+      "sharkymark/commissions.git",
+      "sharkymark/java_helloworld.git",
+      "sharkymark/python_commissions.git",
+      "sharkymark/rust-hw.git"    
     ], var.repo)
     error_message = "Invalid repo!"   
 }  
@@ -69,7 +67,7 @@ variable "repo" {
 
 variable "extension" {
   description = "VS Code extension"
-  default     = "golang.go"
+  default     = "eg2.vscode-npm-script"
   validation {
     condition = contains([
       "rust-lang.rust",
@@ -100,7 +98,12 @@ curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+coder dotfiles -y ${var.dotfiles_uri} &
+
+# if rust is the desired programming languge, install
+if [[ ${var.repo} = "sharkymark/rust-hw.git" ]]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
+fi
 
 # install VS Code extension into code-server
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${var.extension}
@@ -111,7 +114,7 @@ SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vs
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code"
+  display_name  = "VS Code Web"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
   subdomain = false
