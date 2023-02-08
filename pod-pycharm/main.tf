@@ -10,14 +10,12 @@ terraform {
 }
 
 locals {
-  workspaces_namespace = "coder-oss"
-  cpu-limit = "1"
-  memory-limit = "2G"
+  workspaces_namespace = "oss"
+  cpu-limit = "4"
+  memory-limit = "8G"
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
-  image = "codercom/enterprise-vnc:ubuntu"
-  repo = "git@github.com:coder/coder.git"
 }
 
 variable "use_kubeconfig" {
@@ -60,37 +58,12 @@ resource "coder_agent" "coder" {
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri}
 
-# clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress ${local.repo} &
-
-# start VNC
-echo "Creating desktop..."
-mkdir -p "$XFCE_DEST_DIR"
-cp -rT "$XFCE_BASE_DIR" "$XFCE_DEST_DIR"
-# Skip default shell config prompt.
-cp /etc/zsh/newuser.zshrc.recommended $HOME/.zshrc
-echo "Initializing Supervisor..."
-nohup supervisord
+# script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
+# More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
+cd /opt/idea/bin
+sudo ./remote-dev-server.sh registerBackendLocationForGateway
 
   EOT  
-}
-
-resource "coder_app" "novnc" {
-  agent_id      = coder_agent.coder.id
-  slug          = "vnc"  
-  display_name  = "NoVNC Desktop"
-  icon          = "/icon/novnc.svg"
-  url           = "http://localhost:6081"
-  subdomain = false
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:6081/healthz"
-    interval  = 5
-    threshold = 15
-  } 
 }
 
 resource "kubernetes_pod" "main" {
@@ -109,7 +82,8 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = local.image
+      image   = "docker.io/marktmilligan/pycharm-pro:2022.3.2"
+      image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
         run_as_user = "1000"
@@ -166,22 +140,14 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${local.memory-limit}"
+    value = "${local.memory-limit} GiB"
   }  
   item {
     key   = "disk"
     value = "${local.home-volume}"
   }
   item {
-    key   = "image"
-    value = local.image
-  }
-  item {
-    key   = "repo cloned"
-    value = local.repo
-  }  
-  item {
     key   = "volume"
     value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  } 
+  }  
 }

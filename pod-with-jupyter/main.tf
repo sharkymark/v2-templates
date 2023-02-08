@@ -2,13 +2,22 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.12.1"
     }
   }
+}
+
+locals {
+  workspaces_namespace = "oss"
+  cpu-limit = "1"
+  memory-limit = "2G"
+  cpu-request = "500m"
+  memory-request = "1" 
+  home-volume = "10Gi"
+  image = "codercom/enterprise-jupyter:ubuntu"
+  repo = "docker.io/sharkymark/pandas_automl.git"
 }
 
 variable "use_kubeconfig" {
@@ -23,13 +32,6 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
-}
-
-variable "workspaces_namespace" {
-  type        = string
-  sensitive   = false
-  description = "The namespace to create workspaces in (must exist prior to creating workspaces)"
-  default     = "oss"
 }
 
 variable "dotfiles_uri" {
@@ -55,36 +57,6 @@ variable "jupyter" {
     ], var.jupyter)
     error_message = "Invalid Jupyter!"   
 }
-}
-
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 1
-  validation {
-    condition = contains([
-      "1",
-      "2",
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
-}
-
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 2
-  validation {
-    condition = contains([
-      "1",
-      "2",
-      "4"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
-  default     = 10
 }
 
 
@@ -130,7 +102,7 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code"
+  display_name  = "VS Code Web"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   share         = "owner"
@@ -163,7 +135,7 @@ resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
     name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
-    namespace = var.workspaces_namespace
+    namespace = local.workspaces_namespace
   }
   spec {
     security_context {
@@ -172,7 +144,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "coder-container"
-      image   = "docker.io/codercom/enterprise-jupyter:ubuntu"
+      image   = local.image
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {
@@ -184,12 +156,12 @@ resource "kubernetes_pod" "main" {
       }
       resources {
         requests = {
-          cpu    = "250m"
-          memory = "250Mi"
+          cpu    = local.cpu-request
+          memory = local.memory-request
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = local.cpu-limit
+          memory = local.memory-limit
         }
       }                       
       volume_mount {
@@ -209,13 +181,13 @@ resource "kubernetes_pod" "main" {
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
     name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
-    namespace = var.workspaces_namespace
+    namespace = local.workspaces_namespace
   }
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = local.home-volume
       }
     }
   }
@@ -226,23 +198,23 @@ resource "coder_metadata" "workspace_info" {
   resource_id = kubernetes_pod.main[0].id
   item {
     key   = "CPU"
-    value = "${var.cpu} cores"
+    value = "${local.cpu-limit} cores"
   }
   item {
     key   = "memory"
-    value = "${var.memory}GB"
+    value = "${local.memory-limit}"
   }  
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
-  }  
+    value = "${local.home-volume}"
+  }
   item {
     key   = "image"
-    value = "codercom/enterprise-jupyter:ubuntu"
+    value = local.image
   }
   item {
     key   = "repo cloned"
-    value = "docker.io/sharkymark/pandas_automl.git"
+    value = local.repo
   }  
   item {
     key   = "jupyter"
