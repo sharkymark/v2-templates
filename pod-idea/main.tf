@@ -10,7 +10,6 @@ terraform {
 }
 
 locals {
-  workspaces_namespace = "coder-oss"
   cpu-limit = "4"
   memory-limit = "8G"
   cpu-request = "500m"
@@ -18,6 +17,14 @@ locals {
   home-volume = "10Gi"
   repo = "iluwatar/java-design-patterns.git"
   image = "docker.io/marktmilligan/intellij-idea-ultimate:2022.3.2"
+}
+
+variable "workspaces_namespace" {
+  sensitive   = true
+  description = <<-EOF
+  The Kubernetes namespace to create workspaces in e.g., coder (must exist prior to creating workspaces)
+
+  EOF
 }
 
 variable "use_kubeconfig" {
@@ -80,7 +87,7 @@ resource "kubernetes_pod" "main" {
   ]  
   metadata {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = local.workspaces_namespace
+    namespace = var.workspaces_namespace
   }
   spec {
     security_context {
@@ -126,7 +133,7 @@ resource "kubernetes_pod" "main" {
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = local.workspaces_namespace
+    namespace = var.workspaces_namespace
   }
   spec {
     access_modes = ["ReadWriteOnce"]

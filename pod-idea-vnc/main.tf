@@ -10,7 +10,6 @@ terraform {
 }
 
 locals {
-  workspaces_namespace = "oss"
   cpu-limit = "4"
   memory-limit = "8G"
   cpu-request = "500m"
@@ -31,6 +30,14 @@ variable "use_kubeconfig" {
 
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
+  EOF
+}
+
+variable "workspaces_namespace" {
+  sensitive   = true
+  description = <<-EOF
+  Kubernetes namespace to deploy the workspace into
+
   EOF
 }
 
@@ -111,7 +118,7 @@ resource "kubernetes_pod" "main" {
   ]  
   metadata {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = local.workspaces_namespace
+    namespace = var.workspaces_namespace
   }
   spec {
     security_context {
@@ -157,7 +164,7 @@ resource "kubernetes_pod" "main" {
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = local.workspaces_namespace
+    namespace = var.workspaces_namespace
   }
   spec {
     access_modes = ["ReadWriteOnce"]
