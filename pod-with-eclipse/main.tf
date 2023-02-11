@@ -23,6 +23,16 @@ variable "use_kubeconfig" {
   EOF
 }
 
+
+variable "workspaces_namespace" {
+  sensitive   = true
+  description = <<-EOF
+  Kubernetes namespace to deploy the workspace into
+
+  EOF
+
+}
+
 variable "dotfiles_uri" {
   description = <<-EOF
   Dotfiles repo URI (optional)
@@ -63,16 +73,6 @@ variable "memory" {
 variable "disk_size" {
   description = "Disk size (__ GB)"
   default     = 10
-}
-
-
-variable "workspaces_namespace" {
-  description = <<-EOF
-  Kubernetes namespace to deploy the workspace into
-
-  EOF
-  default     = ""  
-
 }
 
 provider "kubernetes" {
