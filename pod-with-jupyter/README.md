@@ -26,17 +26,17 @@ tags: [cloud, kubernetes]
 ### Known limitations
 1. Alternatively, developers can run localhost and either use `coder port-forward <workspace name> --tcp 8888:8888` or `ssh -L 8888:localhost:8888 coder.<workspace name>`
 
-### Breaking changes
-1. This template uses functionality in the Coder provider 0.6.0 for the `coder_app` called `slug` and `display_name`
-1. Also removed the baseURL from the Jupyter startup script and the owner and workspace names from the `coder_app`
-
 ### Authentication
 
-This template will use ~/.kube/config to authenticate to a Kubernetes cluster on GCP
+This template will use a service account to authenticate to a Kubernetes cluster on GCP
 
-Be sure to change the workspaces_namespace variable to the Kubernetes namespace the workspace will be deployed to
+Be sure to change the workspaces_namespace variable during template creation to the Kubernetes namespace the workspace will be deployed to
 
 ### Resources
 [JupyterLab docs](https://jupyter-server.readthedocs.io/en/latest/index.html)
+
 [Jupyter Notebook docs](https://jupyter-notebook.readthedocs.io/en/stable/)
+
 [Coder Terraform Provider](https://registry.terraform.io/providers/coder/coder/latest/docs/resources/app)
+
+[pandas Jupyter notebook and data sets repo](https://github.com/sharkymark/pandas_automl)

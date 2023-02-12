@@ -23,13 +23,12 @@ variable "use_kubeconfig" {
   EOF
 }
 
-
 variable "workspaces_namespace" {
+  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default     = ""  
 
 }
 
@@ -59,10 +58,10 @@ resource "coder_agent" "coder" {
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:sharkymark/rust-hw.git
+git clone --progress git@github.com:sharkymark/rust-hw.git &
 
 # install rust programming language
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri}
