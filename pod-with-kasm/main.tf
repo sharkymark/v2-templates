@@ -59,7 +59,7 @@ variable "dotfiles_uri" {
 resource "coder_agent" "coder" {
   os                      = "linux"
   arch                    = "amd64"
-  dir                     = "/home/coder"
+  dir                     = "/home/kasm-user"
   startup_script = <<EOT
 
 #!/bin/bash
@@ -69,14 +69,12 @@ set -e
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri} &
 
-# start Insomnia
-echo "Starting Insomnia"
-insomnia &
-
 # start Kasm
 /dockerstartup/kasm_default_profile.sh
-/dockerstartup/vnc_startup.sh
-/dockerstartup/kasm_startup.sh &
+/dockerstartup/vnc_startup.sh &
+
+# start Insomnia
+insomnia &
 
   EOT  
 }
@@ -134,7 +132,7 @@ resource "kubernetes_pod" "main" {
         }
       }                       
       volume_mount {
-        mount_path = "/home/coder"
+        mount_path = "/home/kasm-user"
         name       = "home-directory"
       }      
     }

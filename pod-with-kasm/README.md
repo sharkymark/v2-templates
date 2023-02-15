@@ -1,21 +1,26 @@
 ---
-name: Develop in a container with Kasm in a Kubernetes pod
-description: The goal is to enable Kasm in a container to access thick client apps like Insomnia that are not natively browser-enabled
+name: Develop in a container with KasmVNC in a Kubernetes pod
+description: The goal is to enable KasmVNC in a container to access thick client apps like Insomnia that are not natively browser-enabled
 tags: [cloud, kubernetes]
 ---
 
-# Kasm template with Insomnia API thick client app in a Kubernetes-managed pod and inner container
+# KasmVNC template with Insomnia API thick client app in a Kubernetes-managed pod and inner container
 
 ### Apps included
 
 1. A web-based terminal
-1. Kasm
+1. KasmVNC
+1. Insomnia
+
+[Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/kasm)
+
+[DockerHub](https://hub.docker.com/repository/docker/marktmilligan/kasm/general)
 
 ### Additional bash scripting
 
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
-1. Start Kasm
-1. Starm Insomnia
+1. Start KasmVNC
+1. Start Insomnia
 
 ### Authentication
 
@@ -25,10 +30,10 @@ Be sure to change the workspaces_namespace variable in the template creation to 
 
 ### Resources
 
-[VNC Dockerfile](https://github.com/coder/enterprise-images/tree/main/images/vnc)
-
-[Kasm](https://www.kasmweb.com/)
-
 [Insomnia](https://insomnia.rest/)
+
+[KasmVNC](https://www.kasmweb.com/)
+
+[KasmVNC GitHub repo](https://github.com/kasmtech/KasmVNC)
 
 [Credits: Ben Potter](https://github.com/bpmct/coder-templates/tree/main/better-vnc)

@@ -58,6 +58,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [ibm white cloud](https://cloud.ibm.com/login/static/img/IBM_Cloud_White_Rev_RGB.png)
 
+[insomina](https://static-00.iconduck.com/assets.00/apps-insomnia-icon-256x256-h5dlqhg3.png)
+
 [intellij](https://resources.jetbrains.com/storage/products/company/brand/logos/IntelliJ_IDEA_icon.svg)
 
 [java](https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png)

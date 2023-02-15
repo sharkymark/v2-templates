@@ -54,8 +54,6 @@ Be sure to change the workspaces_namespace variable in the template creation to 
 
 ### Resources
 
-[VNC Dockerfile](https://github.com/coder/enterprise-images/tree/main/images/vnc)
-
 [KasmVNC](https://www.kasmweb.com/)
 
 [KasmVNC GitHub repo](https://github.com/kasmtech/KasmVNC)
