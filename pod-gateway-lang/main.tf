@@ -5,9 +5,29 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.12.1"
     }   
   }
+}
+
+
+locals {
+  cpu-limit = "4"
+  memory-limit = "8G"
+  cpu-request = "500m"
+  memory-request = "4G" 
+  home-volume = "10Gi"
+
+  repo = {
+    "Java" = "sharkymark/java_helloworld.git" 
+    "Python" = "sharkymark/python_commissions.git" 
+    "Go" = "coder/coder.git"
+  }  
+  image = {
+    "Java" = "codercom/enterprise-java:ubuntu" 
+    "Python" = "codercom/enterprise-base:ubuntu" 
+    "Go" = "codercom/enterprise-golang:ubuntu"
+  }  
+
 }
 
 variable "use_kubeconfig" {
@@ -48,45 +68,6 @@ variable "dotfiles_uri" {
   default = "git@github.com:sharkymark/dotfiles.git"
 }
 
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 4
-  validation {
-    condition = contains([
-      "2",
-      "4",
-      "6"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
-}
-
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 8
-  validation {
-    condition = contains([
-      "4",
-      "6",
-      "8"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-locals {
-  repo = {
-    "Java" = "sharkymark/java_helloworld.git" 
-    "Python" = "sharkymark/python_commissions.git" 
-    "Go" = "coder/coder.git"
-  }  
-  image = {
-    "Java" = "codercom/enterprise-java:ubuntu" 
-    "Python" = "codercom/enterprise-base:ubuntu" 
-    "Go" = "codercom/enterprise-golang:ubuntu"
-  }  
-}
-
 variable "lang" {
   description = "Programming language"
   default     = "Java"
@@ -98,11 +79,6 @@ variable "lang" {
     ], var.lang)
     error_message = "Invalid language!"   
 }
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
-  default     = 10
 }
 
 resource "coder_agent" "dev" {
@@ -172,12 +148,12 @@ resource "kubernetes_pod" "main" {
       }  
       resources {
         requests = {
-          cpu    = "250m"
-          memory = "1G"
+          cpu    = "${local.cpu-request}"
+          memory = "${local.memory-request}"
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = "${local.cpu-limit}"
+          memory = "${local.memory-limit}"
         }
       }                       
       volume_mount {
@@ -203,7 +179,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "${local.home-volume}"
       }
     }
   }
@@ -214,11 +190,11 @@ resource "coder_metadata" "workspace_info" {
   resource_id = kubernetes_pod.main[0].id
   item {
     key   = "CPU limits"
-    value = "${var.cpu} cores"
+    value = "${local.cpu-limit} cores"
   }
   item {
     key   = "memory limits"
-    value = "${var.memory}GB"
+    value = "${local.memory-limit}"
   } 
   item {
     key   = "CPU requests"
@@ -238,7 +214,7 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = "${local.home-volume}GiB"
   }
   item {
     key   = "volume"

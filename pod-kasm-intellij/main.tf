@@ -17,7 +17,7 @@ locals {
   home-volume = "10Gi"
   repo = "iluwatar/java-design-patterns.git"
   image = "docker.io/marktmilligan/intellij-community-kasm:2022.3.2"
-  user = "kasm-user"
+  user = "coder"
 }
 
 variable "use_kubeconfig" {
