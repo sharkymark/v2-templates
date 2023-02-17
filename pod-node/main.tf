@@ -13,7 +13,7 @@ locals {
   cpu-limit = "2"
   memory-limit = "4G"
   cpu-request = "500m"
-  memory-request = "1" 
+  memory-request = "2" 
   home-volume = "10Gi"
   image = "codercom/enterprise-node:ubuntu"
   repo = "sharkymark/coder-react.git"
@@ -150,7 +150,7 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${local.memory-limit} GiB"
+    value = "${local.memory-limit}"
   }  
   item {
     key   = "disk"
