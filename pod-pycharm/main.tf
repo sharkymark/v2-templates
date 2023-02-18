@@ -123,6 +123,12 @@ resource "kubernetes_pod" "main" {
   }
 }
 
+resource "coder_metadata" "main" {
+    count = data.coder_workspace.me.start_count
+    resource_id = kubernetes_pod.main[0].id
+    daily_cost  = 20
+}
+
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
@@ -136,6 +142,11 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
       }
     }
   }
+}
+
+resource "coder_metadata" "home-directory" {
+    resource_id = kubernetes_persistent_volume_claim.home-directory.id
+    daily_cost  = 10
 }
 
 resource "coder_metadata" "workspace_info" {
