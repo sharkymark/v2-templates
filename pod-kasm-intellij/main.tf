@@ -17,7 +17,7 @@ locals {
   home-volume = "10Gi"
   repo = "iluwatar/java-design-patterns.git"
   image = "docker.io/marktmilligan/intellij-community-kasm:2022.3.2"
-  user = "coder"
+  user = "kasm-user"
 }
 
 variable "use_kubeconfig" {
@@ -99,7 +99,7 @@ resource "coder_app" "kasm" {
   share     = "owner"
 
   healthcheck {
-    url       = "http://localhost:6901/healthz"
+    url       = "http://localhost:6901/healthz/"
     interval  = 20
     threshold = 5
   } 

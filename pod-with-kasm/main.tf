@@ -16,6 +16,7 @@ locals {
   memory-request = "1" 
   home-volume = "10Gi"
   image = "marktmilligan/kasm:latest"
+  user = "kasm-user"
 }
 
 variable "use_kubeconfig" {
@@ -59,7 +60,7 @@ variable "dotfiles_uri" {
 resource "coder_agent" "coder" {
   os                      = "linux"
   arch                    = "amd64"
-  dir                     = "/home/kasm-user"
+  dir                     = "/home/${local.user}"
   startup_script = <<EOT
 
 #!/bin/bash
@@ -89,7 +90,7 @@ resource "coder_app" "kasm" {
   share     = "owner"
 
   healthcheck {
-    url       = "http://localhost:6901/healthz"
+    url       = "http://localhost:6901/healthz/"
     interval  = 5
     threshold = 15
   } 
@@ -132,7 +133,7 @@ resource "kubernetes_pod" "main" {
         }
       }                       
       volume_mount {
-        mount_path = "/home/kasm-user"
+        mount_path = "/home/${local.user}"
         name       = "home-directory"
       }      
     }
