@@ -17,8 +17,11 @@ tags: [local, docker]
 1. Clone pandas repo
 1. Start Jupyter Lab (or Notebook) (it is installed as part of the image)
 
+### Requirements
+1. A wildcard subdomain must be enabled (either with Coder's default tunnel or you manually configuring it)
+
 ### Known issues
-1. The `coder_app` icon (with `subdomain=true`) does not resolve with tunnel but port forward to `8888` works
+1. The `coder_app` icon (with `subdomain=true`) does not resolve with tunnel if the username, workspace name, and `coder_app` slug make the length of that host segment more than 63 characters. Try shortening the username, slug and workspace name else port forward to `8888` works
 
 ### Authentication
 
