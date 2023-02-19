@@ -11,6 +11,7 @@ terraform {
 
 locals {
   image = "marktmilligan/kasm:latest"
+  user = "kasm-user"
 }
 
 provider "docker" {
@@ -35,24 +36,21 @@ variable "dotfiles_uri" {
 resource "coder_agent" "dev" {
   os                      = "linux"
   arch                    = "amd64"
-  dir                     = "/home/kasm-user"
+  dir                     = "/home/${local.user}"
   startup_script = <<EOT
 
 #!/bin/bash
 
-set -e
-
-# use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
+# start Insomnia
+# Not recommending --no-sandbox; just using for testing
+insomnia --no-sandbox &
 
 # start Kasm
 /dockerstartup/kasm_default_profile.sh
 /dockerstartup/vnc_startup.sh &
 
-sleep 10 
-
-# start Insomnia
-insomnia &
+# use coder CLI to clone and install dotfiles
+coder dotfiles -y ${var.dotfiles_uri} &
 
   EOT  
 }
@@ -67,12 +65,11 @@ resource "coder_app" "kasm" {
   share     = "owner"
 
   healthcheck {
-    url       = "http://localhost:6901/healthz"
-    interval  = 20
-    threshold = 5
+    url       = "http://localhost:6901/healthz/"
+    interval  = 3
+    threshold = 10
   } 
 }
-
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
@@ -86,7 +83,7 @@ resource "docker_container" "workspace" {
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {
-    container_path = "/home/kasm-user/"
+    container_path = "/home/${local.user}/"
     volume_name    = docker_volume.coder_volume.name
     read_only      = false
   }  
