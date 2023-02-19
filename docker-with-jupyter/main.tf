@@ -44,6 +44,14 @@ variable "jupyter" {
 }
 }
 
+variable "api_key" {
+  description = <<-EOF
+  Arbitrary API Key to access Internet datasets (optional)
+
+  EOF
+  default=""
+}
+
 resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"
@@ -101,7 +109,7 @@ resource "docker_container" "workspace" {
     EOT
   ]
 
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
+  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}", "API_KEY=${var.api_key}"]
   volumes {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
