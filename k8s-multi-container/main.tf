@@ -141,21 +141,6 @@ resource "coder_app" "pgadmin" {
   }  
 }
 
-resource "kubernetes_config_map" "postgres-configmap" {
-  metadata {
-    name = "postgres-env-vars"
-    namespace = var.workspaces_namespace
-  }
-  data = {
-    DB_DRIVER = "postgres"
-    DB_HOST   = "localhost"
-    DB_PORT   = "5432"
-    DB_USER   = "postgres"
-    DB_PASS   = "postgres"
-    DB_NAME   = "go8_db" 
-  }
-}
-
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   depends_on = [
@@ -181,12 +166,31 @@ resource "kubernetes_pod" "main" {
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.golang.token
+      } 
+      env {
+        name  = "DB_DRIVER"
+        value = "postgres"
       }  
-      env_from {
-        config_map_ref {
-          name = kubernetes_config_map.postgres-configmap.metadata.0.name
-        }
-      }       
+      env {
+        name  = "DB_PORT"
+        value = "5432"
+      }   
+      env {
+        name  = "DB_USER"
+        value = "postgres"
+      }  
+      env {
+        name  = "DB_PASS"
+        value = "postgres"
+      }  
+      env {
+        name  = "DB_HOST"
+        value = "localhost"
+      }  
+      env {
+        name  = "DB_NAME"
+        value = "go8_db"
+      }                              
       resources {
         requests = {
           cpu    = local.cpu-request

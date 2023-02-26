@@ -13,11 +13,15 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [azure vm](https://www.starwindsoftware.com/blog/wp-content/uploads/2019/03/racsultat-de-recherche-dimages-pour-azure-vm.png)
 
+[bmw](https://www.carlogos.org/car-logos/bmw-logo-1997-1200x1200.png)
+
 [bookmark symbol #1](https://img1.pnghut.com/19/16/1/aDfGgPNdbj/white-symbol-sign-black-logo.jpg)
 
 [bookmark symbol #2](https://www.pngfind.com/pngs/m/20-200857_bookmark-icon-png-download-pdf-bookmark-icon-transparent.png)
 
 [cat eating noodles](https://thumbs.gfycat.com/AridDecisiveCrab-size_restricted.gif)
+
+[chelsea fc](https://assets.stickpng.com/images/580b57fcd9996e24bc43c4e1.png)
 
 [clion](https://resources.jetbrains.com/storage/products/company/brand/logos/CLion_icon.svg?_ga=2.213423890.785417507.1675279285-1717186880.1621809973&_gl=1*b8pf15*_ga*MTcxNzE4Njg4MC4xNjIxODA5OTcz*_ga_9J976DJZ68*MTY3NTM3MDk4OS44Ny4xLjE2NzUzNzI1NDUuNTcuMC4w)
 
@@ -36,6 +40,14 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [dunder mifflin corporate logo](https://www.pngkey.com/png/full/821-8218918_14theoffice01-dunder-mifflin.png)
 
 [eclipse](https://cdn.freebiesupply.com/logos/large/2x/eclipse-11-logo-png-transparent.png)
+
+[england fc](https://logos-world.net/wp-content/uploads/2020/06/England-symbol.png)
+
+[fca](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Fiat_Chrysler_Automobiles_logo.svg/1200px-Fiat_Chrysler_Automobiles_logo.svg.png)
+
+[ford](https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Ford_logo_flat.svg/2560px-Ford_logo_flat.svg.png)
+
+[gm](https://static.dezeen.com/uploads/2021/01/gm-logo-rebrand-electric-vehicles-design_dezeen_2364_col_0-1.gif)
 
 [go](https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png)
 
@@ -69,6 +81,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [jetbrains logo](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)
 
 [jupyter](https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Jupyter_logo.svg/1200px-Jupyter_logo.svg.png)
+
+[KasmVNC](https://static.crozdesk.com/web_app_library/providers/logos/000/018/813/original/kasm-workspaces-1667061505-logo.png?1667061505)
 
 [kubernetes](https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Kubernetes_logo_without_workmark.svg/1200px-Kubernetes_logo_without_workmark.svg.png)
 
@@ -137,6 +151,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [pycharm](https://miro.medium.com/max/1200/1*6Dhu1H4t028lOGbaZuyRCw.png)
 
 [python](https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png)
+
+[baltimore ravens](https://cdn.freebiesupply.com/images/large/2x/baltimore-ravens-logo-transparent.png)
 
 [react](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png)
 
