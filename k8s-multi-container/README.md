@@ -22,6 +22,46 @@ tags: [cloud, kubernetes]
 2. Build and start the Go binary
 3. Make API calls in web terminal
 
+### go8 API steps
+1. `cd` into `go8` and `go run cmd/migrate/main.go` this will fail if `go8_db` database is not in PostgreSQL
+1. Start the API server `go run cmd/go8/main.go`
+1. See all routes `go run cmd/route/main.go`
+1. forward to API port to your local machine with the Coder CLI `coder tunnel <workspace name> --tcp 3080`
+1. Open another local terminal session to make API calls with `curl`
+
+#### Add book
+
+```sh
+curl -v --location --request POST 'http://localhost:3080/api/v1/book' \
+ --header 'Content-Type: application/json' \
+ --data-raw '{
+    "title": "One Hundred Years of Solitude",
+    "image_url": "https://en.wikipedia.org/wiki/One_Hundred_Years_of_Solitude",
+    "published_date": "1967-07-31T15:04:05.123499999Z",
+    "description": 
+    "a 1967 novel by Colombian author Gabriel García Márquez that tells the multi-generational story of the Buendía family, whose patriarch, José Arcadio Buendía, founded the fictitious town of Macondo."
+  }' \
+ | jq
+ ```
+
+#### Get all books
+
+```sh
+curl --location --request GET 'http://localhost:3080/api/v1/book' | jq
+```
+
+### Add author
+
+```sh
+curl -X POST 'http://localhost:3080/api/v1/author' --header 'Authorization: Bearer INSERT_JWT' --header 'Content-Type: application/json' --data-raw '{"first_name": "Gabriel García", "last_name": "Márquez"}'
+```
+
+### Get author
+
+```sh
+curl -X GET 'http://localhost:3080/api/v1/author/1'
+```
+
 ### Authentication
 
 This template will use ~/.kube/config to authenticate to a Kubernetes cluster on GCP

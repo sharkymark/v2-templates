@@ -12,13 +12,15 @@ terraform {
 locals {
 
   cpu-limit = "1"
-  memory-limit = "2G"
-  cpu-request = "500m"
-  memory-request = "1" 
+  memory-limit = "1G"
+  cpu-request = "250m"
+  memory-request = "500m" 
   home-volume = "10Gi"
   repo = "https://github.com/gmhafiz/go8.git"
   golang-image = "docker.io/codercom/enterprise-golang:ubuntu"
   postgres-image = "docker.io/marktmilligan/postgres:13"  
+  dbeaver-image = "docker.io/dbeaver/cloudbeaver:latest"    
+  pgadmin-image = "docker.io/dpage/pgadmin4:latest"    
 }
 
 variable "use_kubeconfig" {
@@ -100,6 +102,40 @@ resource "coder_app" "code-server" {
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }  
+}
+
+# dbeaver
+resource "coder_app" "dbeaver" {
+  agent_id      = coder_agent.golang.id
+  slug          = "dbeaver"  
+  display_name  = "DBeaver"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/DBeaver_logo.svg/1024px-DBeaver_logo.svg.png"
+  url           = "http://localhost:8978"
+  subdomain = true
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:8978/healthz"
+    interval  = 3
+    threshold = 10
+  }  
+}
+
+# dbadmin
+resource "coder_app" "pgadmin" {
+  agent_id      = coder_agent.golang.id
+  slug          = "pgadmin"  
+  display_name  = "pgAdmin"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Postgresql_elephant.svg/1200px-Postgresql_elephant.svg.png"
+  url           = "http://localhost:80"
+  subdomain = true
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:80/healthz"
     interval  = 3
     threshold = 10
   }  
@@ -189,13 +225,75 @@ resource "kubernetes_pod" "main" {
           memory = local.memory-limit
         }
       }                                      
-    }    
+    }  
+    container {
+      name    = "dbeaver-container"
+      image   = local.dbeaver-image
+      image_pull_policy = "Always" 
+      security_context {
+        run_as_user = "0"
+      }
+      env {
+        name     = "XDG_DATA_HOME"
+        value    = "/home/coder"
+      }                                   
+      resources {
+        requests = {
+          cpu    = local.cpu-request
+          memory = local.memory-request
+        }        
+        limits = {
+          cpu    = local.cpu-limit
+          memory = local.memory-limit
+        }
+      }      
+      volume_mount {
+        mount_path = "/home/coder"
+        name       = "home-directory"
+      }                                           
+    } 
+    container {
+      name    = "pgadmin-container"
+      image   = local.pgadmin-image
+      image_pull_policy = "Always" 
+      security_context {
+        run_as_user = "5050"
+      }
+      env {
+        name    = "PGADMIN_DEFAULT_EMAIL"
+        value   = "pgadmin@pgadmin.org"
+      }  
+      env {
+        name    = "PGADMIN_DEFAULT_PASSWORD"
+        value   = "pgadmin"
+      }                                              
+      resources {
+        requests = {
+          cpu    = local.cpu-request
+          memory = local.memory-request
+        }        
+        limits = {
+          cpu    = local.cpu-limit
+          memory = local.memory-limit
+        }
+      }
+      volume_mount {
+        mount_path = "/var/lib/pgadmin"
+        name       = "pgadmin-directory"
+      }                                             
+    }            
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
       }
-    }            
+    }  
+    volume {
+      name = "pgadmin-directory"
+      persistent_volume_claim {
+        claim_name = kubernetes_persistent_volume_claim.pgadmin-directory.metadata.0.name
+      }
+    }                  
   }
 }
 
@@ -214,15 +312,31 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
   }
 }
 
+resource "kubernetes_persistent_volume_claim" "pgadmin-directory" {
+  metadata {
+    name      = "pgadmin-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    namespace = var.workspaces_namespace
+  }
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "1Gi"
+      }
+    }
+  }
+}
+
+
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
+    key   = "CPU (per container)"
     value = "${local.cpu-limit} cores"
   }
   item {
-    key   = "memory"
+    key   = "memory (per container)"
     value = "${local.memory-limit}"
   }  
   item {
@@ -233,6 +347,14 @@ resource "coder_metadata" "workspace_info" {
     key   = "postgres-container-image"
     value = "${local.postgres-image}"
   }  
+  item {
+    key   = "dbeaver-container-image"
+    value = "${local.dbeaver-image}"
+  }
+  item {
+    key   = "pgadmin-container-image"
+    value = "${local.pgadmin-image}"
+  }   
   item {
     key   = "disk"
     value = "${var.disk_size}GiB"
