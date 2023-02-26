@@ -1,26 +1,30 @@
 ---
-name: Develop with 2 containers in a Kubernetes pod
-description: The goal is to enable 2 containers, Postgres and Golang, in a K8s pod 
+name: Develop with 4 containers in a Kubernetes pod
+description: The goal is to enable 4 containers, Postgres,Golang, DBeaver amd pgAdmin in a K8s pod 
 tags: [cloud, kubernetes]
 ---
 
-# 2 containers in a Kubernetes pod
+# 4 containers in a Kubernetes pod
 
 ### Apps included
 1. A web-based terminal
 1. code-server (VS Code Web)
+1. DBeaver web UI
+1. pgAdmin web UI
 
-### Images for the 2 containers
-1. [Golang]()
-1. [Postgres]()
+### Images for the 4 containers
+1. [Golang](https://hub.docker.com/r/codercom/enterprise-golang)
+1. [Postgres](https://hub.docker.com/_/postgres)
+1. [DBeaver](https://hub.docker.com/r/dbeaver/cloudbeaver)
+1. [pgAdmin](https://hub.docker.com/r/dpage/pgadmin4/)
 
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
 
-### Post Build Requisites
-1. Clone the API repo
-2. Build and start the Go binary
-3. Make API calls in web terminal
+### defaults
+1. (pgAdmin) Username: pgadmin@pgadmin.org Password: pgadmin (db settings will persist in a separate PVC)
+1. (Postgres) Username: postgres Password: postgres
+1. (DBeaver) Created during initial launch (no persistence on rebuild for credentials and db settings)
 
 ### go8 API steps
 1. `cd` into `go8` and `go run cmd/migrate/main.go` this will fail if `go8_db` database is not in PostgreSQL
@@ -76,3 +80,7 @@ Be sure to enter a valid workspaces_namespace at workspace creation to point to 
 [Golang Dockerfile](https://github.com/coder/enterprise-images/tree/main/images/golang)
 
 [Golang image](https://hub.docker.com/r/codercom/enterprise-golang)
+
+[DBeaver](https://hub.docker.com/r/dbeaver/cloudbeaver)
+
+[pgAdmin](https://hub.docker.com/r/dpage/pgadmin4/)
