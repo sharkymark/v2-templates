@@ -141,12 +141,6 @@ resource "coder_app" "pgadmin" {
   }  
 }
 
-resource "coder_agent" "postgres" {
-  os   = "linux"
-  arch = "amd64" 
-  dir = "/home/postgres"
-}
-
 resource "kubernetes_config_map" "postgres-configmap" {
   metadata {
     name = "postgres-env-vars"
@@ -224,7 +218,15 @@ resource "kubernetes_pod" "main" {
           cpu    = local.cpu-limit
           memory = local.memory-limit
         }
-      }                                      
+      }
+      env {
+          name    = "PGDATA"
+          value   = "/var/lib/postgresql/data/k8s"        
+      }
+      volume_mount {
+        mount_path = "/var/lib/postgresql/data"
+        name       = "postgres-data-directory"
+      }                                               
     }  
     container {
       name    = "dbeaver-container"
@@ -232,7 +234,7 @@ resource "kubernetes_pod" "main" {
       image_pull_policy = "Always" 
       security_context {
         run_as_user = "0"
-      }                                
+      }                                     
       resources {
         requests = {
           cpu    = local.cpu-request
@@ -242,7 +244,11 @@ resource "kubernetes_pod" "main" {
           cpu    = local.cpu-limit
           memory = local.memory-limit
         }
-      }                                               
+      }      
+      volume_mount {
+        mount_path = "/opt/cloudbeaver/workspace"
+        name       = "dbeaver-directory"
+      }                                                     
     } 
     container {
       name    = "pgadmin-container"
@@ -285,7 +291,19 @@ resource "kubernetes_pod" "main" {
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.pgadmin-directory.metadata.0.name
       }
-    }                  
+    }  
+    volume {
+      name = "postgres-data-directory"
+      persistent_volume_claim {
+        claim_name = kubernetes_persistent_volume_claim.postgres-data-directory.metadata.0.name
+      }
+    } 
+    volume {
+      name = "dbeaver-directory"
+      persistent_volume_claim {
+        claim_name = kubernetes_persistent_volume_claim.dbeaver-directory.metadata.0.name
+      }
+    }                          
   }
 }
 
@@ -307,6 +325,36 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
 resource "kubernetes_persistent_volume_claim" "pgadmin-directory" {
   metadata {
     name      = "pgadmin-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    namespace = var.workspaces_namespace
+  }
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "1Gi"
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume_claim" "postgres-data-directory" {
+  metadata {
+    name      = "postgres-data-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    namespace = var.workspaces_namespace
+  }
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "1Gi"
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume_claim" "dbeaver-directory" {
+  metadata {
+    name      = "dbeaver-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
   spec {
