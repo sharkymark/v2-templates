@@ -232,11 +232,7 @@ resource "kubernetes_pod" "main" {
       image_pull_policy = "Always" 
       security_context {
         run_as_user = "0"
-      }
-      env {
-        name     = "XDG_DATA_HOME"
-        value    = "/home/coder"
-      }                                   
+      }                                
       resources {
         requests = {
           cpu    = local.cpu-request
@@ -246,11 +242,7 @@ resource "kubernetes_pod" "main" {
           cpu    = local.cpu-limit
           memory = local.memory-limit
         }
-      }      
-      volume_mount {
-        mount_path = "/home/coder"
-        name       = "home-directory"
-      }                                           
+      }                                               
     } 
     container {
       name    = "pgadmin-container"
