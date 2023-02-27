@@ -2,13 +2,20 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.12.1"
     }
   }
+}
+
+locals {
+  cpu-limit = "2"
+  memory-limit = "4G"
+  cpu-request = "500m"
+  memory-request = "1G" 
+  home-volume = "10Gi"
+  image = "docker.io/marktmilligan/rstudio:no-args"
 }
 
 variable "use_kubeconfig" {
@@ -34,46 +41,12 @@ variable "dotfiles_uri" {
   default = "git@github.com:sharkymark/dotfiles.git"
 }
 
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 1
-  validation {
-    condition = contains([
-      "1",
-      "2",
-      "4",
-      "6"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
-}
-
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 2
-  validation {
-    condition = contains([
-      "1",
-      "2",
-      "4",
-      "8"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
-  default     = 10
-}
-
-
 variable "workspaces_namespace" {
+  sensitive   = true  
   description = <<-EOF
   Kubernetes namespace to create the workspace pod (required)
 
   EOF
-  default = ""
 }
 
 provider "kubernetes" {
@@ -106,8 +79,8 @@ coder dotfiles -y ${var.dotfiles_uri}
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:rstudio/connect-examples.git
-git clone --progress git@github.com:rstudio/shiny-examples.git"
+git clone --progress git@github.com:rstudio/connect-examples.git &
+git clone --progress git@github.com:rstudio/shiny-examples.git &
 
 EOT
 }
@@ -159,7 +132,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "rstudio"
-      image   = "docker.io/marktmilligan/rstudio:no-args"
+      image   = local.image
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {
@@ -171,12 +144,12 @@ resource "kubernetes_pod" "main" {
       }
       resources {
         requests = {
-          cpu    = "250m"
-          memory = "250Mi"
+          cpu    = local.cpu-request
+          memory = local.memory-request
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = local.cpu-limit
+          memory = local.memory-limit
         }
       }                       
       volume_mount {
@@ -202,7 +175,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "${local.home-volume}"
       }
     }
   }
@@ -217,7 +190,7 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${var.memory}GB"
+    value = "${local.memory-limit}"
   }  
   item {
     key   = "image"
@@ -225,7 +198,7 @@ resource "coder_metadata" "workspace_info" {
   } 
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = "${local.home-volume}"
   }
   item {
     key   = "volume"
