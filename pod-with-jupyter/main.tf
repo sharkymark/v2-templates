@@ -191,6 +191,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false  
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {

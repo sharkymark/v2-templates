@@ -6,6 +6,9 @@ tags: [cloud, kubernetes]
 
 # IntelliJ IDEA Ultimate & JetBrains Gateway template for a workspace in a Kubernetes pod
 
+### Special Use Case
+1. The templates [establish costs](https://coder.com/docs/v2/latest/admin/quotas#establishing-costs)for compute resources of a workspace. A group [esablish budgets](https://coder.com/docs/v2/latest/admin/quotas#establishing-budgets) to restrict how many compute resources a developer can use.
+
 ### Apps included
 1. A web-based terminal
 1. JetBrains IDE (accessible with SSH and JetBrains Gateway)

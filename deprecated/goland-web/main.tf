@@ -25,13 +25,13 @@ variable "use_kubeconfig" {
   EOF
 }
 
+
 variable "workspaces_namespace" {
+  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default     = ""  
-
 }
 
 provider "kubernetes" {
@@ -56,7 +56,7 @@ variable "cpu" {
 
 variable "memory" {
   description = "Memory (__ GB)"
-  default     = 4
+  default     = 8
   validation {
     condition = contains([
       "4",

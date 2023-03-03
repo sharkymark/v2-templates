@@ -27,11 +27,8 @@ tags: [cloud, kubernetes]
 1. Prompt user for CPU, memory, and disk storage
 1. Install VS Code Ruby debugger extension from Open-VSX marketplace
 1. Start code-server (VS Code-in-a-browser)
-1. Clone 3 Ruby on Rails repos (2 are private)
-1. Start 3 apps on ports 3000, 3001, 3002
-
-### Known limitations
-1. [JetBrains Projector OSS](https://lp.jetbrains.com/projector/) is no longer actively supported by JetBrains. Consider running `coder config-ssh` and installing [JetBrains Gateway](https://www.jetbrains.com/remote-development/gateway/)
+1. Clone 1 Ruby on Rails repos
+1. Start an employee survey app as a subdomain on 3002
 
 ### Authentication
 

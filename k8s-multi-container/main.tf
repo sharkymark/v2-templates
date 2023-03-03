@@ -316,6 +316,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -331,6 +332,7 @@ resource "kubernetes_persistent_volume_claim" "pgadmin-directory" {
     name      = "pgadmin-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -346,6 +348,7 @@ resource "kubernetes_persistent_volume_claim" "postgres-data-directory" {
     name      = "postgres-data-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -361,6 +364,7 @@ resource "kubernetes_persistent_volume_claim" "dbeaver-directory" {
     name      = "dbeaver-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {

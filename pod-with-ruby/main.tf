@@ -2,11 +2,9 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.12.1"
     }
   }
 }
@@ -28,11 +26,11 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
+  sensitive   = true
   description = <<-EOF
-  Kubernetes namespace to create the workspace pod (required)
-
-  EOF
+  Kubernetes namespace to deploy the workspace into
   default = ""
+  EOF
 }
 
 provider "kubernetes" {
@@ -45,14 +43,11 @@ data "coder_workspace" "me" {}
 
 variable "cpu" {
   description = "CPU (__ cores)"
-  default     = 2
+  default     = 1
   validation {
     condition = contains([
       "1",
-      "2",
-      "4",
-      "6",
-      "8"
+      "2"
     ], var.cpu)
     error_message = "Invalid cpu!"   
 }
@@ -64,11 +59,7 @@ variable "memory" {
   validation {
     condition = contains([
       "2",
-      "4",
-      "6",
-      "8",
-      "10",
-      "12"
+      "4"
     ], var.memory)
     error_message = "Invalid memory!"  
 }
@@ -157,7 +148,7 @@ resource "coder_agent" "dev" {
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code"
+  display_name  = "VS Code Web"
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -282,6 +273,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     name      = "coder-pvc-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false  
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
