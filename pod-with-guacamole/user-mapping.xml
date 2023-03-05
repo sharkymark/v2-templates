@@ -1,0 +1,11 @@
+<user-mapping>
+
+    <!-- Per-user authentication and config information -->
+    <authorize username="admin" password="admin">
+        <connection name="vnc-connection">
+            <protocol>rdp</protocol>
+            <param name="hostname">localhost</param>
+            <param name="port">3389</param>
+        </connection>
+    </authorize>
+</user-mapping>    
