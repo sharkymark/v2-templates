@@ -18,7 +18,8 @@ locals {
   home-volume = "10Gi"
   guac-server-image = "docker.io/guacamole/guacd"
   guac-client-image = "docker.io/guacamole/guacamole" 
-  base-image = "docker.io/codercom/enterprise-base:ubuntu"    
+  base-image = "docker.io/marktmilligan/tigervnc:latest" 
+  #base-image = "docker.io/codercom/enterprise-base:ubuntu"      
   user = "coder"  
 }
 
@@ -74,6 +75,9 @@ resource "coder_agent" "base" {
 #!/bin/bash
 
 mkdir -p /home/${local.user}/.guacamole
+
+# run configure script to start tigervnc
+/coder/configure
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -264,7 +268,11 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "guac-server-container-image"
     value = "${local.guac-server-image}"
-  }     
+  }    
+  item {
+    key   = "base-container-image"
+    value = "${local.base-image}"
+  }      
   item {
     key   = "disk"
     value = "${var.disk_size}GiB"

@@ -50,6 +50,8 @@ Be sure to enter a valid workspaces_namespace at workspace creation to point to 
 
 [Gucamole docs on VNC](https://guacamole.apache.org/doc/gug/configuring-guacamole.html#vnc)
 
+[TigerVNC docs](https://manpages.ubuntu.com/manpages/bionic/man1/tigervncserver.1.html)
+
 ### Notes
 
 Copy user-mapping.xml to guac client container manually
