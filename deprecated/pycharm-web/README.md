@@ -1,18 +1,18 @@
-## JetBrains IntelliJ Ultimate in a browser
+## JetBrains PyCharm Professional in a browser
 
-This is a Kubernetes pod with JetBrains IntelliJ Ultimate IDE and projector to run in a browser
+This is a Kubernetes pod with JetBrains PyCharm Professional IDE and projector to run in a browser
 
 ## How it works
 
-- IDEA Ultimate and code-server IDEs are installed in the image.
+- PyCharm Professional and code-server IDEs are installed in the image.
 - Once the workspace starts, the JetBrains `projector` CLI configures and starts the JetBrains IDE and code-server (VS Code) IDE to run in a browser
-- If IDEA Ultimate, run `remote-dev-server.sh` in `/opt/<ide folder>/bin` to create symbolic link to point Gateway to container's JetBrains IDE
+- If PyCharm Professional, run `remote-dev-server.sh` in `/opt/<ide folder>/bin` to create symbolic link to point Gateway to container's JetBrains IDE
 
 ## Important notes
 
 - JetBrains projector is no supported - use this template at your own risk. Move to JetBrains Gateway
 
-- This template uses [this Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/deprecated/intellij/u/Dockerfile)
+- This template uses [this Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/deprecated/pycharm/pro/Dockerfile)
 
 - You cannot install IDEs in the image into `/home/coder`, as that is overridden by the volume. That is why different projector configurations are done at runtime with the startup script
 

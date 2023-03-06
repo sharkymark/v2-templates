@@ -9,6 +9,18 @@ terraform {
   }
 }
 
+locals {
+
+  cpu-limit = "4"
+  memory-limit = "4G"
+  cpu-request = "250m"
+  memory-request = "2" 
+  disk-size = "10Gi"
+  #base-image = "docker.io/marktmilligan/pp-chown:2021.3.3"   
+  base-image = "docker.io/marktmilligan/pp-chown:2022.1.4"  
+  #base-image = "docker.io/marktmilligan/pp-chown:latest"    
+}
+
 variable "use_kubeconfig" {
   type        = bool
   sensitive   = true
@@ -26,12 +38,11 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
+  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default     = ""  
-
 }
 
 provider "kubernetes" {
@@ -41,36 +52,6 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 4
-  validation {
-    condition = contains([
-      "4",
-      "6",
-      "8"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
-}
-
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 4
-  validation {
-    condition = contains([
-      "4",
-      "6",
-      "8"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
-  default     = 10
-}
 
 variable "dotfiles_uri" {
   description = <<-EOF
@@ -93,11 +74,12 @@ resource "coder_agent" "dev" {
     code-server --auth none --port 13337 &
 
     # Configure and run JetBrains IDEs in a web browser
+    # https://www.jetbrains.com/pycharm/download/other.html
     # Using JetBrains projector; please migrate to Gateway
     # https://lp.jetbrains.com/projector/
     # https://coder.com/docs/v2/latest/ides/gateway
 
-    # Assumes you have PyCharm (/opt/pycharm)
+    # Assumes you have JetBrains IDE installed in /opt
     # and pip3 installed in
     # your image and the "coder" user has filesystem
     # permissions for "/opt/*"
@@ -105,15 +87,11 @@ resource "coder_agent" "dev" {
     pip3 install projector-installer --user
     /home/coder/.local/bin/projector --accept-license 
     
-    /home/coder/.local/bin/projector config add pycharm1 /opt/pycharm --force --use-separate-config --port 9001  --hostname localhost
+    /home/coder/.local/bin/projector config add pycharm1 /opt/pycharm --force --use-separate-config --port 9001 --hostname localhost
     /home/coder/.local/bin/projector run pycharm1 &
 
-    # clone 2 Python repos
-    mkdir -p ~/.ssh
-    ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-    git clone --progress git@github.com:sharkymark/python_commissions.git &
-    git clone --progress git@github.com:lalithpolepeddi/learning-flask.git &
-
+    # create symbolic link for JetBrains Gateway
+    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
 
     ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri}" : ""}
   EOF
@@ -123,7 +101,7 @@ resource "coder_agent" "dev" {
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code"  
+  display_name  = "VS Code Web"  
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -139,7 +117,7 @@ resource "coder_app" "code-server" {
 
 resource "coder_app" "pycharm1" {
   agent_id = coder_agent.dev.id
-  slug          = "pycharm1"  
+  slug          = "pp"  
   display_name  = "PyCharm Pro"  
   icon          = "/icon/pycharm.svg"
   url           = "http://localhost:9001"
@@ -169,7 +147,7 @@ resource "kubernetes_pod" "main" {
     }
     container {
       name    = "dev"
-      image   = "docker.io/marktmilligan/pycharm-pro-chmod:latest"
+      image   = local.base-image
       image_pull_policy = "Always"       
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
@@ -181,12 +159,12 @@ resource "kubernetes_pod" "main" {
       }
       resources {
         requests = {
-          cpu    = "2"
-          memory = "4G"
+          cpu    = local.cpu-request
+          memory = local.memory-request
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = local.cpu-limit
+          memory = local.memory-limit
         }
       }      
       volume_mount {
@@ -208,11 +186,12 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     name      = "coder-pvc-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false  
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = local.disk-size
       }
     }
   }
@@ -227,34 +206,22 @@ resource "coder_metadata" "workspace_info" {
   }    
   item {
     key   = "CPU (limits, requests)"
-    value = "${var.cpu} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
+    value = "${local.cpu-limit} cores"
   }
   item {
     key   = "memory (limits, requests)"
-    value = "${var.memory}GB, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
+    value = local.memory-limit
   }    
   item {
     key   = "image"
     value = kubernetes_pod.main[0].spec[0].container[0].image
-  }
-  item {
-    key   = "container image pull policy"
-    value = kubernetes_pod.main[0].spec[0].container[0].image_pull_policy
-  }   
+  } 
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = "${local.disk-size}GiB"
   }
   item {
     key   = "volume"
     value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
-  item {
-    key   = "security context - container"
-    value = "run_as_user ${kubernetes_pod.main[0].spec[0].container[0].security_context[0].run_as_user}"
-  }   
-  item {
-    key   = "security context - pod"
-    value = "run_as_user ${kubernetes_pod.main[0].spec[0].security_context[0].run_as_user} fs_group ${kubernetes_pod.main[0].spec[0].security_context[0].fs_group}"
-  }     
+  }       
 }
