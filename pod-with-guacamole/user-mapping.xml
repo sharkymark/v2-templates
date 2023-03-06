@@ -1,7 +1,7 @@
 <user-mapping>
 
     <!-- Per-user authentication and config information -->
-    <authorize username="admin" password="password">
+    <authorize username="coder" password="password">
         <connection name="vnc-connection">
             <protocol>vnc</protocol>
             <param name="hostname">localhost</param>

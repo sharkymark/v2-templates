@@ -157,7 +157,7 @@ resource "kubernetes_pod" "main" {
         limits = {
           cpu    = local.cpu-limit
           memory = local.memory-limit
-        }
+        } 
       }                            
       volume_mount {
         mount_path = "/home/${local.user}"
