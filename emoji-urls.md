@@ -25,7 +25,13 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [clion](https://resources.jetbrains.com/storage/products/company/brand/logos/CLion_icon.svg?_ga=2.213423890.785417507.1675279285-1717186880.1621809973&_gl=1*b8pf15*_ga*MTcxNzE4Njg4MC4xNjIxODA5OTcz*_ga_9J976DJZ68*MTY3NTM3MDk4OS44Ny4xLjE2NzUzNzI1NDUuNTcuMC4w)
 
+[coder](https://avatars.githubusercontent.com/u/95932066?s=200&v=4)
+
+[cpu](https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg)
+
 [digital ocean](https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/DigitalOcean_logo.svg/1024px-DigitalOcean_logo.svg.png)
+
+[disk](https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png)
 
 [docker](https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png)
 
@@ -46,6 +52,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [fca](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Fiat_Chrysler_Automobiles_logo.svg/1200px-Fiat_Chrysler_Automobiles_logo.svg.png)
 
 [ford](https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Ford_logo_flat.svg/2560px-Ford_logo_flat.svg.png)
+
+[git](https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png)
 
 [gm](https://static.dezeen.com/uploads/2021/01/gm-logo-rebrand-electric-vehicles-design_dezeen_2364_col_0-1.gif)
 
@@ -89,6 +97,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [left shark dancing](https://i.gifer.com/origin/d8/d8c2c87772378b7e00deeefd8c843a12.gif)
 
 [list app icon](https://cdn-icons-png.flaticon.com/512/1217/1217026.png)
+
+[memory](https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png)
 
 [microsoft windows](https://upload.wikimedia.org/wikipedia/commons/5/5f/Windows_logo_-_2012.svg)
 

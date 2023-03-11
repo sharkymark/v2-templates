@@ -10,13 +10,15 @@ terraform {
 }
 
 locals {
-  cpu-limit = "1"
-  memory-limit = "2G"
-  cpu-request = "500m"
-  memory-request = "1" 
-  home-volume = "10Gi"
-  image = "image-registry.openshift-image-registry.svc:5000/demo/enterprise-jupyter:latest"
-  repo = "git clone https://github.com/sharkymark/pandas_automl.git"
+
+  cpu-limit = "4"
+  memory-limit = "4G"
+  cpu-request = "250m"
+  memory-request = "2" 
+  disk-size = "10Gi"
+  #base-image = "docker.io/marktmilligan/iu-chown:2021.3.3"   
+  base-image = "image-registry.openshift-image-registry.svc:5000/demo/iu-chown:2022.1.4"  
+  #base-image = "docker.io/marktmilligan/iu-chown:latest"    
 }
 
 variable "use_kubeconfig" {
@@ -29,7 +31,9 @@ variable "use_kubeconfig" {
   Kubernetes cluster as you are deploying workspaces to.
 
   Set this to true if the Coder host is running outside the Kubernetes cluster
-  for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
+  for workspaces.  A valid "~/.kube/config" must be present on the Coder host. This
+  is likely not your local machine unless you are using `coder server --dev.`
+
   EOF
 }
 
@@ -39,25 +43,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-
 }
-
-locals {
-  jupyter-type-arg = "${var.jupyter == "notebook" ? "Notebook" : "Server"}"
-}
-
-variable "jupyter" {
-  description = "Jupyter IDE type"
-  default     = "lab"
-  validation {
-    condition = contains([
-      "notebook",
-      "lab",
-    ], var.jupyter)
-    error_message = "Invalid Jupyter!"   
-}
-}
-
 
 provider "kubernetes" {
   # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
@@ -66,66 +52,92 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-resource "coder_agent" "coder" {
-  os   = "linux"
-  arch = "amd64"
-  dir = "/home/coder"
-  startup_script = <<EOT
-#!/bin/bash
 
-# start jupyter 
-jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j &
+variable "dotfiles_uri" {
+  description = <<-EOF
+  Dotfiles repo URI (optional)
 
-# install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --method standalone --prefix=/tmp/code-server
-/tmp/code-server/bin/code-server --auth none --port 13337 &
+  see https://dotfiles.github.io
+  EOF
+  default     = "git@github.com:sharkymark/dotfiles.git"
+}
 
-# add some Python libraries
-pip3 install --user pandas &
+resource "coder_agent" "dev" {
+  os             = "linux"
+  arch           = "amd64"
+  dir            = "/home/coder"
+  startup_script = <<EOF
+    #!/bin/bash
+    
+    # Start code-server
+    # note code-server is in the container image
+    code-server --auth none --port 13337 &
 
-# install VS Code extensions into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension python.python
+    # Configure and run JetBrains IDEs in a web browser
+    # https://www.jetbrains.com/idea/download/other.html
+    # Using JetBrains projector; please migrate to Gateway
+    # https://lp.jetbrains.com/projector/
+    # https://coder.com/docs/v2/latest/ides/gateway
 
-EOT
+    # Assumes you have JetBrains IDE installed in /opt
+    # and pip3 installed in
+    # your image and the "coder" user has filesystem
+    # permissions for "/opt/*"
+   
+    pip3 install projector-installer --user
+    /home/coder/.local/bin/projector --accept-license 
+    
+    /home/coder/.local/bin/projector config add intellij1 /opt/idea --force --use-separate-config --port 9001 --hostname localhost
+    /home/coder/.local/bin/projector run intellij1 &
+
+    # create symbolic link for JetBrains Gateway
+    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
+
+    ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri}" : ""}
+  EOF
 }
 
 # code-server
 resource "coder_app" "code-server" {
-  agent_id      = coder_agent.coder.id
+  agent_id = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
-  share         = "owner"
-  subdomain     = false  
+  display_name  = "VS Code Web"  
+  icon     = "/icon/code.svg"
+  url      = "http://localhost:13337"
+  subdomain = false
+  share     = "owner"
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
     interval  = 3
     threshold = 10
-  }   
+  }  
+
 }
 
-resource "coder_app" "jupyter" {
-  agent_id      = coder_agent.coder.id
-  slug          = "j"  
-  display_name  = "jupyter-${var.jupyter}"
-  icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j"
+resource "coder_app" "intellij1" {
+  agent_id = coder_agent.dev.id
+  slug          = "iu"  
+  display_name  = "Ultimate"  
+  icon          = "/icon/intellij.svg"
+  url           = "http://localhost:9001"
+  subdomain     = false
   share         = "owner"
-  subdomain     = false  
 
   healthcheck {
-    url       = "http://localhost:8888/healthz"
-    interval  = 10
-    threshold = 20
-  }  
+    url         = "http://localhost:9001/healthz"
+    interval    = 6
+    threshold   = 20
+  }    
 }
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
+  depends_on = [
+    kubernetes_persistent_volume_claim.home-directory
+  ]
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+    name = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
     labels = {
       "app.kubernetes.io/name"     = "coder-workspace"
@@ -140,17 +152,17 @@ resource "kubernetes_pod" "main" {
     }
     annotations = {
       "com.coder.user.email" = data.coder_workspace.me.owner_email
-    }     
+    }
   }
-  spec {   
+  spec {
     container {
-      name    = "coder-container"
-      image   = local.image
-      command = ["sh", "-c", coder_agent.coder.init_script]
-      image_pull_policy = "Always"
+      name    = "dev"
+      image   = local.base-image
+      image_pull_policy = "Always"       
+      command = ["sh", "-c", coder_agent.dev.init_script]
       env {
         name  = "CODER_AGENT_TOKEN"
-        value = coder_agent.coder.token
+        value = coder_agent.dev.token
       }
       resources {
         requests = {
@@ -161,24 +173,26 @@ resource "kubernetes_pod" "main" {
           cpu    = local.cpu-limit
           memory = local.memory-limit
         }
-      }                       
+      }      
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
-      }        
+        read_only  = false
+      }
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+        read_only  = false
       }
-    }         
+    }
   }
 }
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
     labels = {
       "app.kubernetes.io/name"     = "coder-pvc"
@@ -195,12 +209,12 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
       "com.coder.user.email" = data.coder_workspace.me.owner_email
     }    
   }
-  wait_until_bound = false    
+  wait_until_bound = false  
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = local.home-volume
+        storage = local.disk-size
       }
     }
   }
@@ -210,35 +224,27 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
+    key   = "kubernetes namespace"
+    value = "${var.workspaces_namespace}"
+  }    
+  item {
+    key   = "CPU (limits, requests)"
     value = "${local.cpu-limit} cores"
   }
   item {
-    key   = "memory"
-    value = "${local.memory-limit}"
-  }  
-  item {
-    key   = "disk"
-    value = "${local.home-volume}"
-  }
+    key   = "memory (limits, requests)"
+    value = local.memory-limit
+  }    
   item {
     key   = "image"
-    value = local.image
-  }
+    value = kubernetes_pod.main[0].spec[0].container[0].image
+  } 
   item {
-    key   = "repo cloned"
-    value = local.repo
-  }  
-  item {
-    key   = "jupyter"
-    value = "${var.jupyter}"
+    key   = "disk"
+    value = "${local.disk-size}GiB"
   }
   item {
     key   = "volume"
     value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
+  }       
 }
-
-
-
-

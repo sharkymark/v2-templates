@@ -9,6 +9,10 @@ terraform {
   }
 }
 
+locals {
+  registry    = "image-registry.openshift-image-registry.svc:5000/demo"
+}
+
 provider "coder" {
   feature_use_managed_variables = "true"
 }
@@ -34,7 +38,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = ""
+  default = "demo"
 }
 
 provider "kubernetes" {
@@ -98,27 +102,27 @@ data "coder_parameter" "image" {
   type        = "string"
   description = "What container image and language do you want?"
   mutable     = true
-  default     = "codercom/enterprise-node:ubuntu"
+  default     = "${local.registry}/enterprise-node:latest"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
 
   option {
     name = "Node React"
-    value = "codercom/enterprise-node:ubuntu"
+    value = "${local.registry}/enterprise-node:latest"
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
     name = "Golang"
-    value = "codercom/enterprise-golang:ubuntu"
+    value = "${local.registry}/enterprise-golang:latest"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
   } 
   option {
     name = "Java"
-    value = "codercom/enterprise-java:ubuntu"
+    value = "${local.registry}/enterprise-java:latest"
     icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   } 
   option {
     name = "Base including Python"
-    value = "codercom/enterprise-base:ubuntu"
+    value = "${local.registry}/enterprise-base-demo:latest"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
   }      
 }
@@ -191,8 +195,8 @@ if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
 fi
 
 # install and start the latest code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+/tmp/code-server/bin/code-server --auth none --port 13337 &
 
   EOT  
 }
@@ -223,19 +227,12 @@ resource "kubernetes_pod" "main" {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
-  spec {
-    security_context {
-      run_as_user = "1000"
-      fs_group    = "1000"
-    }    
+  spec {    
     container {
       name    = "coder-container"
-      image   = "docker.io/${data.coder_parameter.image.value}"
+      image   = data.coder_parameter.image.value
       image_pull_policy = "Always"
-      command = ["sh", "-c", coder_agent.coder.init_script]
-      security_context {
-        run_as_user = "1000"
-      }      
+      command = ["sh", "-c", coder_agent.coder.init_script]      
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
@@ -253,12 +250,14 @@ resource "kubernetes_pod" "main" {
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
+        read_only  = false
       }      
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+        read_only  = false
       }
     }        
   }
@@ -301,7 +300,7 @@ resource "coder_metadata" "workspace_info" {
   }   
   item {
     key   = "image"
-    value = "docker.io/${data.coder_parameter.image.value}"
+    value = data.coder_parameter.image.value
   }
   item {
     key   = "repo cloned"

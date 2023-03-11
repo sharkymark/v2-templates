@@ -16,7 +16,7 @@ locals {
   memory-request = "1" 
   home-volume = "10Gi"
   repo = "iluwatar/java-design-patterns.git"
-  image = "image-registry.openshift-image-registry.svc:5000/coder/intellij-idea-ultimate:2022.3.2"
+  image = "image-registry.openshift-image-registry.svc:5000/demo/intellij-idea-ultimate-demo:latest"
 }
 
 variable "workspaces_namespace" {
@@ -196,7 +196,7 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${local.memory-limit} GiB"
+    value = "${local.memory-limit}"
   }  
   item {
     key   = "disk"
