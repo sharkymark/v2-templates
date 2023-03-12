@@ -16,11 +16,12 @@ locals {
   cpu-request = "250m"
   memory-request = "500m" 
   home-volume = "10Gi"
-  guac-server-image = "docker.io/guacamole/guacd"
-  guac-client-image = "docker.io/guacamole/guacamole" 
+  guac-server-image = "docker.io/guacamole/guacd:1.5.0"
+  guac-client-image = "docker.io/marktmilligan/guacamole:1.5.0" 
+  #guac-client-image = "docker.io/guacamole/guacamole" 
   base-image = "docker.io/marktmilligan/tigervnc:latest" 
   #base-image = "docker.io/codercom/enterprise-base:ubuntu"      
-  user = "coder"  
+  user = "guacamole"  
 }
 
 variable "use_kubeconfig" {
@@ -203,15 +204,7 @@ resource "kubernetes_pod" "main" {
           cpu    = local.cpu-limit
           memory = local.memory-limit
         }
-      } 
-      env {
-        name     = "ENABLE_ENVIRONMENT_PROPERTIES"
-        value    = "true"
-      }
-      env {
-        name     = "GUACAMOLE_HOME"
-        value    = "/home/${local.user}/.guacamole"
-      }  
+      }    
       env {
         name     = "GUACD_HOSTNAME"
         value    = "localhost"
@@ -219,7 +212,7 @@ resource "kubernetes_pod" "main" {
       env {
         name     = "GUACD_PORT"
         value    = "4822"
-      }                
+      }                      
       volume_mount {
         mount_path = "/home/${local.user}"
         name       = "home-directory"
