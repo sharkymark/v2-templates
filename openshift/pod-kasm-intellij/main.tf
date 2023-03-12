@@ -10,12 +10,12 @@ terraform {
 }
 
 locals {
-  cpu-limit = "1"
-  memory-limit = "2G"
+  cpu-limit = "4"
+  memory-limit = "8G"
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
-  image = "marktmilligan/kasm:latest"
+  image = "image-registry.openshift-image-registry.svc:5000/demo/intellij-community-kasm:2022.3.2"
   user = "kasm-user"
 }
 
@@ -44,7 +44,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = ""
+  default = "demo"
 }
 
 data "coder_parameter" "dotfiles_url" {
@@ -54,6 +54,26 @@ data "coder_parameter" "dotfiles_url" {
   default     = "git@github.com:sharkymark/dotfiles.git"
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
+
+data "coder_parameter" "repo" {
+  name        = "Source Code Repository"
+  type        = "string"
+  description = "What Java source code repository do you want to clone?"
+  mutable     = true
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  default     = "sharkymark/java_helloworld.git"
+
+  option {
+    name = "Java Patterns repo"
+    value = "iluwatar/java-design-patterns.git"
+    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  }
+  option {
+    name = "Java Hello, World! command line app"
+    value = "sharkymark/java_helloworld.git"
+    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  }     
 }
 
 provider "kubernetes" {
@@ -76,12 +96,20 @@ set -e
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
 
-# start Kasm
+# clone java repo
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone git@github.com:${data.coder_parameter.repo.value} &
+
+echo "starting KasmVNC"
 /dockerstartup/kasm_default_profile.sh
 /dockerstartup/vnc_startup.sh &
 
-# start Insomnia
-insomnia &
+# IntelliJ needs KasmVNC fully running to start, so sleep let it complete
+sleep 10
+
+echo "starting JetBrains IntelliJ IDEA Community IDE"
+/opt/idea/bin/idea.sh &
 
   EOT  
 }
@@ -89,16 +117,16 @@ insomnia &
 resource "coder_app" "kasm" {
   agent_id      = coder_agent.coder.id
   slug          = "kasm"  
-  display_name  = "KasmVNC"
-  icon          = "https://avatars.githubusercontent.com/u/44181855?s=280&v=4"
+  display_name  = "IDEA in KasmVNC"
+  icon          = "/icon/intellij.svg"
   url           = "http://localhost:6901"
   subdomain = true
   share     = "owner"
 
   healthcheck {
     url       = "http://localhost:6901/healthz/"
-    interval  = 5
-    threshold = 15
+    interval  = 20
+    threshold = 5
   } 
 }
 
@@ -111,19 +139,12 @@ resource "kubernetes_pod" "main" {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
-  spec {
-    security_context {
-      run_as_user = "1000"
-      fs_group    = "1000"
-    }    
+  spec {    
     container {
       name    = "coder-container"
       image   = local.image
       command = ["sh", "-c", coder_agent.coder.init_script]
-      image_pull_policy = "Always"
-      security_context {
-        run_as_user = "1000"
-      }      
+      image_pull_policy = "Always"     
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
@@ -141,12 +162,14 @@ resource "kubernetes_pod" "main" {
       volume_mount {
         mount_path = "/home/${local.user}"
         name       = "home-directory"
+        read_only  = false        
       }      
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+        read_only  = false        
       }
     }        
   }
@@ -157,7 +180,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
-  wait_until_bound = false    
+  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {

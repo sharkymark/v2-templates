@@ -20,6 +20,10 @@ locals {
   user = "kasm-user"
 }
 
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
 variable "use_kubeconfig" {
   type        = bool
   sensitive   = true
@@ -32,6 +36,7 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
 variable "workspaces_namespace" {
@@ -40,6 +45,36 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
+  default = "demo"
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
+
+data "coder_parameter" "repo" {
+  name        = "Source Code Repository"
+  type        = "string"
+  description = "What Java source code repository do you want to clone?"
+  mutable     = true
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  default     = "sharkymark/java_helloworld.git"
+
+  option {
+    name = "Java Patterns repo"
+    value = "iluwatar/java-design-patterns.git"
+    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  }
+  option {
+    name = "Java Hello, World! command line app"
+    value = "sharkymark/java_helloworld.git"
+    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  }     
 }
 
 provider "kubernetes" {
@@ -48,15 +83,6 @@ provider "kubernetes" {
 }
 
 data "coder_workspace" "me" {}
-
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
-}
 
 resource "coder_agent" "coder" {
   os                      = "linux"
@@ -69,12 +95,12 @@ resource "coder_agent" "coder" {
 set -e
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
+coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
 
 # clone java repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone git@github.com:${local.repo} &
+git clone git@github.com:${data.coder_parameter.repo.value} &
 
 echo "starting KasmVNC"
 /dockerstartup/kasm_default_profile.sh
