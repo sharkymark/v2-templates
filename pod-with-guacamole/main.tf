@@ -18,10 +18,7 @@ locals {
   home-volume = "10Gi"
   guac-server-image = "docker.io/guacamole/guacd:1.5.0"
   guac-client-image = "docker.io/marktmilligan/guacamole:1.5.0" 
-  #guac-client-image = "docker.io/guacamole/guacamole" 
-  base-image = "docker.io/marktmilligan/tigervnc:latest" 
-  #base-image = "docker.io/codercom/enterprise-base:ubuntu"      
-  user = "guacamole"  
+  base-image = "docker.io/marktmilligan/tigervnc:latest"     
 }
 
 variable "use_kubeconfig" {
@@ -71,11 +68,9 @@ variable "disk_size" {
 resource "coder_agent" "base" {
   os   = "linux"
   arch = "amd64"
-  dir = "/home/${local.user}"
+  dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
-
-mkdir -p /home/${local.user}/.guacamole
 
 # run configure script to start tigervnc
 /coder/configure
@@ -96,7 +91,7 @@ resource "coder_app" "code-server" {
   slug          = "code-server"  
   display_name  = "VS Code Web"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/${local.user}"
+  url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
   share     = "owner"
 
@@ -161,7 +156,7 @@ resource "kubernetes_pod" "main" {
         } 
       }                            
       volume_mount {
-        mount_path = "/home/${local.user}"
+        mount_path = "/home/coder"
         name       = "home-directory"
       }      
     }           
@@ -183,7 +178,7 @@ resource "kubernetes_pod" "main" {
         }         
       }
       volume_mount {
-        mount_path = "/home/${local.user}"
+        mount_path = "/home/guacamole"
         name       = "home-directory"
       }                                     
     }
@@ -214,7 +209,7 @@ resource "kubernetes_pod" "main" {
         value    = "4822"
       }                      
       volume_mount {
-        mount_path = "/home/${local.user}"
+        mount_path = "/home/guacamole"
         name       = "home-directory"
       }                                                     
     }               

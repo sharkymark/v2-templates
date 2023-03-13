@@ -6,13 +6,9 @@ tags: [cloud, kubernetes]
 
 # Apache Guacamole in a Kubernetes pod
 
-### DO NOT USE - WORK IN PROGRESS
-
-### Outstanding To-Do's
-1. Figure out how to get user-mapping.xml into the workspace
-2. Figure out how to properly change the location of $GUACAMOLE_HOME to the `/home/coder` PVC
-3. Start either a Tiger VNC server or an RDP server to test (since if I manually copy `user-mapping.xml` to $GUACAMOLE_HOME, I am able to auth into the Guacamole client and make the connection to the Guacamole server, but from there, to either VNC or RDP, connection is refused - which makes sense, since I do not have either server running)
-4. Idea: Add a 4th container for the RDP or Tiger VNC server
+### Key points
+1. `coder_agent` is only for the `base-container` that has TigerVNC Server
+1. A custom Guacamole client image is needed to copy the config files `guacamole.properties` and `user-mapping.xml`
 
 https://tigervnc.org/
 
@@ -21,15 +17,17 @@ https://tigervnc.org/
 1. code-server (VS Code Web)
 1. Guacamole VNC UI
 
-### Images for the 2 containers
-1. [Guacamole Client](https://hub.docker.com/r/guacamole/guacd)
-2. [Guacamole Server](https://hub.docker.com/r/guacamole/guacamole)
+### Images for the 3 containers
+1. [Custom Guacamole Client Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/guacamole/client) and [Image on DockerHub](https://hub.docker.com/repository/docker/marktmilligan/guacamole/general) as user `1001`
+2. [Guacamole Server](https://hub.docker.com/r/guacamole/guacd) as user `1000`
+3. [Custom TigerVNC Server Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/tiger-vnc) and [Image on DockerHub](https://hub.docker.com/repository/docker/marktmilligan/tigervnc/general) as user `1000`
 
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
 
 ### defaults
-1. (Guacamole) Username: guacadmin Password: guacadmin 
+1. (Guacamole) Username: coder Password: password (see in `user-mapping.xml`) 
+2. Authentication to TigerVNC is disabled in `supervisord.conf` with `command=vncserver :1 -SecurityTypes None`
 
 ### Authentication
 
