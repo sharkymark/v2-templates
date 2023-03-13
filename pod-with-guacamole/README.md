@@ -50,22 +50,6 @@ Be sure to enter a valid workspaces_namespace at workspace creation to point to 
 
 [TigerVNC docs](https://manpages.ubuntu.com/manpages/bionic/man1/tigervncserver.1.html)
 
-### Notes
+### What's next?
 
-Copy user-mapping.xml to guac client container manually
-```sh
-kubectl cp ./user-mapping.xml coder-mark-guac:/home/guacamole/.guacamole/user-mapping.xml -c guac-client-container -n coder
-```
-
-Error trying to connect with VNC (from guacd server logs)
-```sh
-guacd[1]: INFO:	Creating new client for protocol "vnc"
-guacd[1]: INFO:	Connection ID is "$76d4876b-22de-4000-b81a-747f2e9904df"
-guacd[8]: INFO:	Cursor rendering: local
-guacd[8]: INFO:	User "@963039b6-a85a-4f8b-aa18-4b504cfbe3b8" joined connection "$76d4876b-22de-4000-b81a-747f2e9904df" (1 users now present)
-guacd[8]: ERROR:	Unable to connect to VNC server.
-guacd[8]: INFO:	User "@963039b6-a85a-4f8b-aa18-4b504cfbe3b8" disconnected (0 users remain)
-guacd[8]: INFO:	Last user of connection "$76d4876b-22de-4000-b81a-747f2e9904df" disconnected
-guacd[1]: INFO:	Connection "$76d4876b-22de-4000-b81a-747f2e9904df" removed.
-```
-
+Goal is to apply this to a Microsoft Windows and Visual Studio 2022 VM workspace
