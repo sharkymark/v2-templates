@@ -106,7 +106,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "guac" {
   agent_id      = coder_agent.base.id
   slug          = "guac"  
-  display_name  = "Guacamoli Client"
+  display_name  = "Guacamole Client"
   icon          = "https://www.dove.io/static/media/guac.4b7f0930426ff89e75ab.png"
   url           = "http://localhost:8080/guacamole"
   subdomain = false
