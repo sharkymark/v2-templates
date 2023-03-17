@@ -85,6 +85,9 @@ if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
 fi
 
+# remove xfce screen locker, since keyboard commands cannot unlock it
+sudo apt purge light-locker -y &
+
   EOT  
 }
 

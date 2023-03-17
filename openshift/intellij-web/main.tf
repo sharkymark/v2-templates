@@ -17,8 +17,8 @@ locals {
   memory-request = "2" 
   disk-size = "10Gi"
   #base-image = "docker.io/marktmilligan/iu-chown:2021.3.3"   
-  base-image = "image-registry.openshift-image-registry.svc:5000/demo/iu-chown:2022.1.4"  
-  #base-image = "docker.io/marktmilligan/iu-chown:latest"    
+  #base-image = "image-registry.openshift-image-registry.svc:5000/demo/iu-chown:2022.1.4"
+  base-image = "image-registry.openshift-image-registry.svc:5000/demo/iu-chown:2021.3.3"       
 }
 
 provider "coder" {
