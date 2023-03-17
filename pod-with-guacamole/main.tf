@@ -19,6 +19,11 @@ locals {
   guac-server-image = "docker.io/guacamole/guacd:1.5.0"
   guac-client-image = "docker.io/marktmilligan/guacamole:1.5.0" 
   base-image = "docker.io/marktmilligan/tigervnc:latest"     
+  disk-size = 10
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 variable "use_kubeconfig" {
@@ -33,6 +38,7 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = true
 }
 
 variable "workspaces_namespace" {
@@ -41,6 +47,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
+  default = "coder"
 }
 
 provider "kubernetes" {
@@ -50,19 +57,13 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
-}
-
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
-  default     = 10
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 resource "coder_agent" "base" {
@@ -80,7 +81,9 @@ curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 & 
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} 
+if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+fi
 
   EOT  
 }
@@ -212,7 +215,7 @@ resource "kubernetes_pod" "main" {
         mount_path = "/home/guacamole"
         name       = "home-directory"
       }                                                     
-    }               
+    }              
     volume {
       name = "home-directory"
       persistent_volume_claim {
@@ -232,7 +235,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "${local.disk-size}Gi"
       }
     }
   }
@@ -263,7 +266,7 @@ resource "coder_metadata" "workspace_info" {
   }      
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = "${local.disk-size}GiB"
   }
   item {
     key   = "volume"

@@ -16,7 +16,8 @@ locals {
   memory-request = "1" 
   home-volume = "10Gi"
   repo = "iluwatar/java-design-patterns.git"
-  image = "docker.io/marktmilligan/intellij-idea-ultimate:2022.3.2"
+  #image = "docker.io/marktmilligan/intellij-idea-ultimate:2022.3.2"
+  image = "docker.io/marktmilligan/intellij-idea-ultimate:2022.1.4"  
 }
 
 variable "workspaces_namespace" {

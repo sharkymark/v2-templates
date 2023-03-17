@@ -148,7 +148,13 @@ resource "kubernetes_pod" "main" {
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
-      }  
+      } 
+      security_context {
+        allow_privilege_escalation = true
+        capabilities {
+          add = ["SETUID", "SETGID"]
+        }
+      }      
       resources {
         requests = {
           cpu    = local.cpu-request

@@ -19,6 +19,10 @@ locals {
   image = "image-registry.openshift-image-registry.svc:5000/demo/intellij-idea-ultimate-demo:latest"
 }
 
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
 variable "workspaces_namespace" {
   sensitive   = true
   description = <<-EOF
@@ -48,13 +52,13 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 resource "coder_agent" "coder" {
@@ -65,7 +69,9 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
+if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+fi
 
 # clone java repo
 mkdir -p ~/.ssh
@@ -109,7 +115,13 @@ resource "kubernetes_pod" "main" {
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
-      }  
+      } 
+      security_context {
+        allow_privilege_escalation = true
+        capabilities {
+          add = ["SETUID", "SETGID"]
+        }
+      }       
       resources {
         requests = {
           cpu    = local.cpu-request

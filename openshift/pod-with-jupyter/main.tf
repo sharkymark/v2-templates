@@ -19,6 +19,10 @@ locals {
   repo = "git clone https://github.com/sharkymark/pandas_automl.git"
 }
 
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
 variable "use_kubeconfig" {
   type        = bool
   sensitive   = true
@@ -40,6 +44,15 @@ variable "workspaces_namespace" {
 
   EOF
 
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 locals {
@@ -72,6 +85,11 @@ resource "coder_agent" "coder" {
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
+
+# use coder CLI to clone and install dotfiles
+if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+fi
 
 # start jupyter 
 jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j &
@@ -152,6 +170,12 @@ resource "kubernetes_pod" "main" {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
       }
+      security_context {
+        allow_privilege_escalation = true
+        capabilities {
+          add = ["SETUID", "SETGID"]
+        }
+      }      
       resources {
         requests = {
           cpu    = local.cpu-request

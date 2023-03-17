@@ -21,6 +21,10 @@ locals {
   #base-image = "docker.io/marktmilligan/iu-chown:latest"    
 }
 
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
 variable "use_kubeconfig" {
   type        = bool
   sensitive   = true
@@ -52,14 +56,13 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
   default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 resource "coder_agent" "dev" {
@@ -69,6 +72,11 @@ resource "coder_agent" "dev" {
   startup_script = <<EOF
     #!/bin/bash
     
+    # use coder CLI to clone and install dotfiles
+    if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
+      coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+    fi
+
     # Start code-server
     # note code-server is in the container image
     code-server --auth none --port 13337 &
@@ -93,7 +101,6 @@ resource "coder_agent" "dev" {
     # create symbolic link for JetBrains Gateway
     /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
 
-    ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri}" : ""}
   EOF
 }
 
@@ -164,6 +171,12 @@ resource "kubernetes_pod" "main" {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.dev.token
       }
+      security_context {
+        allow_privilege_escalation = true
+        capabilities {
+          add = ["SETUID", "SETGID"]
+        }
+      }       
       resources {
         requests = {
           cpu    = local.cpu-request
