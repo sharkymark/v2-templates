@@ -2,11 +2,9 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.12"
     }
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 2.20.2"
     }
   }
 }
@@ -48,8 +46,8 @@ resource "coder_agent" "main" {
 
 resource "coder_app" "code-server" {
   agent_id     = coder_agent.main.id
-  slug         = "code-server"
-  display_name = "code-server"
+  slug         = "cs"
+  display_name = "VS Code Web"
   url          = "http://localhost:8080/?folder=/home/coder"
   icon         = "/icon/code.svg"
   subdomain    = false
@@ -92,7 +90,7 @@ resource "docker_volume" "home_volume" {
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = "marktmilligan/code-server-fish:latest"
+  image = "marktmilligan/code-server-fish@sha256:b7d8ffeb4fb00debc123a24e1a48d9d3487dc83b1b48cc84c69e5f4697d25164"
   #image = "codercom/code-server:latest"  
   # Uses lower() to avoid Docker restriction on container names.
   name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
