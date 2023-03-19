@@ -15,19 +15,25 @@ locals {
   memory-limit = "8G"
   cpu-request = "500m"
   memory-request = "4G" 
-  home-volume = "10Gi"
+  home-volume = "5Gi"
 
   repo = {
-    "Java" = "sharkymark/java_helloworld.git" 
-    "Python" = "sharkymark/python_commissions.git" 
-    "Go" = "coder/coder.git"
+    "Java"    = "sharkymark/java_helloworld.git" 
+    "Python"  = "sharkymark/python_commissions.git" 
+    "Go"      = "coder/coder.git"
+    "Node"    = "sharkymark/coder-react.git"
   }  
   image = {
-    "Java" = "codercom/enterprise-java:ubuntu" 
-    "Python" = "codercom/enterprise-base:ubuntu" 
-    "Go" = "codercom/enterprise-golang:ubuntu"
+    "Java"    = "codercom/enterprise-java:ubuntu" 
+    "Python"  = "codercom/enterprise-base:ubuntu" 
+    "Go"      = "codercom/enterprise-golang:ubuntu"
+    "Node"    = "codercom/enterprise-node:ubuntu"
   }  
 
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 variable "use_kubeconfig" {
@@ -42,6 +48,7 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
 variable "workspaces_namespace" {
@@ -50,6 +57,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
+  default = ""
 }
 
 provider "kubernetes" {
@@ -59,13 +67,13 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 variable "lang" {
@@ -81,6 +89,36 @@ variable "lang" {
 }
 }
 
+data "coder_parameter" "lang" {
+  name        = "Programming Language"
+  type        = "string"
+  description = "What container image and language do you want?"
+  mutable     = true
+  default     = "Java"
+  icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
+
+  option {
+    name = "Node"
+    value = "Node"
+    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
+  }
+  option {
+    name = "Go"
+    value = "codercom/enterprise-golang:ubuntu"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
+  } 
+  option {
+    name = "Java"
+    value = "Java"
+    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  } 
+  option {
+    name = "Python"
+    value = "Python"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
+  }      
+}
+
 resource "coder_agent" "dev" {
   os   = "linux"
   arch = "amd64"
@@ -91,10 +129,10 @@ resource "coder_agent" "dev" {
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${lookup(local.repo, var.lang)}
+git clone --progress git@github.com:${lookup(local.repo, data.coder_parameter.lang.value)}
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -107,7 +145,7 @@ code-server --auth none --port 13337 &
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code"
+  display_name  = "VS Code Web"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -136,7 +174,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "docker.io/${lookup(local.image, var.lang)}"
+      image   = "docker.io/${lookup(local.image, data.coder_parameter.lang.value)}"
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
@@ -206,11 +244,11 @@ resource "coder_metadata" "workspace_info" {
   }    
   item {
     key   = "image"
-    value = "docker.io/${lookup(local.image, var.lang)}"
+    value = "docker.io/${lookup(local.image, data.coder_parameter.lang.value)}"
   }
   item {
     key   = "repo cloned"
-    value = "docker.io/${lookup(local.repo, var.lang)}"
+    value = "docker.io/${lookup(local.repo, data.coder_parameter.lang.value)}"
   }  
   item {
     key   = "disk"

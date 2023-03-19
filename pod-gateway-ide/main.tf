@@ -9,6 +9,10 @@ terraform {
   }
 }
 
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
 variable "use_kubeconfig" {
   type        = bool
   sensitive   = true
@@ -21,6 +25,7 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
 variable "workspaces_namespace" {
@@ -29,6 +34,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
+  default = ""
 }
 
 provider "kubernetes" {
@@ -38,38 +44,98 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-variable "cpu" {
-  description = "CPU (__ cores)"
+data "coder_parameter" "disk_size" {
+  name        = "PVC storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
+  validation {
+    min       = 1
+    max       = 10
+    monotonic = "increasing"
+  }
+  mutable     = true
+  default     = 5
+}
+
+data "coder_parameter" "cpu" {
+  name        = "CPU cores"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+  validation {
+    min       = 4
+    max       = 6
+  }
+  mutable     = true
   default     = 4
+}
+
+data "coder_parameter" "memory" {
+  name        = "Memory (__ GB)"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+  validation {
+    min       = 4
+    max       = 8
+  }
+  mutable     = true
+  default     = 4
+}
+
+data "coder_parameter" "ide" {
+
+  name        = "JetBrains IDE"
+  type        = "string"
+  description = "What JetBrains IDE do you want?"
+  mutable     = true
+  default     = "IntelliJ IDEA Ultimate"
+  icon        = "https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg"
+
+  option {
+    name = "WebStorm"
+    value = "WebStorm"
+    icon = "/icon/webstorm.svg"
+  }
+  option {
+    name = "GoLand"
+    value = "GoLand"
+    icon = "/icon/goland.svg"
+  } 
+  option {
+    name = "PyCharm Professional"
+    value = "PyCharm Professional"
+    icon = "/icon/pycharm.svg"
+  } 
+  option {
+    name = "IntelliJ IDEA Ultimate"
+    value = "IntelliJ IDEA Ultimate"
+    icon = "/icon/intellij.svg"
+  }  
+
+}
+
+variable "ide" {
+  description = "JetBrains IDE"
+  default     = "IntelliJ IDEA Ultimate"
   validation {
     condition = contains([
-      "2",
-      "4",
-      "6"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
-}
-
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 4
-  validation {
-    condition = contains([
-      "4",
-      "6",
-      "8"
-    ], var.memory)
-    error_message = "Invalid memory!"  
+      "IntelliJ IDEA Ultimate",
+      "PyCharm Professional",
+      "GoLand",
+      "WebStorm"
+    ], var.ide)
+    error_message = "Invalid JetBrains IDE!"   
 }
 }
 
@@ -88,25 +154,6 @@ locals {
   }  
 }
 
-variable "ide" {
-  description = "JetBrains IDE"
-  default     = "IntelliJ IDEA Ultimate"
-  validation {
-    condition = contains([
-      "IntelliJ IDEA Ultimate",
-      "PyCharm Professional",
-      "GoLand",
-      "WebStorm"
-    ], var.ide)
-    error_message = "Invalid JetBrains IDE!"   
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
-  default     = 10
-}
-
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
@@ -115,11 +162,11 @@ resource "coder_agent" "coder" {
 #!/bin/bash
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
-cd /opt/${lookup(local.ide-dir, var.ide)}/bin
+cd /opt/${lookup(local.ide-dir, data.coder_parameter.ide.value)}/bin
 ./remote-dev-server.sh registerBackendLocationForGateway
 
   EOT  
@@ -141,7 +188,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "docker.io/${lookup(local.image, var.ide)}"
+      image   = "docker.io/${lookup(local.image, data.coder_parameter.ide.value)}"
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -157,8 +204,8 @@ resource "kubernetes_pod" "main" {
           memory = "500Mi"
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = "${data.coder_parameter.cpu.value}"
+          memory = "${data.coder_parameter.memory.value}G"
         }
       }                       
       volume_mount {
@@ -185,7 +232,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "${data.coder_parameter.disk_size.value}Gi"
       }
     }
   }
@@ -196,19 +243,19 @@ resource "coder_metadata" "workspace_info" {
   resource_id = kubernetes_pod.main[0].id
   item {
     key   = "CPU"
-    value = "${var.cpu} cores"
+    value = "${data.coder_parameter.cpu.value} cores"
   }
   item {
     key   = "memory"
-    value = "${var.memory}GB"
+    value = "${data.coder_parameter.memory.value}GB"
   }  
   item {
     key   = "image"
-    value = "docker.io/${lookup(local.image, var.ide)}"
+    value = "docker.io/${lookup(local.image, data.coder_parameter.ide.value)}"
   }
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = "${data.coder_parameter.disk_size.value}GiB"
   }
   item {
     key   = "volume"
