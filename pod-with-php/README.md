@@ -1,23 +1,20 @@
 ---
 name: Develop in a PHP container in a Kubernetes pod
-description: The goal is to enable code-server (VS Code) and a PHP interpreter
+description: The goal is to enable VS Code and PhpStorm and a PHP interpreter
 tags: [cloud, kubernetes]
 ---
 
 # VS Code template for PHP development
 
-### Default Compute
-1. 1 CPU cores
-1. 2 GB memory
-1. 10 GB persistent volume claim storage
-
 ### Apps included
 1. A web-based terminal
 1. code-server IDE (VS Code-in-a-browser)
+1. JetBrains PhpStorm and `projector` for web access
 
 ### Included in the container image
 1. PHP 7.4 interpreter
 1. Latest code-server IDE
+1. JetBrains PhpStorm `2022.1.4`
 1. A sample debugger `launch.json` in `/payload`
 1. The debugger config `xdebug.ini` in `/etc/php/7.4/mods-available/`
 1. [Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/phpstorm/projector-chmod)
@@ -28,6 +25,7 @@ tags: [cloud, kubernetes]
 1. Install VS Code extensions from Open-VSX marketplace
 1. Copy the xdebug.ini config to support PHP debugging
 1. Start code-server (VS Code-in-a-browser)
+1. Create a JetBrains `projector` configuration and start PhpStorm
 1. Clone 2 PHP repos
 1. Start both PHP apps on ports 1026 and 1027
 

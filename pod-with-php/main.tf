@@ -2,13 +2,24 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.12.1"
     }
   }
+}
+
+locals {
+
+  cpu-request = "250m"
+  memory-request = "2" 
+  #base-image = "docker.io/marktmilligan/phpstorm-vscode:2021.3.3"   
+  base-image = "docker.io/marktmilligan/phpstorm-vscode:2022.1.4"  
+  #base-image = "docker.io/codercom/enterprise-base:ubuntu"    
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 variable "use_kubeconfig" {
@@ -21,19 +32,18 @@ variable "use_kubeconfig" {
   Kubernetes cluster as you are deploying workspaces to.
 
   Set this to true if the Coder host is running outside the Kubernetes cluster
-  for workspaces.  A valid "~/.kube/config" must be present on the Coder host. This
-  is likely not your local machine unless you are using `coder server --dev.`
-
+  for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
 variable "workspaces_namespace" {
+  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default     = ""  
-
+  default = ""
 }
 
 provider "kubernetes" {
@@ -44,59 +54,83 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 1
-  validation {
-    condition = contains([
-      "1",
-      "2",
-      "4",
-      "6",
-      "8"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
-}
-
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 2
-  validation {
-    condition = contains([
-      "2",
-      "4",
-      "6",
-      "8",
-      "10",
-      "12"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
-  default     = 10
-}
-
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
   default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-resource "coder_agent" "dev" {
+data "coder_parameter" "disk_size" {
+  name        = "PVC storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
+  validation {
+    min       = 1
+    max       = 10
+    monotonic = "increasing"
+  }
+  mutable     = true
+  default     = 5
+}
+
+data "coder_parameter" "cpu" {
+  name        = "CPU cores"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+  validation {
+    min       = 1
+    max       = 4
+  }
+  mutable     = true
+  default     = 1
+}
+
+data "coder_parameter" "memory" {
+  name        = "Memory (__ GB)"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+  validation {
+    min       = 1
+    max       = 8
+  }
+  mutable     = true
+  default     = 2
+}
+
+resource "coder_agent" "main" {
   os             = "linux"
   arch           = "amd64"
   dir            = "/home/coder"
   startup_script = <<EOF
     #!/bin/sh
 
-    ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri} &" : ""}
+    ${data.coder_parameter.dotfiles_url.value != "" ? "coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &" : ""}
+
+    # Configure and run JetBrains IDEs in a web browser
+    # https://www.jetbrains.com/phpstorm/download/other.html
+    # Using JetBrains projector; please migrate to Gateway
+    # https://lp.jetbrains.com/projector/
+    # https://coder.com/docs/v2/latest/ides/gateway
+
+    # Assumes you have JetBrains IDE installed in /opt
+    # and pip3 installed in
+    # your image and the "coder" user has filesystem
+    # permissions for "/opt/*"
+   
+    pip3 install projector-installer --user
+    /home/coder/.local/bin/projector --accept-license 
+    
+    /home/coder/.local/bin/projector config add ps /opt/ps --force --use-separate-config --port 9001 --hostname localhost
+    /home/coder/.local/bin/projector run ps &
+
+    # create symbolic link for JetBrains Gateway
+    /opt/ps/bin/remote-dev-server.sh registerBackendLocationForGateway
 
     # clone 2 php repos
     mkdir -p ~/.ssh
@@ -124,9 +158,9 @@ resource "coder_agent" "dev" {
 
 # code-server
 resource "coder_app" "code-server" {
-  agent_id = coder_agent.dev.id
+  agent_id = coder_agent.main.id
   slug          = "code-server"  
-  display_name  = "VS Code"
+  display_name  = "VS Code Web"
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -140,70 +174,89 @@ resource "coder_app" "code-server" {
 
 }
 
+resource "coder_app" "php" {
+  agent_id = coder_agent.main.id
+  slug          = "ps"  
+  display_name  = "PhpStorm Web"  
+  icon          = "/icon/phpstorm.svg"
+  url           = "http://localhost:9001"
+  subdomain     = false
+  share         = "owner"
+
+  healthcheck {
+    url         = "http://localhost:9001/healthz"
+    interval    = 6
+    threshold   = 20
+  }    
+}
+
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   depends_on = [
     kubernetes_persistent_volume_claim.home-directory
-  ]
+  ]  
   metadata {
-    name      = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
   spec {
     security_context {
-      run_as_user = 1000
-      fs_group    = 1000
-    }
+      run_as_user = "1000"
+      fs_group    = "1000"
+    }    
     container {
-      name    = "dev"
-      image   = "docker.io/marktmilligan/phpstorm-vscode:latest"
-      image_pull_policy = "Always"       
-      command = ["sh", "-c", coder_agent.dev.init_script]
+      name    = "coder-container"
+      image   = local.base-image
+      image_pull_policy = "Always"
+      command = ["sh", "-c", coder_agent.main.init_script]
       security_context {
         run_as_user = "1000"
-      }
+      }      
       env {
         name  = "CODER_AGENT_TOKEN"
-        value = coder_agent.dev.token
-      }
+        value = coder_agent.main.token
+      }  
       resources {
         requests = {
           cpu    = "250m"
-          memory = "250Mi"
+          memory = "500Mi"
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = "${data.coder_parameter.cpu.value}"
+          memory = "${data.coder_parameter.memory.value}G"
         }
-      }      
+      }                       
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
-      }
+      }      
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
       }
-    }
+    }        
   }
 }
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "coder-pvc-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false    
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "${data.coder_parameter.disk_size.value}Gi"
       }
     }
   }
 }
+
+
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
@@ -214,11 +267,11 @@ resource "coder_metadata" "workspace_info" {
   }    
   item {
     key   = "CPU (limits, requests)"
-    value = "${var.cpu} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
+    value = "${data.coder_parameter.cpu.value} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
   }
   item {
     key   = "memory (limits, requests)"
-    value = "${var.memory}GB, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
+    value = "${data.coder_parameter.memory.value}, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
   }    
   item {
     key   = "image"
@@ -230,7 +283,7 @@ resource "coder_metadata" "workspace_info" {
   }   
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = data.coder_parameter.disk_size.value
   }
   item {
     key   = "volume"

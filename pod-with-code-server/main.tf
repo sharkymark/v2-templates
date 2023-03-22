@@ -64,7 +64,7 @@ data "coder_parameter" "disk_size" {
     monotonic = "increasing"
   }
   mutable     = true
-  default     = 5
+  default     = 10
 }
 
 data "coder_parameter" "cpu" {
