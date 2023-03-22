@@ -144,7 +144,7 @@ resource "coder_agent" "main" {
     SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension felixfbecker.php-debug &
 
     # Start code-server
-    code-server --auth none --port 13337 &
+    code-server --auth none --disable-file-downloads --port 13337 &
 
     # start PHP servers
     cd ~/original_php
