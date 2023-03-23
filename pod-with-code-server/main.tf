@@ -175,24 +175,25 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
+# install and start the latest code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 &
+
+
+# use coder CLI to clone and install dotfiles
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
+
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 git clone --progress git@github.com:${data.coder_parameter.repo.value} &
 
-# use coder CLI to clone and install dotfiles
-if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
-fi
-
 # if rust is the desired programming languge, install
 if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
 fi
-
-# install and start the latest code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
 
   EOT  
 }

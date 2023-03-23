@@ -45,7 +45,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "demo"
+  default = ""
 }
 
 data "coder_parameter" "dotfiles_url" {
