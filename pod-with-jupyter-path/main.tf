@@ -98,7 +98,7 @@ curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j &
 
 # add some Python libraries
 pip3 install --user pandas &
@@ -139,9 +139,9 @@ resource "coder_app" "jupyter" {
   slug          = "j"  
   display_name  = "jupyter ${data.coder_parameter.jupyter.value}"
   icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/"
+  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j"
   share         = "owner"
-  subdomain     = true  
+  subdomain     = false  
 
   healthcheck {
     url       = "http://localhost:8888/healthz"
