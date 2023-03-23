@@ -15,7 +15,7 @@ provider "coder" {
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
+  #sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -29,7 +29,7 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
+  #sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
