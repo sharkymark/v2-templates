@@ -76,19 +76,6 @@ data "coder_parameter" "dotfiles_url" {
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-variable "lang" {
-  description = "Programming language"
-  default     = "Java"
-  validation {
-    condition = contains([
-      "Go",
-      "Python",      
-      "Java"
-    ], var.lang)
-    error_message = "Invalid language!"   
-}
-}
-
 data "coder_parameter" "lang" {
   name        = "Programming Language"
   type        = "string"
@@ -104,7 +91,7 @@ data "coder_parameter" "lang" {
   }
   option {
     name = "Go"
-    value = "codercom/enterprise-golang:ubuntu"
+    value = "Go"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
   } 
   option {
