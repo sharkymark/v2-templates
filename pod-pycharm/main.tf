@@ -15,6 +15,14 @@ locals {
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
+  repo-owner = "docker.io/marktmilligan"
+  #image = "pycharm-pro:2022.3.2"
+  #image = "intellij-idea-ultimate:2022.1.4"
+  image = "pycharm-pro:2023.1"  
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 variable "use_kubeconfig" {
@@ -29,6 +37,7 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
 variable "workspaces_namespace" {
@@ -37,6 +46,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
+  default = ""
 }
 
 provider "kubernetes" {
@@ -46,29 +56,36 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
 
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_provisioner" "me" {
 }
 
 resource "coder_agent" "coder" {
-  os   = "linux"
-  arch = "amd64"
-  dir = "/home/coder"
+  os                      = "linux"
+  arch                    = data.coder_provisioner.me.arch
+  dir                     = "/home/coder"
+  env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
 #!/bin/bash
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+if [ -n "$DOTFILES_URI" ]; then
+  echo "Installing dotfiles from $DOTFILES_URI"
+  coder dotfiles -y "$DOTFILES_URI"
+fi
 
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
-cd /opt/pycharm/bin
-./remote-dev-server.sh registerBackendLocationForGateway
+ 
+/opt/pycharm/bin/remote-dev-server.sh registerBackendLocationForGateway
 
   EOT  
 }
@@ -89,7 +106,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "docker.io/marktmilligan/pycharm-pro:2022.3.2"
+      image   = "${local.repo-owner}/${local.image}"
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -161,7 +178,7 @@ resource "coder_metadata" "workspace_info" {
     value = "${local.home-volume}"
   }
   item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
+    key   = "image"
+    value = local.image
+  } 
 }

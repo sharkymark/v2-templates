@@ -132,12 +132,13 @@ locals {
     "GoLand" = "goland",
     "WebStorm" = "webstorm" 
   } 
+  repo-owner = "marktmilligan"
   image = {
-    "IntelliJ IDEA Ultimate" = "marktmilligan/intellij-idea-ultimate:2022.3.2",
-    "PyCharm Professional" = "marktmilligan/pycharm-pro:2022.3.2",
-    "GoLand" = "marktmilligan/goland:2022.3.2",
-    "WebStorm" = "marktmilligan/webstorm:2022.3.2"
-  }  
+    "IntelliJ IDEA Ultimate" = "intellij-idea-ultimate:2023.1",
+    "PyCharm Professional" = "pycharm-pro:2023.1",
+    "GoLand" = "goland:2022.3.4",
+    "WebStorm" = "webstorm:2023.1"
+  } 
 }
 
 resource "coder_agent" "coder" {
@@ -174,7 +175,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "docker.io/${lookup(local.image, data.coder_parameter.ide.value)}"
+      image   = "docker.io/${local.repo-owner}/${lookup(local.image, data.coder_parameter.ide.value)}"
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -237,7 +238,7 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "image"
-    value = "docker.io/${lookup(local.image, data.coder_parameter.ide.value)}"
+    value = "${lookup(local.image, data.coder_parameter.ide.value)}"
   }
   item {
     key   = "disk"
