@@ -16,26 +16,61 @@ locals {
     "GoLand" = "goland",
     "WebStorm" = "webstorm" 
   } 
+  repo-owner = "marktmilligan"
   image = {
-    "IntelliJ IDEA Ultimate" = "marktmilligan/intellij-idea-ultimate:2022.3.2",
-    "PyCharm Professional" = "marktmilligan/pycharm-pro:2022.3.2",
-    "GoLand" = "marktmilligan/goland:2022.3.2",
-    "WebStorm" = "marktmilligan/webstorm:2022.3.2"
+    "IntelliJ IDEA Ultimate" = "intellij-idea-ultimate:2023.1",
+    "PyCharm Professional" = "pycharm-pro:2023.1",
+    "GoLand" = "goland:2022.3.4",
+    "WebStorm" = "webstorm:2023.1"
   }  
 }
 
-variable "ide" {
-  description = "JetBrains IDE"
-  default     = "IntelliJ IDEA Ultimate"
-  validation {
-    condition = contains([
-      "IntelliJ IDEA Ultimate",
-      "PyCharm Professional",
-      "GoLand",
-      "WebStorm"
-    ], var.ide)
-    error_message = "Invalid JetBrains IDE!"   
+data "coder_provisioner" "me" {
 }
+
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
+
+data "coder_parameter" "ide" {
+
+  name        = "JetBrains IDE"
+  type        = "string"
+  description = "What JetBrains IDE do you want?"
+  mutable     = true
+  default     = "IntelliJ IDEA Ultimate"
+  icon        = "https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg"
+
+  option {
+    name = "WebStorm"
+    value = "WebStorm"
+    icon = "/icon/webstorm.svg"
+  }
+  option {
+    name = "GoLand"
+    value = "GoLand"
+    icon = "/icon/goland.svg"
+  } 
+  option {
+    name = "PyCharm Professional"
+    value = "PyCharm Professional"
+    icon = "/icon/pycharm.svg"
+  } 
+  option {
+    name = "IntelliJ IDEA Ultimate"
+    value = "IntelliJ IDEA Ultimate"
+    icon = "/icon/intellij.svg"
+  }  
+
 }
 
 
@@ -43,34 +78,27 @@ provider "docker" {
 
 }
 
-provider "coder" {
-}
-
 data "coder_workspace" "me" {
 }
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
-}
-
 resource "coder_agent" "dev" {
-  os   = "linux"
-  arch = "amd64"
-  dir = "/home/coder"
-  startup_script = <<EOT
+  os                      = "linux"
+  arch                    = data.coder_provisioner.me.arch
+  #login_before_ready      = false
+  dir                     = "/home/coder"
+  env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }  
+  startup_script          = <<EOT
 #!/bin/bash
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+if [ -n "$DOTFILES_URI" ]; then
+  echo "Installing dotfiles from $DOTFILES_URI"
+  coder dotfiles -y "$DOTFILES_URI"
+fi
 
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
-cd /opt/${lookup(local.ide-dir, var.ide)}/bin
+cd /opt/${lookup(local.ide-dir, data.coder_parameter.ide.value)}/bin
 ./remote-dev-server.sh registerBackendLocationForGateway
 
   EOT  
@@ -78,7 +106,7 @@ cd /opt/${lookup(local.ide-dir, var.ide)}/bin
 
 resource "docker_container" "workspace" {
   count     = data.coder_workspace.me.start_count
-  image     = "docker.io/${lookup(local.image, var.ide)}"
+  image     = "docker.io/${local.repo-owner}/${lookup(local.image, data.coder_parameter.ide.value)}"
   # Uses lower() to avoid Docker restriction on container names.
   name      = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname  = lower(data.coder_workspace.me.name)
@@ -107,6 +135,6 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id   
   item {
     key   = "image"
-    value = "docker.io/${lookup(local.image, var.ide)}"
+    value = "${lookup(local.image, data.coder_parameter.ide.value)}"
   }  
 }

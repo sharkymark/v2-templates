@@ -125,20 +125,6 @@ data "coder_parameter" "ide" {
 
 }
 
-variable "ide" {
-  description = "JetBrains IDE"
-  default     = "IntelliJ IDEA Ultimate"
-  validation {
-    condition = contains([
-      "IntelliJ IDEA Ultimate",
-      "PyCharm Professional",
-      "GoLand",
-      "WebStorm"
-    ], var.ide)
-    error_message = "Invalid JetBrains IDE!"   
-}
-}
-
 locals {
   ide-dir = {
     "IntelliJ IDEA Ultimate" = "idea",

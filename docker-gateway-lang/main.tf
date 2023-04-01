@@ -12,15 +12,17 @@ terraform {
 locals {
 
   repo = {
-    "Java" = "sharkymark/java_helloworld.git" 
-    "Python" = "sharkymark/python_commissions.git" 
-    "Go" = "coder/coder.git"
+    "Java"    = "sharkymark/java_helloworld.git" 
+    "Python"  = "sharkymark/python_commissions.git" 
+    "Go"      = "coder/coder.git"
+    "Node"    = "sharkymark/coder-react.git"
   }  
   image = {
-    "Java" = "codercom/enterprise-java:ubuntu" 
-    "Python" = "codercom/enterprise-base:ubuntu" 
-    "Go" = "codercom/enterprise-golang:ubuntu"
-  }  
+    "Java"    = "codercom/enterprise-java:ubuntu" 
+    "Python"  = "codercom/enterprise-base:ubuntu" 
+    "Go"      = "codercom/enterprise-golang:ubuntu"
+    "Node"    = "codercom/enterprise-node:ubuntu"
+  }     
 
 }
 
@@ -34,26 +36,43 @@ provider "coder" {
 data "coder_workspace" "me" {
 }
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-variable "lang" {
-  description = "Programming language"
+data "coder_parameter" "lang" {
+  name        = "Programming Language"
+  type        = "string"
+  description = "What container image and language do you want?"
+  mutable     = true
   default     = "Java"
-  validation {
-    condition = contains([
-      "Go",
-      "Python",      
-      "Java"
-    ], var.lang)
-    error_message = "Invalid language!"   
-}
+  icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
+
+  option {
+    name = "Node"
+    value = "Node"
+    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
+  }
+  option {
+    name = "Go"
+    value = "Go"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
+  } 
+  option {
+    name = "Java"
+    value = "Java"
+    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  } 
+  option {
+    name = "Python"
+    value = "Python"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
+  }      
 }
 
 resource "coder_agent" "dev" {
@@ -66,7 +85,7 @@ resource "coder_agent" "dev" {
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${lookup(local.repo, var.lang)}
+git clone --progress git@github.com:${lookup(local.repo, data.coder_parameter.lang.value)}
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${var.dotfiles_uri}
@@ -126,10 +145,10 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id   
   item {
     key   = "image"
-    value = "docker.io/${lookup(local.image, var.lang)}"
+    value = "docker.io/${lookup(local.image, data.coder_parameter.lang.value)}"
   }     
   item {
     key   = "language"
-    value = var.lang
+    value = data.coder_parameter.lang.value
   }   
 }
