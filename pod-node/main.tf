@@ -10,18 +10,22 @@ terraform {
 }
 
 locals {
-  cpu-limit = "2"
-  memory-limit = "4G"
   cpu-request = "500m"
   memory-request = "2" 
-  home-volume = "10Gi"
   image = "codercom/enterprise-node:ubuntu"
   repo = "sharkymark/coder-react.git"
 }
 
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
+data "coder_provisioner" "me" {
+}
+
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
+  #sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -31,14 +35,16 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
+  #sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
+  default = ""
 }
 
 provider "kubernetes" {
@@ -48,24 +54,68 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
 
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "disk_size" {
+  name        = "PVC (your $HOME directory) storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
+  validation {
+    min       = 1
+    max       = 10
+    monotonic = "increasing"
+  }
+  mutable     = true
+  default     = 10
+}
+
+data "coder_parameter" "cpu" {
+  name        = "CPU cores"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+  validation {
+    min       = 1
+    max       = 4
+  }
+  mutable     = true
+  default     = 1
+}
+
+data "coder_parameter" "memory" {
+  name        = "Memory (__ GB)"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+  validation {
+    min       = 1
+    max       = 8
+  }
+  mutable     = true
+  default     = 2
 }
 
 resource "coder_agent" "coder" {
-  os   = "linux"
-  arch = "amd64"
-  dir = "/home/coder"
+  os                      = "linux"
+  arch                    = data.coder_provisioner.me.arch
+  dir                     = "/home/coder"
+  env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
 #!/bin/bash
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
+if [ -n "$DOTFILES_URI" ]; then
+  echo "Installing dotfiles from $DOTFILES_URI"
+  coder dotfiles -y "$DOTFILES_URI"
+fi
 
 # clone repo
 mkdir -p ~/.ssh
@@ -108,8 +158,8 @@ resource "kubernetes_pod" "main" {
           memory = local.memory-request
         }        
         limits = {
-          cpu    = local.cpu-limit
-          memory = local.memory-limit
+          cpu    = data.coder_parameter.cpu.value
+          memory = "${data.coder_parameter.cpu.value}G"
         }
       }                       
       volume_mount {
@@ -135,7 +185,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = local.home-volume
+        storage = "${data.coder_parameter.disk_size.value}Gi"
       }
     }
   }
@@ -146,23 +196,19 @@ resource "coder_metadata" "workspace_info" {
   resource_id = kubernetes_pod.main[0].id
   item {
     key   = "CPU"
-    value = "${local.cpu-limit} cores"
+    value = "${data.coder_parameter.cpu.value} cores"
   }
   item {
     key   = "memory"
-    value = "${local.memory-limit}"
+    value = "${data.coder_parameter.memory.value}G"
   }  
   item {
     key   = "disk"
-    value = "${local.home-volume}"
+    value = "${data.coder_parameter.disk_size.value}GiB"
   }
   item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
-  item {
     key   = "image"
-    value = "docker.io/${local.image}"
+    value = local.image
   }
   item {
     key   = "repo cloned"

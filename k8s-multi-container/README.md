@@ -24,7 +24,12 @@ tags: [cloud, kubernetes]
 ### defaults
 1. (pgAdmin) Username: pgadmin@pgadmin.org Password: pgadmin (db settings will persist in a separate PVC)
 1. (Postgres) Username: postgres Password: postgres
-1. (DBeaver) Created during initial launch (no persistence on rebuild for credentials and db settings)
+1. (DBeaver) Created during initial launch (no persistence on rebuild for credentials and db settings) e.g., cbadmin, cbadmin
+
+### psql
+The `startup_script` adds `psql` to connect to PostgreSQL from a terminal.
+
+`psql -U postgres -h localhost`
 
 ### go8 API steps
 1. `cd` into `go8` and `go run cmd/migrate/main.go` this will fail if `go8_db` database is not in PostgreSQL
