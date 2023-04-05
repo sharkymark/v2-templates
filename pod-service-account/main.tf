@@ -9,37 +9,105 @@ terraform {
   }
 }
 
+locals {
+  cpu-request = "500m"
+  memory-request = "2" 
+  image = "codercom/enterprise-node:ubuntu"
+  repo = "sharkymark/coder-react.git"
+}
+
+#
+# on the target k8s cluster run these commands to get host, ca cert and token
+#
+# then input them as part of the coder templates create or in the coder ui after the template is created
+#
+# for host: kubectl cluster-info
+#
+# (optional step if service account already exists in the namespace)
+# create a service account token and ca-cert
+#
+#kubectl apply -n <your namespace> -f - <<EOF
+#apiVersion: v1
+#kind: ServiceAccount
+#metadata:
+#  name: coder
+#---
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: Role
+#metadata:
+#  name: <your namespace>
+#rules:
+#  - apiGroups: ["", "apps", "networking.k8s.io"] # "" indicates the core API group
+#    resources: ["persistentvolumeclaims", "pods", "deployments", "services", "secrets", "pods/exec","pods/log", "events", "networkpolicies", "serviceaccounts"]
+#    verbs: ["create", "get", "list", "watch", "update", "patch", "delete", "deletecollection"]
+#  - apiGroups: ["metrics.k8s.io", "storage.k8s.io"]
+#    resources: ["pods", "storageclasses"]
+#    verbs: ["get", "list", "watch"]
+#---
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: RoleBinding
+#metadata:
+#  name: coder
+#subjects:
+#  - kind: ServiceAccount
+#    name: coder
+#roleRef:
+#  kind: Role
+#  name: coder
+#  apiGroup: rbac.authorization.k8s.io
+#EOF
+#
+#
+# for ca cert and token:
+# kubectl get secrets -n <your namespace> -o jsonpath="{.items[?(@.metadata.annotations['kubernetes\.io/service-account\.name']=='coder')].data}{'\n'}"
+
+provider "kubernetes" {
+  host                   = var.host
+  cluster_ca_certificate = base64decode(var.ca)
+  token                  = base64decode(var.token)
+}
+
 provider "coder" {
   feature_use_managed_variables = "true"
 }
 
-variable "use_kubeconfig" {
-  type        = bool
-  sensitive   = true
-  description = <<-EOF
-  Use host kubeconfig? (true/false)
-
-  Set this to false if the Coder host is itself running as a Pod on the same
-  Kubernetes cluster as you are deploying workspaces to.
-
-  Set this to true if the Coder host is running outside the Kubernetes cluster
-  for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
-  EOF
-  default = false
+data "coder_provisioner" "me" {
 }
 
-variable "workspaces_namespace" {
+variable "ca" {
   sensitive   = true
   description = <<-EOF
-  Kubernetes namespace to deploy the workspace into
+  Kubernetes cluster namespace's CA certificate
 
   EOF
   default = ""
 }
 
-provider "kubernetes" {
-  # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
-  config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
+variable "token" {
+  sensitive   = true
+  description = <<-EOF
+  Kubernetes cluster namespace's service account token
+
+  EOF
+  default = ""
+}
+
+variable "host" {
+  sensitive   = true
+  description = <<-EOF
+  Kubernetes cluster host
+
+  EOF
+  default = ""
+}
+
+variable "namespace" {
+  sensitive   = true
+  description = <<-EOF
+  Kubernetes cluster namespace
+
+  EOF
+  default = ""
 }
 
 data "coder_workspace" "me" {}
@@ -54,7 +122,7 @@ data "coder_parameter" "dotfiles_url" {
 }
 
 data "coder_parameter" "disk_size" {
-  name        = "PVC storage size"
+  name        = "PVC (your $HOME directory) storage size"
   type        = "number"
   description = "Number of GB of storage"
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
@@ -64,7 +132,7 @@ data "coder_parameter" "disk_size" {
     monotonic = "increasing"
   }
   mutable     = true
-  default     = 5
+  default     = 10
 }
 
 data "coder_parameter" "cpu" {
@@ -73,11 +141,11 @@ data "coder_parameter" "cpu" {
   description = "Be sure the cluster nodes have the capacity"
   icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
   validation {
-    min       = 2
-    max       = 6
+    min       = 1
+    max       = 4
   }
   mutable     = true
-  default     = 4
+  default     = 1
 }
 
 data "coder_parameter" "memory" {
@@ -86,63 +154,16 @@ data "coder_parameter" "memory" {
   description = "Be sure the cluster nodes have the capacity"
   icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
   validation {
-    min       = 4
+    min       = 1
     max       = 8
   }
   mutable     = true
-  default     = 4
+  default     = 2
 }
 
-data "coder_parameter" "ide" {
-
-  name        = "JetBrains IDE"
-  type        = "string"
-  description = "What JetBrains IDE do you want?"
-  mutable     = true
-  default     = "IntelliJ IDEA Ultimate"
-  icon        = "https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg"
-
-  option {
-    name = "WebStorm"
-    value = "WebStorm"
-    icon = "/icon/webstorm.svg"
-  }
-  option {
-    name = "GoLand"
-    value = "GoLand"
-    icon = "/icon/goland.svg"
-  } 
-  option {
-    name = "PyCharm Professional"
-    value = "PyCharm Professional"
-    icon = "/icon/pycharm.svg"
-  } 
-  option {
-    name = "IntelliJ IDEA Ultimate"
-    value = "IntelliJ IDEA Ultimate"
-    icon = "/icon/intellij.svg"
-  }  
-
-}
-
-locals {
-  ide-dir = {
-    "IntelliJ IDEA Ultimate" = "idea",
-    "PyCharm Professional" = "pycharm",
-    "GoLand" = "goland",
-    "WebStorm" = "webstorm" 
-  } 
-  repo-owner = "marktmilligan"
-  image = {
-    "IntelliJ IDEA Ultimate" = "intellij-idea-ultimate:2023.1",
-    "PyCharm Professional" = "pycharm-pro:2023.1",
-    "GoLand" = "goland:2022.3.4",
-    "WebStorm" = "webstorm:2023.1"
-  } 
-}
 
 resource "coder_agent" "coder" {
-  os   = "linux"
+  os                      = "linux"
 
   metadata {
     display_name = "Disk Usage"
@@ -162,22 +183,26 @@ resource "coder_agent" "coder" {
     timeout = 1
   }
 
-  arch = "amd64"
-  dir = "/home/coder"
+  arch                    = data.coder_provisioner.me.arch
+  dir                     = "/home/coder"
+  env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
 #!/bin/bash
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+if [ -n "$DOTFILES_URI" ]; then
+  echo "Installing dotfiles from $DOTFILES_URI"
+  coder dotfiles -y "$DOTFILES_URI"
+fi
 
-# script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
-# More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
-cd /opt/${lookup(local.ide-dir, data.coder_parameter.ide.value)}/bin
-./remote-dev-server.sh registerBackendLocationForGateway
+# clone repo
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone --progress git@github.com:${local.repo} &
 
-  EOT
 
-}  
+  EOT  
+}
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
@@ -186,7 +211,7 @@ resource "kubernetes_pod" "main" {
   ]  
   metadata {
     name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = var.workspaces_namespace
+    namespace = var.namespace
   }
   spec {
     security_context {
@@ -195,7 +220,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "docker.io/${local.repo-owner}/${lookup(local.image, data.coder_parameter.ide.value)}"
+      image   = local.image
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -207,12 +232,12 @@ resource "kubernetes_pod" "main" {
       }  
       resources {
         requests = {
-          cpu    = "500m"
-          memory = "500Mi"
+          cpu    = local.cpu-request
+          memory = local.memory-request
         }        
         limits = {
-          cpu    = "${data.coder_parameter.cpu.value}"
-          memory = "${data.coder_parameter.memory.value}G"
+          cpu    = data.coder_parameter.cpu.value
+          memory = "${data.coder_parameter.cpu.value}G"
         }
       }                       
       volume_mount {
@@ -232,9 +257,9 @@ resource "kubernetes_pod" "main" {
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = var.workspaces_namespace
+    namespace = var.namespace
   }
-  wait_until_bound = false  
+  wait_until_bound = false   
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -254,18 +279,14 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${data.coder_parameter.memory.value}GB"
+    value = "${data.coder_parameter.memory.value}G"
   }  
-  item {
-    key   = "image"
-    value = "${lookup(local.image, data.coder_parameter.ide.value)}"
-  }
   item {
     key   = "disk"
     value = "${data.coder_parameter.disk_size.value}GiB"
   }
   item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
+    key   = "image"
+    value = local.image
+  }
 }
