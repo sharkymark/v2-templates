@@ -49,6 +49,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [england fc](https://logos-world.net/wp-content/uploads/2020/06/England-symbol.png)
 
+[firefox](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Firefox_logo%2C_2019.svg/1200px-Firefox_logo%2C_2019.svg.png)
+
 [fca](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Fiat_Chrysler_Automobiles_logo.svg/1200px-Fiat_Chrysler_Automobiles_logo.svg.png)
 
 [ford](https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Ford_logo_flat.svg/2560px-Ford_logo_flat.svg.png)
@@ -87,6 +89,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [jetbrains](https://www.jetbrains.com/company/brand/#logos-and-icons)
 
 [jetbrains logo](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)
+
+[jetbrains projector logo](https://resources.jetbrains.com/storage/products/company/brand/logos/Projector_icon.svg)
 
 [jupyter](https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Jupyter_logo.svg/1200px-Jupyter_logo.svg.png)
 
