@@ -113,7 +113,7 @@ resource "coder_agent" "dev" {
     timeout = 1
   }
 
-    metadata {
+  metadata {
     display_name = "Disk Usage"
     key  = "disk"
     script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
