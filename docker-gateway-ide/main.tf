@@ -73,6 +73,52 @@ data "coder_parameter" "ide" {
 
 }
 
+data "coder_parameter" "cpu" {
+  name        = "CPU Share"
+  type        = "number"
+  description = "What Docker CPU share do you want? (e.g., 1 physical CPU available, and 512 equates to 50% of the CPU)"
+  mutable     = true
+  default     = 1024
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+
+  validation {
+    min       = 512
+    max       = 4096
+  }
+
+}
+
+data "coder_parameter" "memory" {
+  name        = "Memory"
+  type        = "number"
+  description = "What Docker memory do you want?"
+  mutable     = true
+  default     = 1024
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+
+  validation {
+    min       = 512
+    max       = 4096
+  }
+
+}
+
+#data "coder_parameter" "disk_size" {
+#  name        = "Disk"
+#  type        = "number"
+#  description = "What Docker CPU share do you want?"
+#  mutable     = true
+#  default     = 10
+#  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
+#
+#  validation {
+#    min       = 10
+#    max       = 15
+#  }
+#
+#}
+
+
 
 provider "docker" {
 
@@ -84,6 +130,48 @@ data "coder_workspace" "me" {
 resource "coder_agent" "dev" {
   os                      = "linux"
   arch                    = data.coder_provisioner.me.arch
+
+  metadata {
+    display_name = "CPU Usage"
+    key  = "cpu"
+    # calculates CPU usage by summing the "us", "sy" and "id" columns of
+    # vmstat.
+    script = <<EOT
+        top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
+        #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
+    EOT
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Disk Usage"
+    key  = "disk"
+    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Memory Usage"
+    key  = "mem"
+    script = <<EOT
+    free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
+    EOT
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Load Average"
+    key  = "load"
+    script = <<EOT
+        awk '{print $1,$2,$3,$4}' /proc/loadavg
+    EOT
+    interval = 1
+    timeout = 1
+  }
+
   #login_before_ready      = false
   dir                     = "/home/coder"
   env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }  
@@ -111,6 +199,17 @@ resource "docker_container" "workspace" {
   name      = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname  = lower(data.coder_workspace.me.name)
   dns       = ["1.1.1.1"]
+
+  # CPU usage
+  cpu_shares = data.coder_parameter.cpu.value
+
+  # GB memory
+  memory = data.coder_parameter.memory.value
+
+  # overlayfs (root filesystem)
+  #storage_opts = {
+  #  size = "${data.coder_parameter.disk_size.value}G"
+  #}  
 
  entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
 

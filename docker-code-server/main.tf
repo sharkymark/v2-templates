@@ -149,6 +149,51 @@ data "coder_parameter" "extension" {
   }            
 }
 
+data "coder_parameter" "cpu" {
+  name        = "CPU Share"
+  type        = "number"
+  description = "What Docker CPU share do you want? (e.g., 1 physical CPU available, and 512 equates to 50% of the CPU)"
+  mutable     = true
+  default     = 1024
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+
+  validation {
+    min       = 512
+    max       = 4096
+  }
+
+}
+
+data "coder_parameter" "memory" {
+  name        = "Memory"
+  type        = "number"
+  description = "What Docker memory do you want?"
+  mutable     = true
+  default     = 1024
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+
+  validation {
+    min       = 512
+    max       = 4096
+  }
+
+}
+
+#data "coder_parameter" "disk_size" {
+#  name        = "Disk"
+#  type        = "number"
+#  description = "What Docker CPU share do you want?"
+#  mutable     = true
+#  default     = 10
+#  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
+#
+#  validation {
+#    min       = 10
+#    max       = 15
+#  }
+#
+#}
+
 resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"
@@ -244,6 +289,17 @@ resource "docker_container" "workspace" {
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
+
+  # CPU usage
+  cpu_shares = data.coder_parameter.cpu.value
+
+  # GB memory
+  memory = data.coder_parameter.memory.value
+
+  # overlayfs (root filesystem)
+  #storage_opts = {
+  #  size = "${data.coder_parameter.disk_size.value}G"
+  #}  
 
   # Use the docker gateway if the access URL is 127.0.0.1
   #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]

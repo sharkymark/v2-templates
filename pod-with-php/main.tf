@@ -106,6 +106,25 @@ data "coder_parameter" "memory" {
 resource "coder_agent" "main" {
   os             = "linux"
   arch           = "amd64"
+
+  metadata {
+    display_name = "Disk Usage"
+    key  = "disk"
+    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Load Average"
+    key  = "load"
+    script = <<EOT
+        awk '{print $1,$2,$3,$4}' /proc/loadavg
+    EOT
+    interval = 1
+    timeout = 1
+  }
+
   dir            = "/home/coder"
   startup_script = <<EOF
     #!/bin/sh

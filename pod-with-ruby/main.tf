@@ -9,9 +9,12 @@ terraform {
   }
 }
 
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -19,18 +22,17 @@ variable "use_kubeconfig" {
   Kubernetes cluster as you are deploying workspaces to.
 
   Set this to true if the Coder host is running outside the Kubernetes cluster
-  for workspaces.  A valid "~/.kube/config" must be present on the Coder host. This
-  is likely not your local machine unless you are using `coder server --dev.`
-
+  for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
-  default = ""
+
   EOF
+  default = ""
 }
 
 provider "kubernetes" {
@@ -40,54 +42,83 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
 
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 1
+data "coder_parameter" "disk_size" {
+  name        = "PVC storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
-    condition = contains([
-      "1",
-      "2"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
-}
-
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 2
-  validation {
-    condition = contains([
-      "2",
-      "4"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
+    min       = 1
+    max       = 20
+    monotonic = "increasing"
+  }
+  mutable     = true
   default     = 10
 }
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
+data "coder_parameter" "cpu" {
+  name        = "CPU cores"
+  type        = "number"
+  description = "CPU cores - be sure the cluster nodes have the capacity"
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+  validation {
+    min       = 1
+    max       = 4
+  }
+  mutable     = true
+  default     = 1
+}
 
-  see https://dotfiles.github.io
-  EOF
-  default     = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "memory" {
+  name        = "Memory (__ GB)"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+  validation {
+    min       = 1
+    max       = 8
+  }
+  mutable     = true
+  default     = 2
 }
 
 resource "coder_agent" "dev" {
   os             = "linux"
   arch           = "amd64"
+
+  metadata {
+    display_name = "Disk Usage"
+    key  = "disk"
+    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Load Average"
+    key  = "load"
+    script = <<EOT
+        awk '{print $1,$2,$3,$4}' /proc/loadavg
+    EOT
+    interval = 1
+    timeout = 1
+  }
+
   dir            = "/home/coder"
   startup_script = <<EOF
     #!/bin/sh
 
     # clone dotfiles repo for vs code settings and adding the fish shell
-    ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri} &" : ""}
+    ${data.coder_parameter.dotfiles_url.value != "" ? "coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &" : ""}
 
 
     # install VS Code extensions for Ruby development and debugging
@@ -96,22 +127,6 @@ resource "coder_agent" "dev" {
 
     # Start code-server
     code-server --auth none --port 13337 &
-
-
-    # clone database repo for soysoys and fifthster
-    mkdir -p ~/.ssh
-    ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-    git clone --progress git@github.com:sharkymark/db.git
-
-    # clone soysoys bookmarking repo
-    mkdir -p ~/.ssh
-    ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-    git clone --progress git@github.com:sharkymark/soysoys.git
-
-   # clone fifthster list repo
-    mkdir -p ~/.ssh
-    ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-    git clone --progress git@github.com:sharkymark/fifthster.git
 
    # clone rubyonrails employee survey repo
     mkdir -p ~/.ssh
@@ -124,22 +139,6 @@ resource "coder_agent" "dev" {
     bundle install
     # start Rails server as daemon
     rails s -p 3002 -b 0.0.0.0 -d
-
-    # Ruby on Rails app - bookmarking app called soysoys
-    # bundle Ruby gems
-    # cd ~/soysoys
-    # bundle install
-    # start Rails server as daemon
-    # rails s -p 3000 -b 0.0.0.0 -d 
-
-    # Ruby on Rails app - list app called fifthster
-    # bundle Ruby gems
-    # cd ~/fifthster
-    # bundle install
-    # start Rails server as daemon
-    # rails s -p 3001 -b 0.0.0.0 -d 
-
-
 
   EOF
 }
@@ -161,44 +160,6 @@ resource "coder_app" "code-server" {
   }  
 
 }
-
-/*
-# soysoys bookmarking app
-resource "coder_app" "soysoys" {
-  agent_id = coder_agent.dev.id
-  slug          = "bookmarks"  
-  display_name  = "Bookmarks"
-  icon     = "https://www.pngfind.com/pngs/m/20-200857_bookmark-icon-png-download-pdf-bookmark-icon-transparent.png"
-  url      = "http://localhost:3000"
-  subdomain = true
-  share     = "authenticated"
-
-  healthcheck {
-    url       = "http://localhost:3000/healthz"
-    interval  = 10
-    threshold = 30
-  }  
-
-}
-
-# fifthster list app
-resource "coder_app" "fifthster" {
-  agent_id = coder_agent.dev.id
-  slug          = "lists"  
-  display_name  = "Lists"
-  icon     = "https://cdn-icons-png.flaticon.com/512/1217/1217026.png"
-  url      = "http://localhost:3001"
-  subdomain = true
-  share     = "authenticated"
-
-  healthcheck {
-    url       = "http://localhost:3001/healthz"
-    interval  = 10
-    threshold = 30
-  }  
-
-}
-*/
 
 # employee survey
 resource "coder_app" "employeesurvey" {
@@ -250,8 +211,8 @@ resource "kubernetes_pod" "main" {
           memory = "250Mi"
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = "${data.coder_parameter.cpu.value}"
+          memory = "${data.coder_parameter.memory.value}G"
         }
       }      
       volume_mount {
@@ -278,7 +239,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "${data.coder_parameter.disk_size.value}Gi"
       }
     }
   }
@@ -293,11 +254,11 @@ resource "coder_metadata" "workspace_info" {
   }    
   item {
     key   = "CPU (limits, requests)"
-    value = "${var.cpu} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
+    value = "${data.coder_parameter.cpu.value} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
   }
   item {
     key   = "memory (limits, requests)"
-    value = "${var.memory}GB, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
+    value = "${data.coder_parameter.memory.value}GB, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
   }    
   item {
     key   = "image"
@@ -309,7 +270,7 @@ resource "coder_metadata" "workspace_info" {
   }   
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = "${data.coder_parameter.disk_size.value}GiB"
   }
   item {
     key   = "volume"
