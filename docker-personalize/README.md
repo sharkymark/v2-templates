@@ -87,8 +87,7 @@ resource "coder_agent" "dev" {...
 git clone ${data.coder_parameter.personalize_url.value}
 
 # run dotfiles
-cd ~/dotfiles
-./install.sh
+~/dotfiles/install.sh
 ```
 
 ### CPU shares
