@@ -57,6 +57,12 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [git](https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png)
 
+[git white](https://git-scm.com/images/logos/downloads/Git-Icon-White.png)
+
+[github lighter](https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg)
+
+[github white](https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png)
+
 [gm](https://static.dezeen.com/uploads/2021/01/gm-logo-rebrand-electric-vehicles-design_dezeen_2364_col_0-1.gif)
 
 [go](https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png)
