@@ -102,7 +102,7 @@ fi
 Create markdown with your Coder Access URL (your deployment) and any parameters you want pre-populated. e.g., repo URL
 
 ```sh
-[![Open in Coder](https://YOUR_ACCESS_URL/open-in-coder.svg)](https://YOUR_ACCESS_URL/templates/YOUR_TEMPLATE/workspace?param.Git%20Repo%20Url=https://github.com/sharkymark/coder-react)
+[![Open in Coder](https://YOUR_ACCESS_URL/open-in-coder.svg)](https://YOUR_ACCESS_URL/templates/YOUR_TEMPLATE/workspace?param.Git%20Repo%20URL=https://github.com/sharkymark/coder-react)
 ```
 
 ### Resources
