@@ -164,6 +164,10 @@ resource "coder_agent" "dev" {
 # clone dotfiles
 git clone ${data.coder_parameter.personalize_url.value}
 
+# run dotfiles
+cd ~/dotfiles
+./install.sh
+
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
