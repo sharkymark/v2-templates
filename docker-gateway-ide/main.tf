@@ -163,6 +163,16 @@ resource "coder_agent" "dev" {
   }
 
   metadata {
+    display_name = "Memory Usage with /proc/meminfo"
+    key  = "memproc"
+    script = <<EOT
+    awk '/^MemTotal: /{mt=$2} /^MemAvailable: /{ma=$2} END{printf("%.2f%%", (mt-ma)/mt * 100.0)}' /proc/meminfo
+    EOT
+    interval = 1
+    timeout = 1
+  }
+  
+  metadata {
     display_name = "Load Average"
     key  = "load"
     script = <<EOT
