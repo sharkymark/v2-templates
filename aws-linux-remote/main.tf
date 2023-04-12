@@ -46,11 +46,6 @@ data "coder_parameter" "region" {
   mutable     = false
 
   option {
-    name  = "US East (Ohio)"
-    value = "us-east-2"
-    icon  = "/emojis/1f1fa-1f1f8.png"
-  }
-  option {
     name  = "US West (N. California)"
     value = "us-west-1"
     icon  = "/emojis/1f1fa-1f1f8.png"
@@ -147,11 +142,12 @@ data "coder_parameter" "instance_type" {
     name  = "2 vCPU, 2 GiB RAM"
     value = "t3.small"
   }
+/*  
   option {
     name  = "2 vCPU, 4 GiB RAM"
     value = "t3.medium"
   }
-/*  option {
+  option {
     name  = "2 vCPU, 8 GiB RAM"
     value = "t3.large"
   }
@@ -185,6 +181,46 @@ data "aws_ami" "ubuntu" {
 resource "coder_agent" "main" {
   arch                   = "amd64"
   auth                   = "aws-instance-identity"
+
+  metadata {
+    display_name = "Memory Usage"
+    key  = "pod-mem"
+    script = "awk '{ print $1 }' /sys/fs/cgroup/memory/memory.usage_in_bytes | numfmt --to=iec"
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "CPU Usage"
+    key  = "cpu"
+    # calculates CPU usage by summing the "us", "sy" and "id" columns of
+    # vmstat.
+    script = <<EOT
+        top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
+        #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
+    EOT
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Disk Usage"
+    key  = "disk"
+    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Memory Used"
+    key  = "mem3"
+    script = <<EOT
+    free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
+    EOT
+    interval = 1
+    timeout = 1
+  }   
+
   os                     = "linux"
   login_before_ready     = false
   startup_script_timeout = 180

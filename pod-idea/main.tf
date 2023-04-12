@@ -73,6 +73,57 @@ data "coder_provisioner" "me" {
 resource "coder_agent" "coder" {
   os                      = "linux"
   arch                    = data.coder_provisioner.me.arch
+
+  metadata {
+    display_name = "Pod Memory Usage"
+    key  = "pod-mem"
+    script = "awk '{ print $1 }' /sys/fs/cgroup/memory/memory.usage_in_bytes | numfmt --to=iec"
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Node CPU Usage"
+    key  = "cpu"
+    # calculates CPU usage by summing the "us", "sy" and "id" columns of
+    # vmstat.
+    script = <<EOT
+        top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
+        #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
+    EOT
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Node Disk Usage"
+    key  = "disk"
+    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
+    interval = 1
+    timeout = 1
+  }
+
+  metadata {
+    display_name = "Node Memory Used"
+    key  = "mem3"
+    script = <<EOT
+    free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
+    EOT
+    interval = 1
+    timeout = 1
+  }   
+  
+  metadata {
+    display_name = "Node Load Average"
+    key  = "load"
+    script = <<EOT
+        awk '{print $1,$2,$3,$4}' /proc/loadavg
+    EOT
+    interval = 1
+    timeout = 1
+  }
+
+
   dir                     = "/home/coder"
   env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
