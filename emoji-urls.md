@@ -192,6 +192,14 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [rust](https://rustacean.net/assets/cuddlyferris.svg)
 
+[shell](https://cdn3.iconfinder.com/data/icons/blue-ulitto/128/Developer_files_Bash_Shell_Script-512.png)
+
+[bash shell](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Bash_Logo_White.svg/1200px-Bash_Logo_White.svg.png)
+
+[zsh shell](https://upload.wikimedia.org/wikipedia/commons/1/1e/Oh_My_Zsh_logo.png)
+
+[fish shell](https://fishshell.com/assets/img/Terminal_Logo2_CRT_Flat.png)
+
 [shark swimming](https://thumbs.gfycat.com/JealousInsistentArgentinehornedfrog-max-1mb.gif)
 
 [smiling emoji](https://d1j8pt39hxlh3d.cloudfront.net/uploads/beaming_face_with_smiling_eyes_256_2.gif)
