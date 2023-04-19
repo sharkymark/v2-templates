@@ -1,6 +1,10 @@
 # API examples
 
-At the present time, Coder does not have a published API, so I'm using this page to document common endpoint examples.
+### Enable API Access
+
+There is an environment variable `--swagger-enable bool` in running Coder with `coder server` or `CODER_SWAGGER_ENABLE` in `helm` or `systemd`
+
+Once the deployment is restarted, the Swagger docs are available at `<your Coder Access URL>/swagger`
 
 > Pro tip: While navigating the Coder UI, use your browser's `inspect` feature to review
 > API endpoint calls as you move around UI pages. Click `network` and the `response`
@@ -8,15 +12,13 @@ At the present time, Coder does not have a published API, so I'm using this page
 
 You can also `grep` or control/command-F the [Go chi routes in the OSS repo](https://github.com/coder/coder/blob/main/coderd/coderd.go) to figure out API endpoints.
 
-
 ![Firefox inspect with the Workspaces UI](./images/firefox-inspect.png)
-
 
 <details>
     <summary>Set environment variables to access url, apikey, etc.</summary>
 <br/><br/>
 
-```sh    
+```sh
 # your deployment's access url
 export CODER_URL "http://your-access-url"
 # your api key - get one at http://your-access-url/cli-auth
@@ -32,7 +34,7 @@ export ORG_ID="a31...435"
 
 > If you're a [fish](https://fishshell.com/) lover like me, you would use this
 > format to set environment variables:
-<br/>
+> <br/>
 
 ```sh
 set -x CODER_URL "http://your-access-url"
@@ -49,7 +51,7 @@ set -x CODER_URL "http://your-access-url"
 The shorter form
 <br/><br/>
 
-```sh    
+```sh
 curl "$CODER_URL/$API_ROUTE/workspaces" \
 -H "Coder-Session-Token: $CODER_SESSION_TOKEN"
 ```
@@ -63,8 +65,6 @@ curl --request GET \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
 ```
 
-
-
 </details>
 
 <details>
@@ -74,12 +74,11 @@ curl --request GET \
 To get environment variables set for your Coder deployment like enterprise paid features enabled, git authentication, wildcard access url, access url, coder bind address, etc.
 <br/><br/>
 
-```sh    
+```sh
 curl --request GET \
-  --url "$CODER_URL/$API_ROUTE/config/deployment" \
+  --url "$CODER_URL/$API_ROUTE/deployment/config" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
 ```
-
 
 </details>
 
@@ -87,16 +86,14 @@ curl --request GET \
     <summary>Info about apikey's user</summary>
 <br/><br/>
 
-This is helpful to retrieve the organization_id, needed for other API calls. This endpoint also shows the last time the user was active aka ```last_seen-at```. The user's roles are shown as well. e.g., `owner`, `template-admin`, etc.
+This is helpful to retrieve the organization_id, needed for other API calls. This endpoint also shows the last time the user was active aka `last_seen-at`. The user's roles are shown as well. e.g., `owner`, `template-admin`, etc.
 <br/><br/>
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/users/me" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
 ```
-
-
 
 </details>
 
@@ -106,13 +103,11 @@ curl --request GET \
  
  To see details about a template, use the template id from the `organizations/<org-id>/templates` endpoint.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/organizations/$ORG_ID/templates" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
 ```
-
-
 
 </details>
 
@@ -122,7 +117,7 @@ curl --request GET \
 
 To see details about a template, use the template id from the `organizations/<org-id>/templates` endpoint.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/templates/$TEMPLATE_ID" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
@@ -136,7 +131,7 @@ curl --request GET \
 
 To list the resources in a template, e.g., agents, `coder_app`, `kubernetes_pod`, metadata, and see the contents of the `startup_script`
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/templateversions/$TEMPLATE_VERSION_ID/resources" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
@@ -150,7 +145,7 @@ curl --request GET \
 
 To see the last 20 days of DAUs for a template, use the template id from the `organizations/<org-id>/templates` endpoint.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/templates/$TEMPLATE_ID/daus" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
@@ -164,7 +159,7 @@ curl --request GET \
 
 To see which groups has permissions for a template, use the template id from the `organizations/<org-id>/templates` endpoint. This call also retrieves the users in the groups.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/templates/$TEMPLATE_ID/acl" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
@@ -176,7 +171,7 @@ curl --request GET \
     <summary>Get your workspaces</summary>
 <br/><br/>
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/workspaces?\
 q=owner:me" \
@@ -191,7 +186,7 @@ q=owner:me" \
 
 To see the workspaces for a user. Note the query parameter is the username, not the user email.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/workspaces?\
 q=owner:$USER_NAME" \
@@ -206,7 +201,7 @@ q=owner:$USER_NAME" \
 
 To see the number of workspaces for a user. Note the query parameter is the username, not the user email.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/workspaces/count?\
 q=owner:$USER_NAME" \
@@ -221,7 +216,7 @@ q=owner:$USER_NAME" \
 
 To see workspace details like its template, owner, and resources.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/workspaces/\
 $WS_ID" \
@@ -236,7 +231,7 @@ $WS_ID" \
 
 To see entitlements like high availability, template rbac aka groups, if a license is installed, is the experimental flag set, is it a trial?
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/entitlements\
 " \
@@ -251,7 +246,7 @@ curl --request GET \
 
 To show active users in your Coder deployment.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/users\
 ?status:active" \
@@ -266,7 +261,7 @@ curl --request GET \
 
 To see groups. The query returns the members of each group.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/organizations/$ORG_ID/groups" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
@@ -280,7 +275,7 @@ curl --request GET \
 
 This includes the members and their roles.
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/groups/$GROUP_ID" \
 --header "Coder-Session-Token: $CODER_SESSION_TOKEN"
@@ -295,7 +290,7 @@ curl --request GET \
 Adjust `limit` to your liking.
 Also see [ResourceTypes](https://pkg.go.dev/github.com/coder/coder@main/codersdk#ResourceType) and [Actions](https://pkg.go.dev/github.com/coder/coder@main/codersdk#AuditAction).
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/audit\
 ?limit=5" \
@@ -308,9 +303,9 @@ curl --request GET \
     <summary>Users Created Count</summary>
 <br/><br/>
 
-To 
+To
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/audit/count\
 ?q=resource_type:user+\
@@ -324,9 +319,9 @@ action:create+" \
     <summary>Users created (limit 25)</summary>
 <br/><br/>
 
-To 
+To
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/audit\
 ?limit=25&q=resource_type:user+\
@@ -338,9 +333,9 @@ action:create+" \
 
 <details>
     <summary>Workspaces created</summary>
-<br/><br/> 
+<br/><br/>
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/audit\
 ?limit=5&q=resource_type:workspace+\
@@ -354,7 +349,7 @@ action:create+" \
     <summary>Templates created</summary>
 <br/><br/>
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/audit\
 ?limit=5&q=resource_type:template+\
@@ -368,9 +363,9 @@ action:create+" \
     <summary>All actions by a specific email address</summary>
 <br/><br/>
 
-To 
+To
 
-```sh    
+```sh
 curl --request GET \
   --url "$CODER_URL/$API_ROUTE/audit\
 ?limit=1&q=email:$EMAIL+" \
@@ -383,13 +378,10 @@ curl --request GET \
     <summary>Empty</summary>
 <br/><br/>
 
-Use for next example 🍔 
+Use for next example 🍔
 
-```sh    
+```sh
 
 ```
 
 </details>
-
-
-
