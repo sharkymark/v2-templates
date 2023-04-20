@@ -183,6 +183,17 @@ resource "coder_agent" "coder" {
   }
 
   metadata {
+    display_name = "@CoderHQ Weather"
+    key  = "weather"
+    # for more info: https://github.com/chubin/wttr.in
+    script = <<EOT
+        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
+    EOT
+    interval = 600
+    timeout = 10
+  }
+
+  metadata {
     key          = "mem-used"
     display_name = "Memory Usage"
     interval     = 1

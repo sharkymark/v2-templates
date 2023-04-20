@@ -20,13 +20,13 @@ locals {
   repo = {
     "Java"    = "sharkymark/java_helloworld.git" 
     "Python"  = "sharkymark/python_commissions.git" 
-    "Go"      = "coder/coder.git"
+    "Golang"  = "coder/coder.git"
     "Node"    = "sharkymark/coder-react.git"
   }  
   image = {
     "Java"    = "codercom/enterprise-java:ubuntu" 
     "Python"  = "codercom/enterprise-base:ubuntu" 
-    "Go"      = "codercom/enterprise-golang:ubuntu"
+    "Golang"  = "codercom/enterprise-golang:ubuntu"
     "Node"    = "codercom/enterprise-node:ubuntu"
   }  
 
@@ -90,8 +90,8 @@ data "coder_parameter" "lang" {
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
-    name = "Go"
-    value = "Go"
+    name = "Golang"
+    value = "Golang"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
   } 
   option {
@@ -109,22 +109,51 @@ data "coder_parameter" "lang" {
 resource "coder_agent" "dev" {
   os   = "linux"
 
-    metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
-    timeout = 1
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
   }
 
   metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
+    key          = "mem-used"
+    display_name = "Memory Usage"
+    interval     = 1
+    timeout      = 1
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
     EOT
-    interval = 1
-    timeout = 1
+  } 
+
+
+    metadata {
+    key          = "cpu-used"
+    display_name = "CPU Usage"
+    interval     = 3
+    timeout      = 3
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+
+      tstart=$(date +%s%N)
+      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      sleep 1
+
+      tstop=$(date +%s%N)
+      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
+
+    EOT
   }
 
   arch = "amd64"
@@ -132,9 +161,13 @@ resource "coder_agent" "dev" {
   startup_script = <<EOT
 #!/bin/bash
 
+# install bench/basic calculator
+sudo apt install bc 
+
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+
 git clone --progress git@github.com:${lookup(local.repo, data.coder_parameter.lang.value)}
 
 # use coder CLI to clone and install dotfiles

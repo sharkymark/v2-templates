@@ -141,31 +141,110 @@ locals {
   } 
 }
 
+data "coder_parameter" "weather" {
+  name        = "Weather"
+  type        = "string"
+  description = "What city do you want to see the weather for?"
+  mutable     = true
+  default     = "Austin"
+  icon        = "/emojis/1f326.png"
+
+  option {
+    name = "Austin, Tex."
+    value = "Austin"
+    icon = "https://cdn.freebiesupply.com/flags/large/2x/texas-state-flag.png"
+  }
+  option {
+    name = "Fairbanks, Alaska"
+    value = "Fairbanks"
+    icon = "https://companieslogo.com/img/orig/ALK_BIG.D-04482f4b.png?t=1649480965"
+  }  
+  option {
+    name = "Sydney, Australia"
+    value = "Sydney"
+    icon = "/emojis/1f1e6-1f1fa.png"
+  }  
+  option {
+    name = "Helsinki, Finland"
+    value = "Helsinki"
+    icon = "/emojis/1f1eb-1f1ee.png"
+  } 
+  option {
+    name = "Prague, Czech Republic"
+    value = "Prague"
+    icon = "/emojis/1f1e8-1f1ff.png"
+  }     
+}
+
 resource "coder_agent" "coder" {
   os   = "linux"
 
+
   metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
-    timeout = 1
+    display_name = "Weather"
+    key  = "weather"
+    # for more info: https://github.com/chubin/wttr.in
+    script = <<EOT
+        curl -s 'wttr.in/{${data.coder_parameter.weather.value}}?format=3&u' 2>&1 | awk '{print}'
+    EOT
+    interval = 600
+    timeout = 10
   }
 
   metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
     EOT
-    interval = 1
-    timeout = 1
+  }
+
+  metadata {
+    key          = "mem-used"
+    display_name = "Memory Usage"
+    interval     = 1
+    timeout      = 1
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
+    EOT
+  } 
+
+
+    metadata {
+    key          = "cpu-used"
+    display_name = "CPU Usage"
+    interval     = 3
+    timeout      = 3
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+
+      tstart=$(date +%s%N)
+      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      sleep 1
+
+      tstop=$(date +%s%N)
+      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
+
+    EOT
   }
 
   arch = "amd64"
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
+
+# install bench/basic calculator
+sudo apt install bc 
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
