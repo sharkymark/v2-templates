@@ -12,7 +12,7 @@ may get you unstuck and help you out. Good luck! 🥳
     <summary>How to add an enterprise license</summary>
 <br/>
 
-Contact sales@coder.com to get a v2 enterprise trial key.
+Contact https://coder.com/trial or sales@coder.com to get a v2 enterprise trial key.
 
 <br/>
 
@@ -191,4 +191,43 @@ The updated Caddyfile configuration will like this:
 }
 ```
 
+</details>
+
+<details>
+    <summary>Can I use local or remote Terraform Modules in Coder templates?</summary>
+<br/>
+
+One way is to reference a Terraform module from a GitHub repo to avoid duplication and then just extend it or pass template-specific parameters/resources
+
+```hcl
+# template1/main.tf
+module "central-coder-module" {
+  source = "github.com/yourorg/central-coder-module"
+  myparam = "custom-for-template1"
+}
+
+resource "ebs_volume` `custom_template1_only_resource ` {
+}
+```
+
+```hcl
+# template2/main.tf
+module "central-coder-module" {
+  source = "github.com/yourorg/central-coder-module"
+  myparam = "custom-for-template2"
+  myparam2 = "bar"
+}
+
+resource "aws_instance` `custom_template2_only_resource ` {
+}
+```
+
+Another way using local modules is to symlink the module directory inside the template directory and then `tar` the template.
+
+`ln -s modules template_1/modules`
+`tar -cvh -C ./template_1 | coder templates <push|create> -d - <name>`
+
+[Issue 6117](https://github.com/coder/coder/issues/6117)
+[Issue 5677](https://github.com/coder/coder/issues/5677)
+[Coder docs](https://coder.com/docs/v2/latest/templates/change-management)
 </details>

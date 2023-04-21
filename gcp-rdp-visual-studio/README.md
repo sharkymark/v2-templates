@@ -6,6 +6,8 @@ tags: [cloud, gcp, windows]
 
 # Visual Studio IDE on a Windows VM in Google Cloud
 
+> Updated 2023-04-21 using Coder parameters and only project_id as a Terraform variable
+
 ### Apps included
 1. A web-based terminal
 1. Microsoft Windows Server 2022 or 2019 (user-prompted)
@@ -19,7 +21,7 @@ tags: [cloud, gcp, windows]
 1. Install Microsoft Visual Studio with Chocolatey
 
 ### Known limitations and required steps
-1. You may get an 'unable to connect' message initially - hang tight, it should go away and you will see Terminal
+1. The Coder agent sometimes does not start. Restarting the workspace may fix this.
 1. Add the Coder CLI to your local machine, login and start a tunnel for the RDP port in the workspace
 
 ```sh

@@ -53,6 +53,30 @@ variable "workspaces_namespace" {
   default = ""
 }
 
+data "coder_parameter" "foo_optional_parm" {
+  name        = "Foo Optimal Parameter"
+  description = "Don't make me mandadory - but I think you will"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+}
+
+data "coder_parameter" "fodoo_parm" {
+  name        = "FooDoo Parameter"
+  description = "This is also a nothing parameter."
+  type        = "string"
+  default     = "FOOFOOFOOFOOFOOFOOFOO"
+  mutable     = true 
+}
+
+data "coder_parameter" "foo_parm" {
+  name        = "Foo Parameter"
+  description = "This is a nothing parameter."
+  type        = "string"
+  default     = "🦈"
+  mutable     = true 
+}
+
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"

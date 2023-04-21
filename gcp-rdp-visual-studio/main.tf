@@ -2,61 +2,133 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.6.3"
     }
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.42.0"
     }
   }
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 variable "project_id" {
   description = "Which Google Compute Project should your workspace live in?"
+  default     = ""
 }
 
-variable "zone" {
-  description = "What region should your workspace live in?"
-  default     = "us-central1-a"
-  validation {
-    condition     = contains(["northamerica-northeast1-a", "us-central1-a", "us-west2-c", "europe-west4-b", "southamerica-east1-a"], var.zone)
-    error_message = "Invalid zone!"
+data "coder_parameter" "zone" {
+  display_name  = "GCP Zone"
+  name          = "zone"
+  type          = "string"
+  description   = "What GCP zone should your workspace live in?"
+  mutable       = false
+  default       = "us-central1-a"
+  icon          = "/emojis/1f30e.png"
+
+  option {
+    name = "northamerica-northeast1-a"
+    value = "northamerica-northeast1-a"
+    icon  = "/emojis/1f1fa-1f1f8.png"
+  }
+  option {
+    name = "us-central1-a"
+    value = "us-central1-a"
+    icon  = "/emojis/1f1fa-1f1f8.png"
+  } 
+  option {
+    name = "us-west2-c"
+    value = "us-west2-c"
+    icon  = "/emojis/1f1fa-1f1f8.png"
+  }
+  option {
+    name = "europe-west4-b"
+    value = "europe-west4-b"
+    icon  = "/emojis/1f1ea-1f1fa.png"
+  }
+  option {
+    name = "southamerica-east1-a"
+    value = "southamerica-east1-a"
+    icon  = "/emojis/1f1e7-1f1f7.png"
+  }       
+
+}
+
+data "coder_parameter" "machine-type" {
+  display_name  = "GCP machine type"
+  name          = "machine-type"  
+  type          = "string"
+  description   = "GCP machine type"
+  mutable       = false
+  default       = "e2-medium"
+
+  option {
+    name = "e2-standard-4"
+    value = "e2-standard-4"
+  }
+  option {
+    name = "e2-standard-2"
+    value = "e2-standard-2"
+  } 
+  option {
+    name = "e2-medium"
+    value = "e2-medium"
+  }
+  option {
+    name = "e2-micro"
+    value = "e2-micro"
+  }
+  option {
+    name = "e2-small"
+    value = "e2-small"
+  }       
+
+}
+
+data "coder_parameter" "os" {
+  name                = "os"
+  display_name        = "Windows OS"
+  type                = "string"
+  description         = "What release of Microsoft Windows Server?"
+  mutable             = false
+  default             = "windows-server-2022-dc-v20221109"
+
+  option {
+    name = "2022"
+    value = "windows-server-2022-dc-v20221109"
+  }
+  option {
+    name = "2019"
+    value = "windows-server-2019-dc-v20221109"
   }
 }
 
-variable "machine-type" {
-  description = "What machine type should your workspace be?"
-  default     = "e2-medium"
-  validation {
-    condition     = contains(["e2-standard-4","e2-standard-2","e2-medium","e2-micro", "e2-small"], var.machine-type)
-    error_message = "Invalid machine type!"
-  }
-}
+data "coder_parameter" "vs" {
+  name                = "vs"  
+  display_name        = "Visual Studio"
+  type                = "string"
+  description         = "What release of Microsoft Visual Studio Community?"
+  mutable             = false
+  default             = "visualstudio2022community"
 
-variable "os" {
-  description = "What release of Microsoft Windows Server?"
-  default     = "windows-server-2022-dc-v20221109"
-  validation {
-    condition     = contains(["windows-server-2022-dc-v20221109","windows-server-2019-dc-v20221109"], var.os)
-    error_message = "Invalid Microsoft Windows release!"
+  option {
+    name = "2022"
+    value = "visualstudio2022community"
   }
-}
-
-variable "vs" {
-  description = "What release of Microsoft Visual Studio?"
-  default     = "visualstudio2022community"
-  validation {
-    condition     = contains(["visualstudio2022community","visualstudio2019community"], var.vs)
-    error_message = "Invalid Visual Studio release!"
+  option {
+    name = "2019"
+    value = "visualstudio2019community"
   }
 }
 
 provider "google" {
-  zone    = var.zone
+  zone    = data.coder_parameter.zone.value
   project = var.project_id
 }
 
 data "google_compute_default_service_account" "default" {
+
 }
 
 data "coder_workspace" "me" {
@@ -65,8 +137,8 @@ data "coder_workspace" "me" {
 resource "google_compute_disk" "root" {
   name  = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-root"
   type  = "pd-ssd"
-  zone  = var.zone
-  image = "projects/windows-cloud/global/images/${var.os}"    
+  zone  = data.coder_parameter.zone.value
+  image = "projects/windows-cloud/global/images/${data.coder_parameter.os.value}"    
   #image = "projects/windows-cloud/global/images/windows-server-2022-dc-v20221109"  
   #image = "projects/windows-cloud/global/images/windows-server-2019-dc-v20221014"
   lifecycle {
@@ -75,9 +147,11 @@ resource "google_compute_disk" "root" {
 }
 
 resource "coder_agent" "main" {
-  auth = "google-instance-identity"
-  arch = "amd64"
-  os   = "windows"
+  auth                   = "google-instance-identity"
+  arch                   = "amd64"
+  os                     = "windows"
+  login_before_ready     = false
+  #startup_script_timeout = 300  
   startup_script = <<EOF
 
 # Set admin password and enable admin user (must be in this order)
@@ -93,7 +167,7 @@ Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 choco feature enable -n=allowGlobalConfirmation
 
 # install microsoft visual studio community edition
-choco install ${var.vs} --package-parameters "--add=Microsoft.VisualStudio.Workload.ManagedDesktop;includeRecommended --passive --locale en-US"
+choco install ${data.coder_parameter.vs.value} --package-parameters "--add=Microsoft.VisualStudio.Workload.ManagedDesktop;includeRecommended --passive --locale en-US"
 
 EOF
 }
@@ -108,10 +182,10 @@ locals {
 }
 
 resource "google_compute_instance" "dev" {
-  zone         = var.zone
+  zone         = data.coder_parameter.zone.value
   count        = data.coder_workspace.me.start_count
   name         = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}"
-  machine_type = "${var.machine-type}"
+  machine_type = "${data.coder_parameter.machine-type.value}"
   network_interface {
     network = "default"
     access_config {
@@ -160,19 +234,19 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "zone"
-    value = "${var.zone}"
+    value = "${data.coder_parameter.zone.value}"
   }
   item {
     key   = "machine-type"
-    value = "${var.machine-type}"
+    value = "${data.coder_parameter.machine-type.value}"
   }    
   item {
     key   = "windows os"
-    value = "${var.os}"
+    value = "${data.coder_parameter.os.value}"
   }  
   item {
     key   = "visual studio"
-    value = "${var.vs}"
+    value = "${data.coder_parameter.vs.value}"
   }   
 }
 

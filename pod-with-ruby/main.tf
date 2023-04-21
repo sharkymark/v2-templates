@@ -95,38 +95,74 @@ resource "coder_agent" "dev" {
   os             = "linux"
   arch           = "amd64"
 
-  metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
-    timeout = 1
+metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
   }
 
   metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
+    key          = "mem-used"
+    display_name = "Memory Usage"
+    interval     = 1
+    timeout      = 1
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
     EOT
-    interval = 1
-    timeout = 1
+  } 
+
+
+    metadata {
+    key          = "cpu-used"
+    display_name = "CPU Usage"
+    interval     = 3
+    timeout      = 3
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+
+      tstart=$(date +%s%N)
+      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      sleep 1
+
+      tstop=$(date +%s%N)
+      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
+
+    EOT
   }
 
   dir            = "/home/coder"
   startup_script = <<EOF
     #!/bin/sh
 
+    # install bench/basic calculator
+    sudo apt install bc 
+
     # clone dotfiles repo for vs code settings and adding the fish shell
     ${data.coder_parameter.dotfiles_url.value != "" ? "coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &" : ""}
 
+    # symlink to jetbrains rubymine
+    /opt/rubymine/bin/remote-dev-server.sh registerBackendLocationForGateway
+
+    # Download code-server
+    curl -fsSL https://code-server.dev/install.sh | sh
 
     # install VS Code extensions for Ruby development and debugging
     SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension rebornix.ruby &
 
-
     # Start code-server
-    code-server --auth none --port 13337 &
+    code-server --auth none --port 13337 &  
 
    # clone rubyonrails employee survey repo
     mkdir -p ~/.ssh
@@ -218,7 +254,7 @@ resource "kubernetes_pod" "main" {
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
-      }
+      }     
     }
     volume {
       name = "home-directory"
@@ -226,8 +262,8 @@ resource "kubernetes_pod" "main" {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
       }
     }
+    }
   }
-}
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
