@@ -67,14 +67,20 @@ resource "coder_agent" "coder" {
   os                      = "linux"
   arch                    = "amd64"
   dir                     = "/home/${local.user}"
+
+  env = { 
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }
+
   startup_script = <<EOT
 
 #!/bin/bash
 
-set -e
-
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
 
 # start Kasm
 /dockerstartup/kasm_default_profile.sh
@@ -96,7 +102,7 @@ resource "coder_app" "kasm" {
   share     = "owner"
 
   healthcheck {
-    url       = "http://localhost:6901/healthz/"
+    url       = "http://localhost:6901/healthz"
     interval  = 5
     threshold = 15
   } 

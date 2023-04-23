@@ -126,31 +126,43 @@ resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
   dir = "/home/coder"
-  startup_script = <<EOT
-#!/bin/bash
+  env = { 
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }
+  login_before_ready = false
+  startup_script_timeout = 300  
+  startup_script = <<EOF
+#!/bin/sh
+
+set -e
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
 # start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" &
 
 # add some Python libraries
 pip3 install --user pandas &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
 
 # clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:sharkymark/pandas_automl.git &
+if [ ! -d "pandas_automl" ]; then
+  mkdir -p ~/.ssh
+  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+  git clone --progress git@github.com:sharkymark/pandas_automl.git 
+fi
 
 # install VS Code extension into code-server
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter
 
-EOT
+EOF
 }
 
 # code-server
@@ -180,7 +192,7 @@ resource "coder_app" "jupyter" {
   subdomain     = true  
 
   healthcheck {
-    url       = "http://localhost:8888/healthz"
+    url       = "http://localhost:8888/healthz/"
     interval  = 10
     threshold = 20
   }  

@@ -142,33 +142,35 @@ metadata {
     EOT
   }
 
-  dir            = "/home/coder"
+  dir = "/home/coder"
+  env = { 
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }
+  login_before_ready = false
+  startup_script_timeout = 600  
   startup_script = <<EOF
     #!/bin/sh
+
+    set -e
 
     # install bench/basic calculator
     sudo apt install bc 
 
-    # clone dotfiles repo for vs code settings and adding the fish shell
-    ${data.coder_parameter.dotfiles_url.value != "" ? "coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &" : ""}
-
-    # symlink to jetbrains rubymine
-    /opt/rubymine/bin/remote-dev-server.sh registerBackendLocationForGateway
-
-    # Download code-server
-    curl -fsSL https://code-server.dev/install.sh | sh
-
-    # install VS Code extensions for Ruby development and debugging
-    SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension rebornix.ruby &
-
-    # Start code-server
-    code-server --auth none --port 13337 &  
+    # use coder CLI to clone and install dotfiles
+    if [ -n "$DOTFILES_URL" ]; then
+      echo "Installing dotfiles from $DOTFILES_URL"
+      coder dotfiles -y "$DOTFILES_URL"
+    fi
 
    # clone rubyonrails employee survey repo
-    mkdir -p ~/.ssh
-    ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-    git clone --progress git@github.com:sharkymark/rubyonrails.git   
 
+    if [ ! -d "rubyonrails" ]; then
+      echo "Cloning the Ruby on Rails repo with an employee survey app"
+      mkdir -p ~/.ssh
+      ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+      git clone --progress git@github.com:sharkymark/rubyonrails.git 
+    fi
+  
     # Ruby on Rails app - employee survey
     # bundle Ruby gems
     cd ~/rubyonrails
@@ -176,25 +178,12 @@ metadata {
     # start Rails server as daemon
     rails s -p 3002 -b 0.0.0.0 -d
 
+    # symlink to jetbrains rubymine
+    if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_rubymine" ]; then
+        /opt/rubymine/bin/remote-dev-server.sh registerBackendLocationForGateway
+    fi    
+
   EOF
-}
-
-# code-server
-resource "coder_app" "code-server" {
-  agent_id = coder_agent.dev.id
-  slug          = "code-server"  
-  display_name  = "VS Code Web"
-  icon     = "/icon/code.svg"
-  url      = "http://localhost:13337"
-  subdomain = false
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 3
-    threshold = 10
-  }  
-
 }
 
 # employee survey
@@ -205,7 +194,7 @@ resource "coder_app" "employeesurvey" {
   icon     = "https://cdn.iconscout.com/icon/free/png-256/hacker-news-3521477-2944921.png"
   url      = "http://localhost:3002"
   subdomain = true
-  share     = "owner"
+  share     = "authenticated"
 
   healthcheck {
     url       = "http://localhost:3002/healthz"
