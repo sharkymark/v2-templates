@@ -154,26 +154,33 @@ resource "coder_agent" "coder" {
   }
 
   dir = "/home/coder"
+
+  env = { 
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }
+
   startup_script = <<EOT
 #!/bin/bash
 
+set -e
+
 # install bench/basic calculator
 sudo apt install bc 
-
-# clone coder/coder repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:coder/coder.git
-
-# use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 &
 
-  EOT  
+# use coder CLI to clone and install dotfiles
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
+
+  EOT
+
 }
+
 
 # code-server
 resource "coder_app" "code-server" {
