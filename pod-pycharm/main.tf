@@ -11,13 +11,14 @@ terraform {
 
 locals {
   cpu-limit = "4"
-  memory-limit = "8G"
+  memory-limit = "4G"
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
   repo-owner = "docker.io/marktmilligan"
+  repo = "git@github.com:sharkymark/python_commissions.git" 
+  repo-name = "python_commissions"  
   #image = "pycharm-pro:2022.3.2"
-  #image = "intellij-idea-ultimate:2022.1.4"
   image = "pycharm-pro:2023.1"  
 }
 
@@ -27,7 +28,6 @@ provider "coder" {
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -41,7 +41,6 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -71,21 +70,97 @@ data "coder_provisioner" "me" {
 resource "coder_agent" "coder" {
   os                      = "linux"
   arch                    = data.coder_provisioner.me.arch
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+
+  metadata {
+    display_name = "@CoderHQ Weather"
+    key  = "weather"
+    # for more info: https://github.com/chubin/wttr.in
+    script = <<EOT
+        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
+    EOT
+    interval = 600
+    timeout = 10
+  }
+
+  metadata {
+    key          = "mem-used"
+    display_name = "Memory Usage"
+    interval     = 1
+    timeout      = 1
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
+    EOT
+  } 
+
+
+    metadata {
+    key          = "cpu-used"
+    display_name = "CPU Usage"
+    interval     = 3
+    timeout      = 3
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+
+      tstart=$(date +%s%N)
+      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      sleep 1
+
+      tstop=$(date +%s%N)
+      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
+
+    EOT
+  }
+
+
   dir                     = "/home/coder"
-  env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
+  login_before_ready = false
+  startup_script_timeout = 200   
+  env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
+
+set -e
+
+# install bench/basic calculator
+sudo apt install bc
 
 # use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URI" ]; then
-  echo "Installing dotfiles from $DOTFILES_URI"
-  coder dotfiles -y "$DOTFILES_URI"
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
+
+# clone repo
+if [ ! -d "${local.repo-name}" ]; then
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone ${local.repo}
 fi
 
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
  
-/opt/pycharm/bin/remote-dev-server.sh registerBackendLocationForGateway
+if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_pycharm" ]; then
+    /opt/pycharm/bin/remote-dev-server.sh registerBackendLocationForGateway
+fi 
 
   EOT  
 }
@@ -181,4 +256,8 @@ resource "coder_metadata" "workspace_info" {
     key   = "image"
     value = local.image
   } 
+  item {
+    key   = "repo"
+    value = local.repo-name
+  }   
 }

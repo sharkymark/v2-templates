@@ -15,13 +15,10 @@ locals {
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
-  #repo = "iluwatar/java-design-patterns.git"
   repo = "git@github.com:sharkymark/java_helloworld.git" 
-  repo-name = "java_helloworld" 
-  repo-owner = "docker.io/marktmilligan"
-  #image = "intellij-idea-ultimate:2022.3.2"
-  #image = "intellij-idea-ultimate:2022.1.4"
-  image = "intellij-idea-ultimate:2023.1"      
+  repo-name = "java_helloworld"  
+  image = "docker.io/marktmilligan/eclipse-kasm:2023-03"
+  user = "kasm-user"  
 }
 
 provider "coder" {
@@ -30,6 +27,7 @@ provider "coder" {
 
 variable "use_kubeconfig" {
   type        = bool
+  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -39,15 +37,14 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
-  default = false
 }
 
 variable "workspaces_namespace" {
+  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = ""
 }
 
 provider "kubernetes" {
@@ -66,12 +63,9 @@ data "coder_parameter" "dotfiles_url" {
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-data "coder_provisioner" "me" {
-}
-
 resource "coder_agent" "coder" {
-  os                      = "linux"
-  arch                    = data.coder_provisioner.me.arch
+  os   = "linux"
+  arch = "amd64"
 
   metadata {
     key          = "disk"
@@ -81,7 +75,7 @@ resource "coder_agent" "coder" {
     script       = <<-EOT
       #!/bin/bash
       set -e
-      df /home/coder | awk NR==2'{print $5}'
+      df /home/${local.user} | awk NR==2'{print $5}'
     EOT
   }
 
@@ -131,18 +125,21 @@ resource "coder_agent" "coder" {
     EOT
   }
 
-
-  dir                     = "/home/coder"
+  dir = "/home/${local.user}"
   login_before_ready = false
   startup_script_timeout = 200   
-  env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
+  env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }     
   startup_script = <<EOT
 #!/bin/sh
 
 set -e
 
 # install bench/basic calculator
-sudo apt install bc 
+sudo apt install bc
+
+echo "starting KasmVNC"
+/dockerstartup/kasm_default_profile.sh
+/dockerstartup/vnc_startup.sh &
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
@@ -151,22 +148,35 @@ if [ -n "$DOTFILES_URL" ]; then
 fi
 
 # clone java repo
-
-# clone repo
 if [ ! -d "${local.repo-name}" ]; then
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 git clone ${local.repo}
 fi
 
+# Eclipse needs KasmVNC fully running to start, so sleep let it complete
+sleep 5
 
-# script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
-# More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
-if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_idea" ]; then
-    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
-fi  
+echo "starting Eclipse IDE"
+/opt/eclipse/eclipse &
 
   EOT  
+}
+
+resource "coder_app" "kasm" {
+  agent_id      = coder_agent.coder.id
+  slug          = "kasm"  
+  display_name  = "Eclipse in KasmVNC"
+  icon          = "https://cdn.freebiesupply.com/logos/large/2x/eclipse-11-logo-png-transparent.png"
+  url           = "http://localhost:6901"
+  subdomain = true
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:6901/healthz"
+    interval  = 10
+    threshold = 15
+  } 
 }
 
 resource "kubernetes_pod" "main" {
@@ -185,7 +195,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "${local.repo-owner}/${local.image}"
+      image   = local.image
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -206,29 +216,24 @@ resource "kubernetes_pod" "main" {
         }
       }                       
       volume_mount {
-        mount_path = "/home/coder"
+        mount_path = "/home/${local.user}"
         name       = "home-directory"
-        read_only  = false
       }      
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
-        read_only  = false
       }
     }        
   }
 }
-
-
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
-  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -239,15 +244,9 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
   }
 }
 
-resource "coder_metadata" "home-directory" {
-    resource_id = kubernetes_persistent_volume_claim.home-directory.id
-    daily_cost  = 10
-}
-
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
-  daily_cost  = 20
   item {
     key   = "CPU"
     value = "${local.cpu-limit} cores"
@@ -261,12 +260,15 @@ resource "coder_metadata" "workspace_info" {
     value = "${local.home-volume}"
   }
   item {
+    key   = "volume"
+    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+  }
+  item {
     key   = "image"
     value = local.image
-  } 
+  }    
   item {
     key   = "repo"
     value = local.repo-name
-  }       
+  }   
 }
-
