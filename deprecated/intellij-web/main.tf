@@ -16,14 +16,17 @@ locals {
   cpu-request = "250m"
   memory-request = "2" 
   disk-size = "10Gi"
-  base-image = "docker.io/marktmilligan/iu-chown:2021.3.3"   
-  #base-image = "docker.io/marktmilligan/iu-chown:2022.1.4"  
+  #base-image = "docker.io/marktmilligan/iu-chown:2021.3.3"   
+  base-image = "docker.io/marktmilligan/iu-chown:2022.1.4"  
   #base-image = "docker.io/marktmilligan/iu-chown:latest"    
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -38,7 +41,6 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -53,22 +55,47 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default     = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 resource "coder_agent" "dev" {
-  os             = "linux"
-  arch           = "amd64"
-  dir            = "/home/coder"
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+
+  os = "linux"
+  arch = "amd64"
+  dir = "/home/coder"
+  env = {
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }     
   startup_script = <<EOF
     #!/bin/sh
-    
+
+    # use coder CLI to clone and install dotfiles
+    if [ -n "$DOTFILES_URL" ]; then
+      echo "Installing dotfiles from $DOTFILES_URL"
+      coder dotfiles -y "$DOTFILES_URL" &
+    fi
+
+    # create symbolic link for JetBrains Gateway
+    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway &
+
     # Start code-server
     # note code-server is in the container image
     code-server --auth none --port 13337 &
@@ -90,10 +117,6 @@ resource "coder_agent" "dev" {
     /home/coder/.local/bin/projector config add intellij1 /opt/idea --force --use-separate-config --port 9001 --hostname localhost
     /home/coder/.local/bin/projector run intellij1 &
 
-    # create symbolic link for JetBrains Gateway
-    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
-
-    ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri}" : ""}
   EOF
 }
 
@@ -118,7 +141,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "intellij1" {
   agent_id = coder_agent.dev.id
   slug          = "iu"  
-  display_name  = "Ultimate"  
+  display_name  = "IntelliJ Ultimate"  
   icon          = "/icon/intellij.svg"
   url           = "http://localhost:9001"
   subdomain     = false

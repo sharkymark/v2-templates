@@ -14,6 +14,7 @@ locals {
   memory-request = "2" 
   image = "codercom/enterprise-node:ubuntu"
   repo = "sharkymark/coder-react.git"
+  repo-name = "coder-react"   
 }
 
 #
@@ -166,28 +167,60 @@ resource "coder_agent" "coder" {
   os                      = "linux"
 
   metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
-    timeout = 1
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
   }
 
   metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
+    key          = "mem-used"
+    display_name = "Memory Usage"
+    interval     = 1
+    timeout      = 1
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
     EOT
-    interval = 1
-    timeout = 1
+  } 
+
+
+    metadata {
+    key          = "cpu-used"
+    display_name = "CPU Usage"
+    interval     = 3
+    timeout      = 3
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+
+      tstart=$(date +%s%N)
+      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      sleep 1
+
+      tstop=$(date +%s%N)
+      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
+
+    EOT
   }
 
   arch                    = data.coder_provisioner.me.arch
   dir                     = "/home/coder"
   env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
+
+# install bench/basic calculator
+sudo apt install bc 
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URI" ]; then
@@ -195,13 +228,36 @@ if [ -n "$DOTFILES_URI" ]; then
   coder dotfiles -y "$DOTFILES_URI"
 fi
 
+# install and start the latest code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 &
+
 # clone repo
+if [ ! -d "${local.repo-name}" ]; then
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${local.repo} &
-
+git clone ${local.repo}
+fi
 
   EOT  
+}
+
+
+# code-server
+resource "coder_app" "code-server" {
+  agent_id      = coder_agent.coder.id
+  slug          = "code-server"  
+  display_name  = "VS Code Web"
+  icon          = "/icon/code.svg"
+  url           = "http://localhost:13337?folder=/home/coder"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }  
 }
 
 resource "kubernetes_pod" "main" {

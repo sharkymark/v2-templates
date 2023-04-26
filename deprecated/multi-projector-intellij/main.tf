@@ -2,18 +2,30 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "~> 0.6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.12.1"
     }
   }
 }
 
+locals {
+  cpu-limit = "4"
+  memory-limit = "4G"
+  cpu-request = "250m"
+  memory-request = "2" 
+  disk-size = "10Gi"
+  #base-image = "docker.io/marktmilligan/iu-chown:2021.3.3"   
+  base-image = "docker.io/marktmilligan/iu-chown:2022.1.4"  
+  #base-image = "docker.io/marktmilligan/iu-chown:latest"    
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -25,6 +37,7 @@ variable "use_kubeconfig" {
   is likely not your local machine unless you are using `coder server --dev.`
 
   EOF
+  default     = false    
 }
 
 variable "workspaces_namespace" {
@@ -43,57 +56,87 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 2
-  validation {
-    condition = contains([
-      "2",
-      "4",
-      "6",
-      "8"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 4
+data "coder_parameter" "disk_size" {
+  name        = "Home volume storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
-    condition = contains([
-      "2",
-      "4",
-      "6",
-      "8",
-      "10",
-      "12"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
+    min       = 5
+    max       = 20
+    monotonic = "increasing"
+  }
+  mutable     = true
   default     = 10
 }
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
+data "coder_parameter" "cpu" {
+  name        = "CPU cores"
+  type        = "number"
+  description = "CPU cores - be sure the cluster nodes have the capacity"
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+  validation {
+    min       = 4
+    max       = 6
+  }
+  mutable     = true
+  default     = 4
+}
 
-  see https://dotfiles.github.io
-  EOF
-  default     = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "memory" {
+  name        = "Memory (__ GB)"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+  validation {
+    min       = 4
+    max       = 8
+  }
+  mutable     = true
+  default     = 4
 }
 
 resource "coder_agent" "dev" {
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+
   os             = "linux"
   arch           = "amd64"
   dir            = "/home/coder"
+  env = {
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }     
   startup_script = <<EOF
     #!/bin/sh
     
+    # use coder CLI to clone and install dotfiles
+    if [ -n "$DOTFILES_URL" ]; then
+      echo "Installing dotfiles from $DOTFILES_URL"
+      coder dotfiles -y "$DOTFILES_URL" &
+    fi
+
+    # create symbolic link for JetBrains Gateway
+    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway &    
+
     # Start code-server
     code-server --auth none --port 13337 &
 
@@ -113,14 +156,6 @@ resource "coder_agent" "dev" {
     /home/coder/.local/bin/projector config add intellij2 /opt/idea --force --use-separate-config --port 9002  --hostname localhost
     /home/coder/.local/bin/projector run intellij2 &
 
-    # clone 2 Java repos
-    mkdir -p ~/.ssh
-    ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-    git clone --progress git@github.com:sharkymark/java_helloworld.git &
-    git clone --progress git@github.com:iluwatar/java-design-patterns.git &
-
-
-    ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri}" : ""}
   EOF
 }
 
@@ -190,7 +225,7 @@ resource "kubernetes_pod" "main" {
     }
     container {
       name    = "dev"
-      image   = "docker.io/marktmilligan/idea-community:latest"
+      image   = local.base-image
       image_pull_policy = "Always"       
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
@@ -206,8 +241,8 @@ resource "kubernetes_pod" "main" {
           memory = "500Mi"
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = "${data.coder_parameter.cpu.value}"
+          memory = "${data.coder_parameter.memory.value}G"
         }
       }      
       volume_mount {
@@ -233,7 +268,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "${data.coder_parameter.disk_size.value}Gi"
       }
     }
   }
@@ -248,11 +283,11 @@ resource "coder_metadata" "workspace_info" {
   }    
   item {
     key   = "CPU (limits, requests)"
-    value = "${var.cpu} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
+    value = "${data.coder_parameter.cpu.value} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
   }
   item {
     key   = "memory (limits, requests)"
-    value = "${var.memory}GB, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
+    value = "${data.coder_parameter.memory.value}GB, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
   }    
   item {
     key   = "image"
@@ -264,18 +299,10 @@ resource "coder_metadata" "workspace_info" {
   }   
   item {
     key   = "disk"
-    value = "${var.disk_size}GiB"
+    value = "${data.coder_parameter.disk_size.value}GiB"
   }
   item {
     key   = "volume"
     value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
-  item {
-    key   = "security context - container"
-    value = "run_as_user ${kubernetes_pod.main[0].spec[0].container[0].security_context[0].run_as_user}"
-  }   
-  item {
-    key   = "security context - pod"
-    value = "run_as_user ${kubernetes_pod.main[0].spec[0].security_context[0].run_as_user} fs_group ${kubernetes_pod.main[0].spec[0].security_context[0].fs_group}"
-  }     
+  }      
 }
