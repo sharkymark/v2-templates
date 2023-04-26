@@ -57,12 +57,12 @@ data "coder_parameter" "disk_size" {
   description = "Number of GB of storage"
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
-    min       = 50
-    max       = 100
+    min       = 10
+    max       = 50
     monotonic = "increasing"
   }
   mutable     = true
-  default     = 50
+  default     = 10
 }
 
 data "coder_parameter" "cpu" {
@@ -75,7 +75,7 @@ data "coder_parameter" "cpu" {
     max       = 4
   }
   mutable     = true
-  default     = 1
+  default     = 2
 }
 
 data "coder_parameter" "memory" {
@@ -88,7 +88,7 @@ data "coder_parameter" "memory" {
     max       = 8
   }
   mutable     = true
-  default     = 2
+  default     = 4
 }
 
 resource "coder_agent" "coder" {
@@ -142,24 +142,11 @@ resource "coder_agent" "coder" {
     EOT
   }
 
-
-  metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
-    EOT
-    interval = 1
-    timeout = 1
-  }
-
   dir = "/home/coder"
 
   env = { 
     "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
     }
-  login_before_ready = false
-  startup_script_timeout = 300
   startup_script = <<EOT
 #!/bin/sh
 
@@ -170,7 +157,7 @@ sudo apt install bc
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 2>&1 | tee /tmp/code-server.log &
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
