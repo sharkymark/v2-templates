@@ -2,61 +2,164 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "0.6.3"
+    }
+    aws = {
+      source  = "hashicorp/aws"
     }
   }
 }
 
-# Last updated 2022-05-31
+# Last updated 2023-03-14
 # aws ec2 describe-regions | jq -r '[.Regions[].RegionName] | sort'
-variable "region" {
-  description = "What region should your workspace live in?"
-  default     = "us-east-1"
-  validation {
-    condition = contains([
-      "ap-northeast-1",
-      "ap-northeast-2",
-      "ap-northeast-3",
-      "ap-south-1",
-      "ap-southeast-1",
-      "ap-southeast-2",
-      "ca-central-1",
-      "eu-central-1",
-      "eu-north-1",
-      "eu-west-1",
-      "eu-west-2",
-      "eu-west-3",
-      "sa-east-1",
-      "us-east-1",
-      "us-east-2",
-      "us-west-1",
-      "us-west-2"
-    ], var.region)
-    error_message = "Invalid region!"
+data "coder_parameter" "region" {
+  name         = "region"
+  display_name = "Region"
+  description  = "The region to deploy the workspace in."
+  default      = "us-east-1"
+  mutable      = false
+  option {
+    name  = "Asia Pacific (Tokyo)"
+    value = "ap-northeast-1"
+    icon  = "/emojis/1f1ef-1f1f5.png"
+  }
+  option {
+    name  = "Asia Pacific (Seoul)"
+    value = "ap-northeast-2"
+    icon  = "/emojis/1f1f0-1f1f7.png"
+  }
+  option {
+    name  = "Asia Pacific (Osaka-Local)"
+    value = "ap-northeast-3"
+    icon  = "/emojis/1f1f0-1f1f7.png"
+  }
+  option {
+    name  = "Asia Pacific (Mumbai)"
+    value = "ap-south-1"
+    icon  = "/emojis/1f1f0-1f1f7.png"
+  }
+  option {
+    name  = "Asia Pacific (Singapore)"
+    value = "ap-southeast-1"
+    icon  = "/emojis/1f1f0-1f1f7.png"
+  }
+  option {
+    name  = "Asia Pacific (Sydney)"
+    value = "ap-southeast-2"
+    icon  = "/emojis/1f1f0-1f1f7.png"
+  }
+  option {
+    name  = "Canada (Central)"
+    value = "ca-central-1"
+    icon  = "/emojis/1f1e8-1f1e6.png"
+  }
+  option {
+    name  = "EU (Frankfurt)"
+    value = "eu-central-1"
+    icon  = "/emojis/1f1ea-1f1fa.png"
+  }
+  option {
+    name  = "EU (Stockholm)"
+    value = "eu-north-1"
+    icon  = "/emojis/1f1ea-1f1fa.png"
+  }
+  option {
+    name  = "EU (Ireland)"
+    value = "eu-west-1"
+    icon  = "/emojis/1f1ea-1f1fa.png"
+  }
+  option {
+    name  = "EU (London)"
+    value = "eu-west-2"
+    icon  = "/emojis/1f1ea-1f1fa.png"
+  }
+  option {
+    name  = "EU (Paris)"
+    value = "eu-west-3"
+    icon  = "/emojis/1f1ea-1f1fa.png"
+  }
+  option {
+    name  = "South America (São Paulo)"
+    value = "sa-east-1"
+    icon  = "/emojis/1f1e7-1f1f7.png"
+  }
+  option {
+    name  = "US East (N. Virginia)"
+    value = "us-east-1"
+    icon  = "/emojis/1f1fa-1f1f8.png"
+  }
+  option {
+    name  = "US East (Ohio)"
+    value = "us-east-2"
+    icon  = "/emojis/1f1fa-1f1f8.png"
+  }
+  option {
+    name  = "US West (N. California)"
+    value = "us-west-1"
+    icon  = "/emojis/1f1fa-1f1f8.png"
+  }
+  option {
+    name  = "US West (Oregon)"
+    value = "us-west-2"
+    icon  = "/emojis/1f1fa-1f1f8.png"
   }
 }
 
-variable "instance_type" {
-  description = "What instance type should your workspace use?"
-  default     = "t3.medium"
-  validation {
-    condition = contains([
-      "t3.micro",
-      "t3.small",
-      "t3.medium",
-      "t3.large",
-      "t3.xlarge",
-      "t3.2xlarge",
-    ], var.instance_type)
-    error_message = "Invalid instance type!"
+data "coder_parameter" "instance_type" {
+  name         = "instance_type"
+  display_name = "Instance type"
+  description  = "What instance type should your workspace use?"
+  default      = "t3.large"
+  mutable      = false
+  option {
+    name  = "2 vCPU, 1 GiB RAM"
+    value = "t3.micro"
+  }
+  option {
+    name  = "2 vCPU, 2 GiB RAM"
+    value = "t3.small"
+  }
+  option {
+    name  = "2 vCPU, 4 GiB RAM"
+    value = "t3.medium"
+  }
+  option {
+    name  = "2 vCPU, 8 GiB RAM"
+    value = "t3.large"
+  }
+  option {
+    name  = "4 vCPU, 16 GiB RAM"
+    value = "t3.xlarge"
+  }
+  option {
+    name  = "8 vCPU, 32 GiB RAM"
+    value = "t3.2xlarge"
   }
 }
 
 provider "aws" {
-  region = var.region
+  region = data.coder_parameter.region.value
 }
 
+
 data "coder_workspace" "me" {
+}
+
+data "coder_parameter" "os" {
+  name                = "os"
+  display_name        = "Windows OS"
+  type                = "string"
+  description         = "What release of Microsoft Windows Server?"
+  mutable             = false
+  default             = "Windows_Server-2022-English-Full-Base-*"
+
+  option {
+    name = "2022"
+    value = "Windows_Server-2022-English-Full-Base-*"
+  }
+  option {
+    name = "2019"
+    value = "Windows_Server-2019-English-Full-Base-*"
+  }
 }
 
 data "aws_ami" "windows" {
@@ -65,9 +168,29 @@ data "aws_ami" "windows" {
 
   filter {
     name   = "name"
-    values = ["Windows_Server-2019-English-Full-Base-*"]
+    values = ["${data.coder_parameter.os.value}"]
   }
 }
+
+data "coder_parameter" "vs" {
+  name                = "vs"  
+  display_name        = "Visual Studio"
+  type                = "string"
+  description         = "What release of Microsoft Visual Studio Community?"
+  mutable             = false
+  default             = "visualstudio2022community"
+
+  option {
+    name = "2022"
+    value = "visualstudio2022community"
+  }
+  option {
+    name = "2019"
+    value = "visualstudio2019community"
+  }
+}
+
+
 
 resource "coder_agent" "main" {
   arch           = "amd64"
@@ -90,7 +213,8 @@ Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
 choco feature enable -n=allowGlobalConfirmation
 
-choco install visualstudio2022community --package-parameters "--add=Microsoft.VisualStudio.Workload.ManagedDesktop;includeRecommended --passive --locale en-US"
+# install microsoft visual studio community edition
+choco install ${data.coder_parameter.vs.value} --package-parameters "--add=Microsoft.VisualStudio.Workload.ManagedDesktop;includeRecommended --passive --locale en-US"
 
 EOF
 }
@@ -134,8 +258,8 @@ EOT
 
 resource "aws_instance" "dev" {
   ami               = data.aws_ami.windows.id
-  availability_zone = "${var.region}a"
-  instance_type     = var.instance_type
+  availability_zone = "${data.coder_parameter.region.value}a"
+  instance_type     = data.coder_parameter.instance_type.value
 
   user_data = data.coder_workspace.me.transition == "start" ? local.user_data_start : local.user_data_end
   tags = {
@@ -154,15 +278,23 @@ resource "coder_metadata" "workspace_info" {
     sensitive = true
   }
   item {
-    key   = "Region"
-    value = var.region
+    key   = "region"
+    value = data.coder_parameter.region.value
   }
   item {
-    key   = "Instance type"
+    key   = "instance type"
     value = aws_instance.dev.instance_type
   }
   item {
-    key   = "Disk"
+    key   = "disk"
     value = "${aws_instance.dev.root_block_device[0].volume_size} GiB"
   }
+  item {
+    key   = "windows os"
+    value = "${data.coder_parameter.os.value}"
+  }  
+  item {
+    key   = "visual studio"
+    value = "${data.coder_parameter.vs.value}"
+  }     
 }

@@ -6,9 +6,9 @@ tags: [cloud, aws, windows]
 
 # Visual Studio IDE on a Windows VM in AWS
 
+Last updated 2023-04-27 with Coder parameters and OS and Visual Studio choices
 
-
-## Authentication
+### Authentication
 
 This template assumes that coderd is run in an environment that is authenticated
 with AWS. For example, run `aws configure import` to import credentials on the
@@ -21,7 +21,7 @@ Terraform docs](https://registry.terraform.io/providers/hashicorp/aws/latest/doc
 
 ### Additional bash scripting
 1. Prompt user for AWS region e.g., us-east-1
-1. Prompt user for AWS machine instance type e.g., t3.medium
+1. Prompt user for AWS machine instance type e.g., t3.large
 1. Enable RDP
 1. Configure Chocolatey to run in non-interactive mode
 1. Install Microsoft Visual Studio 2019 Community with Chocolatey
@@ -46,6 +46,9 @@ coder tunnel <workspace-name> --tcp 3301:3389
 1. Installing Visual Studio will take several minutes, so hang tight.
 
 ### Resources
+
+[AWS Terraform provider - instance](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance)
+
 [Microsoft Remote Desktop (macOS)](https://apps.apple.com/us/app/microsoft-remote-desktop/id1295203466)
 
 [Chocolatey package manager for Windows](https://chocolatey.org/)
