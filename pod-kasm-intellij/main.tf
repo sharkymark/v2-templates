@@ -15,8 +15,8 @@ locals {
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
-  repo = "iluwatar/java-design-patterns.git"
-  image = "docker.io/marktmilligan/intellij-community-kasm:2022.3.2"
+  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")    
+  image = "docker.io/marktmilligan/intellij-community-kasm:2022.3.2"  
   user = "kasm-user"
 }
 
@@ -63,16 +63,16 @@ data "coder_parameter" "repo" {
   description = "What Java source code repository do you want to clone?"
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  default     = "sharkymark/java_helloworld.git"
+  default     = "git@github.com:sharkymark/java_helloworld.git"
 
   option {
     name = "Java Patterns repo"
-    value = "iluwatar/java-design-patterns.git"
+    value = "git@github.com:iluwatar/java-design-patterns.git"
     icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   }
   option {
     name = "Java Hello, World! command line app"
-    value = "sharkymark/java_helloworld.git"
+    value = "git@github.com:sharkymark/java_helloworld.git"
     icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   }     
 }
@@ -88,29 +88,44 @@ resource "coder_agent" "coder" {
   os                      = "linux"
   arch                    = "amd64"
   dir                     = "/home/${local.user}"
+  env = { 
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }
+  login_before_ready = false
+  startup_script_timeout = 300    
   startup_script = <<EOT
 
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
-# use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
-
-# clone java repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone git@github.com:${data.coder_parameter.repo.value} &
+# clone repo
+if test -z "${data.coder_parameter.repo.value}" 
+then
+  echo "No git repo specified, skipping"
+else
+  if [ ! -d "${local.folder_name}" ] 
+  then
+    echo "Cloning git repo..."
+    git clone ${data.coder_parameter.repo.value} &
+  fi
+fi
 
 echo "starting KasmVNC"
 /dockerstartup/kasm_default_profile.sh
-/dockerstartup/vnc_startup.sh &
+/dockerstartup/vnc_startup.sh >/dev/null 2>&1 &
 
 # IntelliJ needs KasmVNC fully running to start, so sleep let it complete
 sleep 10
 
 echo "starting JetBrains IntelliJ IDEA Community IDE"
-/opt/idea/bin/idea.sh &
+/opt/idea/bin/idea.sh >/dev/null 2>&1 &
+
+# use coder CLI to clone and install dotfiles
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
 
   EOT  
 }

@@ -100,21 +100,11 @@ resource "coder_agent" "coder" {
 
 set -e
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
-
 # start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" >/dev/null 2>&1 &
 
 # add some Python libraries
 pip3 install --user pandas &
-
-# use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URL" ]; then
-  echo "Installing dotfiles from $DOTFILES_URL"
-  coder dotfiles -y "$DOTFILES_URL"
-fi
 
 # clone repo
 if [ ! -d "pandas_automl" ]; then
@@ -123,8 +113,18 @@ if [ ! -d "pandas_automl" ]; then
   git clone --progress git@github.com:sharkymark/pandas_automl.git 
 fi
 
+# install code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 >/dev/null 2>&1 &
+
 # install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
+
+# use coder CLI to clone and install dotfiles
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
 
 EOF
 }

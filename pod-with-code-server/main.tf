@@ -9,6 +9,10 @@ terraform {
   }
 }
 
+locals {
+  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
+}
+
 provider "coder" {
   feature_use_managed_variables = "true"
 }
@@ -127,41 +131,41 @@ data "coder_parameter" "repo" {
   description = "What source code repository do you want to clone?"
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  default     = "sharkymark/coder-react.git"
+  default     = "git@github.com:sharkymark/coder-react.git"
 
   option {
     name = "coder-react"
-    value = "sharkymark/coder-react.git"
+    value = "git@github.com:sharkymark/coder-react.git"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
   }
   option {
     name = "Coder v2 OSS project"
-    value = "coder/coder.git"
+    value = "git@github.com:coder/coder.git"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }  
   option {
     name = "Coder code-server project"
-    value = "coder/code-server.git"
+    value = "git@github.com:coder/code-server.git"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }
   option {
     name = "Golang command line app"
-    value = "sharkymark/commissions.git"
+    value = "git@github.com:sharkymark/commissions.git"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
   }
   option {
     name = "Java Hello, World! command line app"
-    value = "sharkymark/java_helloworld.git"
+    value = "git@github.com:sharkymark/java_helloworld.git"
     icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   }  
   option {
     name = "Python command line app"
-    value = "sharkymark/python_commissions.git"
+    value = "git@github.com:sharkymark/python_commissions.git"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
   }
   option {
     name = "Shark's rust sample apps"
-    value = "sharkymark/rust-hw.git"
+    value = "git@github.com:sharkymark/rust-hw.git"
     icon = "https://rustacean.net/assets/cuddlyferris.svg"
   }     
 }
@@ -230,30 +234,39 @@ resource "coder_agent" "coder" {
 
     
   dir = "/home/coder"
+  login_before_ready = false
+  startup_script_timeout = 300  
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 # install bench/basic calculator
 sudo apt install bc 
 
-# install and start the latest code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+# clone repo
+if test -z "${data.coder_parameter.repo.value}" 
+then
+  echo "No git repo specified, skipping"
+else
+  if [ ! -d "${local.folder_name}" ] 
+  then
+    echo "Cloning git repo..."
+    git clone ${data.coder_parameter.repo.value}
+  fi
+  cd ${local.folder_name}
+fi
 
+# if rust is the desired programming languge, install
+if [[ ${data.coder_parameter.repo.value} = "git@github.com:sharkymark/rust-hw.git" ]]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
+fi
+
+# install code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
-fi
-
-# clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${data.coder_parameter.repo.value} &
-
-# if rust is the desired programming languge, install
-if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
 fi
 
   EOT  

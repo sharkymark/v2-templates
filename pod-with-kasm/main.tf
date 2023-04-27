@@ -84,10 +84,10 @@ fi
 
 # start Kasm
 /dockerstartup/kasm_default_profile.sh
-/dockerstartup/vnc_startup.sh &
+/dockerstartup/vnc_startup.sh >/dev/null 2>&1 &
 
 # start Insomnia
-insomnia &
+insomnia >/dev/null 2>&1 &
 
   EOT  
 }

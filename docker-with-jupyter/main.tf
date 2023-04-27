@@ -13,35 +13,44 @@ provider "docker" {
 
 }
 
-provider "coder" {
-}
-
 data "coder_workspace" "me" {
 }
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
 
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
+
+data "coder_parameter" "jupyter" {
+  name        = "Jupyter IDE type"
+  type        = "string"
+  description = "What type of Jupyter do you want?"
+  mutable     = true
+  default     = "lab"
+  icon        = "/icon/jupyter.svg"
+
+  option {
+    name = "Jupyter Lab"
+    value = "lab"
+    icon = "https://raw.githubusercontent.com/gist/egormkn/672764e7ce3bdaf549b62a5e70eece79/raw/559e34c690ea4765001d4ba0e715106edea7439f/jupyter-lab.svg"
+  }
+  option {
+    name = "Jupyter Notebook"
+    value = "notebook"
+    icon = "https://codingbootcamps.io/wp-content/uploads/jupyter_notebook.png"
+  }       
 }
 
 locals {
-  jupyter-type-arg = "${var.jupyter == "notebook" ? "Notebook" : "Server"}"
-}
-
-variable "jupyter" {
-  description = "Jupyter IDE type"
-  default     = "notebook"
-  validation {
-    condition = contains([
-      "notebook",
-      "lab",
-    ], var.jupyter)
-    error_message = "Invalid Jupyter!"   
-}
+  jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
 }
 
 variable "api_key" {
@@ -55,22 +64,39 @@ variable "api_key" {
 resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"
+  env = { 
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }
+  login_before_ready = false
+  startup_script_timeout = 300   
   startup_script  = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 # start jupyter 
-jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" >/dev/null 2>&1 &
 
 # add some Python libraries
 pip3 install --user pandas &
 
-# use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
-
 # clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:sharkymark/pandas_automl.git &
+if [ ! -d "pandas_automl" ]; then
+  mkdir -p ~/.ssh
+  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+  git clone --progress git@github.com:sharkymark/pandas_automl.git 
+fi
+
+# install code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 >/dev/null 2>&1 &
+
+# install VS Code extension into code-server
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
+
+# use coder CLI to clone and install dotfiles
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
 
   EOT  
 }
@@ -78,7 +104,7 @@ git clone --progress git@github.com:sharkymark/pandas_automl.git &
 resource "coder_app" "jupyter" {
   agent_id      = coder_agent.dev.id
   slug          = "j"  
-  display_name  = "jupyter-${var.jupyter}"
+  display_name  = "jupyter-${data.coder_parameter.jupyter.value}"
   icon          = "/icon/jupyter.svg"
   url           = "http://localhost:8888/"
   share         = "owner"
@@ -139,6 +165,6 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "jupyter"
-    value = "${var.jupyter}"
+    value = "${data.coder_parameter.jupyter.value}"
   }    
 }
