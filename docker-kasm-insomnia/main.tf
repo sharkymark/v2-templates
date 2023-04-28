@@ -18,19 +18,20 @@ provider "docker" {
 
 }
 
-provider "coder" {
-}
-
 data "coder_workspace" "me" {
 }
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
 
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 resource "coder_agent" "dev" {
@@ -39,18 +40,23 @@ resource "coder_agent" "dev" {
   dir                     = "/home/${local.user}"
   startup_script = <<EOT
 
-#!/bin/bash
+#!/bin/sh
 
 # start Insomnia
 # Not recommending --no-sandbox; just using for testing
-insomnia --no-sandbox &
+insomnia --no-sandbox > /dev/null 2>&1 &
 
 # start Kasm
 /dockerstartup/kasm_default_profile.sh
-/dockerstartup/vnc_startup.sh &
+/dockerstartup/vnc_startup.sh > /dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
+if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+fi
+
+# change shell
+sudo chsh -s $(which bash) $(whoami)
 
   EOT  
 }

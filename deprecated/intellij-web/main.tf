@@ -94,11 +94,11 @@ resource "coder_agent" "dev" {
     fi
 
     # create symbolic link for JetBrains Gateway
-    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway &
+    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
 
     # Start code-server
     # note code-server is in the container image
-    code-server --auth none --port 13337 &
+    code-server --auth none --port 13337 >/dev/null 2>&1 &
 
     # Configure and run JetBrains IDEs in a web browser
     # https://www.jetbrains.com/idea/download/other.html
@@ -115,7 +115,7 @@ resource "coder_agent" "dev" {
     /home/coder/.local/bin/projector --accept-license 
     
     /home/coder/.local/bin/projector config add intellij1 /opt/idea --force --use-separate-config --port 9001 --hostname localhost
-    /home/coder/.local/bin/projector run intellij1 &
+    /home/coder/.local/bin/projector run intellij1 >/dev/null 2>&1 &
 
   EOF
 }

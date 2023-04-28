@@ -247,12 +247,14 @@ resource "coder_agent" "coder" {
 sudo apt install bc 
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
 
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
 cd /opt/${lookup(local.ide-dir, data.coder_parameter.ide.value)}/bin
-./remote-dev-server.sh registerBackendLocationForGateway
+./remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
 
   EOT
 

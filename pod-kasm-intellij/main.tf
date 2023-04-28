@@ -127,6 +127,9 @@ if [ -n "$DOTFILES_URL" ]; then
   coder dotfiles -y "$DOTFILES_URL"
 fi
 
+# change shell
+sudo chsh -s $(which bash) $(whoami)
+
   EOT  
 }
 

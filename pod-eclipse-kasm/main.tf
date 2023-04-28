@@ -139,7 +139,7 @@ sudo apt install bc
 
 echo "starting KasmVNC"
 /dockerstartup/kasm_default_profile.sh
-/dockerstartup/vnc_startup.sh &
+/dockerstartup/vnc_startup.sh >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
@@ -159,6 +159,9 @@ sleep 5
 
 echo "starting Eclipse IDE"
 /opt/eclipse/eclipse &
+
+# change shell
+sudo chsh -s $(which bash) $(whoami)
 
   EOT  
 }

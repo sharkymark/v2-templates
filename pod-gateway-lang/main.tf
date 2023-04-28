@@ -167,15 +167,16 @@ sudo apt install bc
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-
-git clone --progress git@github.com:${lookup(local.repo, data.coder_parameter.lang.value)}
-
-# use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+git clone --progress git@github.com:${lookup(local.repo, data.coder_parameter.lang.value)} >/dev/null 2>&1 &
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
+
+# use coder CLI to clone and install dotfiles
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} >/dev/null 2>&1 &
+fi
 
   EOT  
 }

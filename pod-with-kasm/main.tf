@@ -89,6 +89,9 @@ fi
 # start Insomnia
 insomnia >/dev/null 2>&1 &
 
+# change shell
+sudo chsh -s $(which bash) $(whoami)
+
   EOT  
 }
 
