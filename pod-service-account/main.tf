@@ -13,7 +13,7 @@ locals {
   cpu-request = "500m"
   memory-request = "2" 
   image = "codercom/enterprise-node:ubuntu"
-  repo = "sharkymark/coder-react.git"
+  repo = "https://github.com/sharkymark/coder-react.git"
   repo-name = "coder-react"   
 }
 
@@ -215,9 +215,12 @@ resource "coder_agent" "coder" {
 
   arch                    = data.coder_provisioner.me.arch
   dir                     = "/home/coder"
+  login_before_ready = false
   env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
 #!/bin/sh
+
+set -e
 
 # install bench/basic calculator
 sudo apt install bc 
@@ -230,7 +233,7 @@ fi
 
 # install and start the latest code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # clone repo
 if [ ! -d "${local.repo-name}" ]; then
