@@ -136,7 +136,11 @@ resource "coder_agent" "main" {
     fi
 
     # pull the nginx image and expose on port with hello world template
-    docker start my-nginx-container || run --name my-nginx-container -v ./templates:/etc/nginx/templates -d -p 8080:80 nginx 
+    if [ "$(docker ps -a -q -f name='my-nginx-container')" ]; then
+      docker start my-nginx-container
+    else
+      docker run --name my-nginx-container -v ./templates:/etc/nginx/templates -d -p 8080:80 nginx
+    fi 
 
     # start python web server
     python3 -m http.server > /dev/null 2>&1 &
@@ -343,5 +347,30 @@ resource "kubernetes_pod" "main" {
       }
     }
   }
+}
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = kubernetes_pod.main[0].id
+  item {
+    key   = "CPU"
+    value = "${var.max_cpus} cores"
+  }
+  item {
+    key   = "memory"
+    value = "${var.max_memory}GB"
+  }  
+  item {
+    key   = "disk"
+    value = "${data.coder_parameter.home_disk.value}GiB"
+  }   
+  item {
+    key   = "developer container"
+    value = "docker.io/codercom/enterprise-base"
+  }  
+  item {
+    key   = "envbox sysbox container runtime"
+    value = "${kubernetes_pod.main[0].spec[0].container[0].image}"
+  }       
 }
 
