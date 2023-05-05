@@ -10,22 +10,23 @@ terraform {
 }
 
 locals {
+  cpu-limit = "4"
+  memory-limit = "4G"
   cpu-request = "500m"
-  memory-request = "500m" 
-  image = "codercom/enterprise-node:ubuntu"
-  folder_name = try(element(split("/", data.coder_parameter.git_repo_url.value), length(split("/", data.coder_parameter.git_repo_url.value)) - 1), "")  
+  memory-request = "1" 
+  home-volume = "10Gi"
+  #repo = "iluwatar/java-design-patterns.git"
+  repo = "git@github.com:sharkymark/java_helloworld.git" 
+  repo-name = "java_helloworld" 
+  repo-owner = "docker.io/marktmilligan"     
 }
 
 provider "coder" {
   feature_use_managed_variables = "true"
 }
 
-data "coder_provisioner" "me" {
-}
-
 variable "use_kubeconfig" {
   type        = bool
-  #sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -39,7 +40,6 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
-  #sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -54,46 +54,6 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-data "coder_parameter" "disk_size" {
-  name        = "PVC (your $HOME directory) storage size"
-  type        = "number"
-  description = "Number of GB of storage"
-  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
-  validation {
-    min       = 1
-    max       = 10
-    monotonic = "increasing"
-  }
-  mutable     = true
-  default     = 10
-}
-
-data "coder_parameter" "cpu" {
-  name        = "CPU cores"
-  type        = "number"
-  description = "Be sure the cluster nodes have the capacity"
-  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
-  validation {
-    min       = 1
-    max       = 4
-  }
-  mutable     = true
-  default     = 2
-}
-
-data "coder_parameter" "memory" {
-  name        = "Memory (__ GB)"
-  type        = "number"
-  description = "Be sure the cluster nodes have the capacity"
-  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
-  validation {
-    min       = 1
-    max       = 8
-  }
-  mutable     = true
-  default     = 4
-}
-
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
@@ -103,18 +63,33 @@ data "coder_parameter" "dotfiles_url" {
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-data "coder_parameter" "git_repo_url" {
-  name        = "Git Repo URL"
-  description = "The `https` URL to your git repo - using your GitHub OAuth token"
+data "coder_parameter" "image" {
+  name        = "IntelliJ Ultimate Versions"
   type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  description = "What version of JetBrains IntelliJ Ultimate do you want?"
+  mutable     = true
+  default     = "intellij-idea-ultimate:2023.1"
+  icon        = "/icon/intellij.svg"
+
+  option {
+    name = "2022.1.4"
+    value = "intellij-idea-ultimate:2022.1.4"
+  }
+  option {
+    name = "2022.3.2"
+    value = "intellij-idea-ultimate:2022.3.2"
+  } 
+  option {
+    name = "2023.1"
+    value = "intellij-idea-ultimate:2023.1"
+  } 
+  option {
+    name = "2023.1.1"
+    value = "intellij-idea-ultimate:2023.1.1"
+  }      
 }
 
-data "coder_git_auth" "github" {
-  # Matches the ID of the git auth provider in Coder.
-  id = "primary-github"
+data "coder_provisioner" "me" {
 }
 
 resource "coder_agent" "coder" {
@@ -145,84 +120,40 @@ resource "coder_agent" "coder" {
     EOT
   } 
 
-    metadata {
-    key          = "cpu-used"
-    display_name = "CPU Usage"
-    interval     = 30
-    timeout      = 3
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-
-      tstart=$(date +%s%N)
-      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      sleep 1
-
-      tstop=$(date +%s%N)
-      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
-
-    EOT
-  }
-
 
   dir                     = "/home/coder"
-
-  env = {
-    GITHUB_TOKEN : data.coder_git_auth.github.access_token
-  }
-
+  login_before_ready = false
+  startup_script_timeout = 200   
+  env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
-# install bench/basic calculator
-sudo apt install bc 
-
-# install and start the latest code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
+set -e
 
 # use coder CLI to clone and install dotfiles
-if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
 fi
+
+# clone java repo
 
 # clone repo
-if test -z "${data.coder_parameter.git_repo_url.value}" 
-then
-  echo "No git repo specified, skipping"
-else
-  if [ ! -d "${local.folder_name}" ] 
-  then
-    echo "Cloning git repo..."
-    git clone ${data.coder_parameter.git_repo_url.value}
-  fi
-  cd ${local.folder_name}
+if [ ! -d "${local.repo-name}" ]; then
+mkdir -p ~/.ssh
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+git clone ${local.repo}
 fi
 
+
+# script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
+# More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
+if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_idea" ]; then
+    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
+fi  
 
   EOT  
 }
-
-# code-server
-resource "coder_app" "code-server" {
-  agent_id      = coder_agent.coder.id
-  slug          = "code-server"  
-  display_name  = "VS Code Web"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
-  subdomain = false
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 3
-    threshold = 10
-  }  
-}
-
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
@@ -240,7 +171,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = local.image
+      image   = "${local.repo-owner}/${data.coder_parameter.image.value}"
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -256,23 +187,27 @@ resource "kubernetes_pod" "main" {
           memory = local.memory-request
         }        
         limits = {
-          cpu    = data.coder_parameter.cpu.value
-          memory = "${data.coder_parameter.cpu.value}G"
+          cpu    = local.cpu-limit
+          memory = local.memory-limit
         }
       }                       
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
+        read_only  = false
       }      
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+        read_only  = false
       }
     }        
   }
 }
+
+
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
@@ -284,29 +219,36 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${data.coder_parameter.disk_size.value}Gi"
+        storage = local.home-volume
       }
     }
   }
 }
 
+resource "coder_metadata" "home-directory" {
+    resource_id = kubernetes_persistent_volume_claim.home-directory.id
+    daily_cost  = 10
+}
+
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
+  daily_cost  = 20
   item {
     key   = "CPU"
-    value = "${data.coder_parameter.cpu.value} cores"
+    value = "${local.cpu-limit} cores"
   }
   item {
     key   = "memory"
-    value = "${data.coder_parameter.memory.value}G"
+    value = "${local.memory-limit} GiB"
   }  
   item {
     key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
+    value = "${local.home-volume}"
   }
   item {
     key   = "image"
-    value = local.image
-  }  
+    value = data.coder_parameter.image.value
+  }        
 }
+
