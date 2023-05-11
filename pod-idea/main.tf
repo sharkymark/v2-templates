@@ -21,7 +21,8 @@ locals {
   repo-owner = "docker.io/marktmilligan"
   #image = "intellij-idea-ultimate:2022.3.2"
   #image = "intellij-idea-ultimate:2022.1.4"
-  image = "intellij-idea-ultimate:2023.1"      
+  #image = "intellij-idea-ultimate:2023.1"
+  image = "intellij-idea-ultimate:2023.1.1"        
 }
 
 provider "coder" {
@@ -86,20 +87,9 @@ resource "coder_agent" "coder" {
   }
 
   metadata {
-    display_name = "@CoderHQ Weather"
-    key  = "weather"
-    # for more info: https://github.com/chubin/wttr.in
-    script = <<EOT
-        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
-    EOT
-    interval = 600
-    timeout = 10
-  }
-
-  metadata {
     key          = "mem-used"
     display_name = "Memory Usage"
-    interval     = 1
+    interval     = 300
     timeout      = 1
     script       = <<-EOT
       #!/bin/bash
@@ -112,7 +102,7 @@ resource "coder_agent" "coder" {
     metadata {
     key          = "cpu-used"
     display_name = "CPU Usage"
-    interval     = 3
+    interval     = 60
     timeout      = 3
     script       = <<-EOT
       #!/bin/bash
@@ -133,8 +123,8 @@ resource "coder_agent" "coder" {
 
 
   dir                     = "/home/coder"
-  login_before_ready = false
-  startup_script_timeout = 200   
+  #login_before_ready = false
+  #startup_script_timeout = 200   
   env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
 #!/bin/sh
@@ -147,7 +137,7 @@ sudo apt install bc
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
   echo "Installing dotfiles from $DOTFILES_URL"
-  coder dotfiles -y "$DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL" >/dev/null 2>&1 &
 fi
 
 # clone java repo
@@ -156,14 +146,14 @@ fi
 if [ ! -d "${local.repo-name}" ]; then
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone ${local.repo}
+git clone ${local.repo} >/dev/null 2>&1 &
 fi
 
 
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
 if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_idea" ]; then
-    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
+    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
 fi  
 
   EOT  
@@ -254,7 +244,7 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${local.memory-limit} GiB"
+    value = "${local.memory-limit}"
   }  
   item {
     key   = "disk"

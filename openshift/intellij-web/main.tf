@@ -72,13 +72,17 @@ resource "coder_agent" "dev" {
   arch           = "amd64"
   dir            = "/home/coder"
   login_before_ready = false
-  startup_script_timeout = 200   
+  startup_script_timeout = 200 
+  env = {
+    DOTFILES_URI : data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+  }    
   startup_script = <<EOF
     #!/bin/bash
     
     # use coder CLI to clone and install dotfiles
-    if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
-      coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+    if [ -n "$DOTFILES_URI" ]; then
+      echo "Installing dotfiles from $DOTFILES_URI"
+      coder dotfiles -y "$DOTFILES_URI"
     fi
 
     # Start code-server

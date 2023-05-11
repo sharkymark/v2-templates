@@ -10,16 +10,22 @@ terraform {
 }
 
 locals {
-  registry    = "image-registry.openshift-image-registry.svc:5000/oss"
-  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
+  cpu-request = "500m"
+  memory-request = "500m" 
+  image = "image-registry.openshift-image-registry.svc:5000/oss/enterprise-node-oss:latest"
+  folder_name = try(element(split("/", data.coder_parameter.git_repo_url.value), length(split("/", data.coder_parameter.git_repo_url.value)) - 1), "")  
 }
 
 provider "coder" {
   feature_use_managed_variables = "true"
 }
 
+data "coder_provisioner" "me" {
+}
+
 variable "use_kubeconfig" {
   type        = bool
+  #sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -33,6 +39,7 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
+  #sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -47,23 +54,14 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-}
-
 data "coder_parameter" "disk_size" {
-  name        = "PVC storage size"
+  name        = "PVC (your $HOME directory) storage size"
   type        = "number"
   description = "Number of GB of storage"
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
-    max       = 20
+    max       = 10
     monotonic = "increasing"
   }
   mutable     = true
@@ -73,7 +71,7 @@ data "coder_parameter" "disk_size" {
 data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
-  description = "CPU cores - be sure the cluster nodes have the capacity"
+  description = "Be sure the cluster nodes have the capacity"
   icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
   validation {
     min       = 1
@@ -96,64 +94,22 @@ data "coder_parameter" "memory" {
   default     = 4
 }
 
-data "coder_parameter" "image" {
-  name        = "Container Image"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
   type        = "string"
-  description = "What container image and language do you want?"
-  mutable     = true
-  default     = "${local.registry}/enterprise-node-oss:latest"
-  icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
-
-  option {
-    name = "Node.js"
-    value = "${local.registry}/enterprise-node-oss:latest"
-    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
-  }
-  option {
-    name = "Golang"
-    value = "${local.registry}/enterprise-golang-oss:latest"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
-  }  
-  option {
-    name = "Base including Python"
-    value = "${local.registry}/enterprise-base-oss:latest"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }      
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-data "coder_parameter" "repo" {
-  name        = "Source Code Repository"
+data "coder_parameter" "git_repo_url" {
+  name        = "Git Repo URL"
+  description = "The `https` URL to your git repo - using your GitHub OAuth token"
   type        = "string"
-  description = "What source code repository do you want to clone?"
-  mutable     = true
+  default     = ""
+  mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  default     = "https://github.com/sharkymark/coder-react"
-
-  option {
-    name = "coder-react"
-    value = "https://github.com/sharkymark/coder-react"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
-  }
-  option {
-    name = "Coder v2 OSS project"
-    value = "https://github.com/coder/coder"
-    icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
-  }  
-  option {
-    name = "Coder code-server project"
-    value = "https://github.com/coder/code-server"
-    icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
-  }
-  option {
-    name = "Golang command line app"
-    value = "https://github.com/sharkymark/commissions"
-    icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
-  }
-  option {
-    name = "Python command line app"
-    value = "https://github.com/sharkymark/python_commissions"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }    
 }
 
 data "coder_git_auth" "github" {
@@ -162,8 +118,8 @@ data "coder_git_auth" "github" {
 }
 
 resource "coder_agent" "coder" {
-  os   = "linux"
-  arch = "amd64"
+  os                      = "linux"
+  arch                    = data.coder_provisioner.me.arch
 
   metadata {
     key          = "disk"
@@ -180,49 +136,47 @@ resource "coder_agent" "coder" {
   metadata {
     key          = "mem-used"
     display_name = "Memory Usage"
-    interval     = 300
-    timeout      = 1
+    interval     = 60
+    timeout      = 3
     script       = <<-EOT
       #!/bin/bash
       set -e
       awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
     EOT
-  }    
+  } 
 
-  login_before_ready = false
-  startup_script_timeout = 300  
-  dir = "/home/coder"
+
+  dir                     = "/home/coder"
 
   env = {
-    GITHUB_TOKEN : data.coder_git_auth.github.access_token,
-    DOTFILES_URI : data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    GITHUB_TOKEN : data.coder_git_auth.github.access_token
   }
 
   startup_script = <<EOT
 #!/bin/bash
-
-# clone repo
-if test -z "${data.coder_parameter.repo.value}" 
-then
-  echo "No git repo specified, skipping"
-else
-  if [ ! -d "${local.folder_name}" ] 
-  then
-    echo "Cloning git repo..."
-    git clone ${data.coder_parameter.repo.value}
-  fi
-fi
 
 # install and start the latest code-server
 curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
 /tmp/code-server/bin/code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
-
-if [ -n "$DOTFILES_URI" ]; then
-  echo "Installing dotfiles from $DOTFILES_URI"
-  coder dotfiles -y "$DOTFILES_URI"
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
+
+# clone repo
+if test -z "${data.coder_parameter.git_repo_url.value}" 
+then
+  echo "No git repo specified, skipping"
+else
+  if [ ! -d "${local.folder_name}" ] 
+  then
+    echo "Cloning git repo..."
+    git clone ${data.coder_parameter.git_repo_url.value} /dev/null 2>&1 &
+  fi
+  cd ${local.folder_name}
+fi
+
 
   EOT  
 }
@@ -243,6 +197,7 @@ resource "coder_app" "code-server" {
     threshold = 10
   }  
 }
+
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
@@ -267,37 +222,35 @@ resource "kubernetes_pod" "main" {
       "com.coder.user.email" = data.coder_workspace.me.owner_email
     }    
   }
-  spec {    
+  spec {  
     container {
       name    = "coder-container"
-      image   = data.coder_parameter.image.value
+      image   = local.image
       image_pull_policy = "Always"
-      command = ["sh", "-c", coder_agent.coder.init_script]      
+      command = ["sh", "-c", coder_agent.coder.init_script]     
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
       }  
       resources {
         requests = {
-          cpu    = "250m"
-          memory = "500Mi"
+          cpu    = local.cpu-request
+          memory = local.memory-request
         }        
         limits = {
-          cpu    = "${data.coder_parameter.cpu.value}"
-          memory = "${data.coder_parameter.memory.value}G"
+          cpu    = data.coder_parameter.cpu.value
+          memory = "${data.coder_parameter.cpu.value}G"
         }
       }                       
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
-        read_only  = false
       }      
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
-        read_only  = false
       }
     }        
   }
@@ -308,7 +261,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
-  wait_until_bound = false    
+  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -328,26 +281,14 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${data.coder_parameter.memory.value}GB"
-  }  
-  item {
-    key   = "CPU requests"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
-  }
-  item {
-    key   = "memory requests"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
-  }   
-  item {
-    key   = "image"
-    value = data.coder_parameter.image.value
+    value = "${data.coder_parameter.memory.value}G"
   }  
   item {
     key   = "disk"
     value = "${data.coder_parameter.disk_size.value}GiB"
   }
   item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+    key   = "image"
+    value = local.image
   }  
 }

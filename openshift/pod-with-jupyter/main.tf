@@ -123,6 +123,9 @@ resource "coder_agent" "coder" {
   login_before_ready = false
   startup_script_timeout = 300  
 
+  env = {
+    DOTFILES_URI : data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+  }
 
   dir = "/home/coder"
   startup_script = <<EOT
@@ -150,8 +153,9 @@ SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vs
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-python.python >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
-if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+if [ -n "$DOTFILES_URI" ]; then
+  echo "Installing dotfiles from $DOTFILES_URI"
+  coder dotfiles -y "$DOTFILES_URI"
 fi
 
 EOT
