@@ -11,12 +11,12 @@ terraform {
 
 locals {
   cpu-limit = "4"
-  memory-limit = "8G"
+  memory-limit = "4G"
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
-  repo = "iluwatar/java-design-patterns.git"
-  image = "image-registry.openshift-image-registry.svc:5000/demo/intellij-idea-ultimate-demo:latest"
+  repo = "sharkymark/java_helloworld.git"
+  image = "image-registry.openshift-image-registry.svc:5000/oss/intellij-idea-ultimate:2023.1.1"
 }
 
 provider "coder" {
@@ -24,16 +24,15 @@ provider "coder" {
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
   description = <<-EOF
   The Kubernetes namespace to create workspaces in e.g., coder (must exist prior to creating workspaces)
 
   EOF
+  default = ""  
 }
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -43,6 +42,7 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false  
 }
 
 provider "kubernetes" {
@@ -56,7 +56,7 @@ data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -65,8 +65,10 @@ resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
   dir = "/home/coder"
+  login_before_ready = false
+  startup_script_timeout = 200   
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 # use coder CLI to clone and install dotfiles
 if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
@@ -81,7 +83,7 @@ git clone git@github.com:${local.repo}
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
 cd /opt/idea/bin
-./remote-dev-server.sh registerBackendLocationForGateway
+./remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
 
   EOT  
 }
@@ -115,13 +117,7 @@ resource "kubernetes_pod" "main" {
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
-      } 
-      security_context {
-        allow_privilege_escalation = true
-        capabilities {
-          add = ["SETUID", "SETGID"]
-        }
-      }       
+      }      
       resources {
         requests = {
           cpu    = local.cpu-request

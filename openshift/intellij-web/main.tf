@@ -17,8 +17,8 @@ locals {
   memory-request = "2" 
   disk-size = "10Gi"
   #base-image = "docker.io/marktmilligan/iu-chown:2021.3.3"   
-  #base-image = "image-registry.openshift-image-registry.svc:5000/demo/iu-chown:2022.1.4"
-  base-image = "image-registry.openshift-image-registry.svc:5000/demo/iu-chown:2021.3.3"       
+  base-image = "image-registry.openshift-image-registry.svc:5000/oss/iu-chown:2022.1.4"
+  #base-image = "image-registry.openshift-image-registry.svc:5000/oss/iu-chown:2021.3.3"       
 }
 
 provider "coder" {
@@ -39,6 +39,7 @@ variable "use_kubeconfig" {
   is likely not your local machine unless you are using `coder server --dev.`
 
   EOF
+  default = false    
 }
 
 variable "workspaces_namespace" {
@@ -47,6 +48,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
+  default = ""  
 }
 
 provider "kubernetes" {
@@ -60,7 +62,7 @@ data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -69,6 +71,8 @@ resource "coder_agent" "dev" {
   os             = "linux"
   arch           = "amd64"
   dir            = "/home/coder"
+  login_before_ready = false
+  startup_script_timeout = 200   
   startup_script = <<EOF
     #!/bin/bash
     
@@ -79,7 +83,7 @@ resource "coder_agent" "dev" {
 
     # Start code-server
     # note code-server is in the container image
-    code-server --auth none --port 13337 &
+    code-server --auth none --port 13337 >/dev/null 2>&1 &
 
     # Configure and run JetBrains IDEs in a web browser
     # https://www.jetbrains.com/idea/download/other.html
@@ -96,10 +100,10 @@ resource "coder_agent" "dev" {
     /home/coder/.local/bin/projector --accept-license 
     
     /home/coder/.local/bin/projector config add intellij1 /opt/idea --force --use-separate-config --port 9001 --hostname localhost
-    /home/coder/.local/bin/projector run intellij1 &
+    /home/coder/.local/bin/projector run intellij1 >/dev/null 2>&1 &
 
     # create symbolic link for JetBrains Gateway
-    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
+    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
 
   EOF
 }
@@ -125,7 +129,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "intellij1" {
   agent_id = coder_agent.dev.id
   slug          = "iu"  
-  display_name  = "Ultimate"  
+  display_name  = "IntelliJ Ultimate"  
   icon          = "/icon/intellij.svg"
   url           = "http://localhost:9001"
   subdomain     = false
@@ -170,13 +174,7 @@ resource "kubernetes_pod" "main" {
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.dev.token
-      }
-      security_context {
-        allow_privilege_escalation = true
-        capabilities {
-          add = ["SETUID", "SETGID"]
-        }
-      }       
+      }     
       resources {
         requests = {
           cpu    = local.cpu-request

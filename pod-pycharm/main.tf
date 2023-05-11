@@ -59,7 +59,7 @@ data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -74,24 +74,13 @@ resource "coder_agent" "coder" {
   metadata {
     key          = "disk"
     display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
+    interval     = 300 # every 5 minutes
     timeout      = 30  # df can take a while on large filesystems
     script       = <<-EOT
       #!/bin/bash
       set -e
       df /home/coder | awk NR==2'{print $5}'
     EOT
-  }
-
-  metadata {
-    display_name = "@CoderHQ Weather"
-    key  = "weather"
-    # for more info: https://github.com/chubin/wttr.in
-    script = <<EOT
-        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
-    EOT
-    interval = 600
-    timeout = 10
   }
 
   metadata {
@@ -106,30 +95,6 @@ resource "coder_agent" "coder" {
     EOT
   } 
 
-
-    metadata {
-    key          = "cpu-used"
-    display_name = "CPU Usage"
-    interval     = 3
-    timeout      = 3
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-
-      tstart=$(date +%s%N)
-      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      sleep 1
-
-      tstop=$(date +%s%N)
-      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
-
-    EOT
-  }
-
-
   dir                     = "/home/coder"
   login_before_ready = false
   startup_script_timeout = 200   
@@ -138,9 +103,6 @@ resource "coder_agent" "coder" {
 #!/bin/sh
 
 set -e
-
-# install bench/basic calculator
-sudo apt install bc
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
@@ -246,7 +208,7 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${local.memory-limit} GiB"
+    value = "${local.memory-limit}"
   }  
   item {
     key   = "disk"

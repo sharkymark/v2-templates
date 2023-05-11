@@ -10,7 +10,8 @@ terraform {
 }
 
 locals {
-  registry    = "image-registry.openshift-image-registry.svc:5000/demo"
+  registry    = "image-registry.openshift-image-registry.svc:5000/oss"
+  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
 }
 
 provider "coder" {
@@ -19,7 +20,6 @@ provider "coder" {
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -33,12 +33,11 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "demo"
+  default = ""
 }
 
 provider "kubernetes" {
@@ -52,7 +51,7 @@ data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -64,11 +63,11 @@ data "coder_parameter" "disk_size" {
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
-    max       = 10
+    max       = 20
     monotonic = "increasing"
   }
   mutable     = true
-  default     = 5
+  default     = 10
 }
 
 data "coder_parameter" "cpu" {
@@ -81,7 +80,7 @@ data "coder_parameter" "cpu" {
     max       = 4
   }
   mutable     = true
-  default     = 1
+  default     = 2
 }
 
 data "coder_parameter" "memory" {
@@ -94,7 +93,7 @@ data "coder_parameter" "memory" {
     max       = 8
   }
   mutable     = true
-  default     = 2
+  default     = 4
 }
 
 data "coder_parameter" "image" {
@@ -102,27 +101,22 @@ data "coder_parameter" "image" {
   type        = "string"
   description = "What container image and language do you want?"
   mutable     = true
-  default     = "${local.registry}/enterprise-node:latest"
+  default     = "${local.registry}/enterprise-node-oss:latest"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
 
   option {
-    name = "Node React"
-    value = "${local.registry}/enterprise-node:latest"
+    name = "Node.js"
+    value = "${local.registry}/enterprise-node-oss:latest"
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
     name = "Golang"
-    value = "${local.registry}/enterprise-golang:latest"
+    value = "${local.registry}/enterprise-golang-oss:latest"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
-  } 
-  option {
-    name = "Java"
-    value = "${local.registry}/enterprise-java:latest"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  } 
+  }  
   option {
     name = "Base including Python"
-    value = "${local.registry}/enterprise-base-demo:latest"
+    value = "${local.registry}/enterprise-base-oss:latest"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
   }      
 }
@@ -133,70 +127,99 @@ data "coder_parameter" "repo" {
   description = "What source code repository do you want to clone?"
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  default     = "sharkymark/coder-react.git"
+  default     = "https://github.com/sharkymark/coder-react.git"
 
   option {
     name = "coder-react"
-    value = "sharkymark/coder-react.git"
+    value = "https://github.com/sharkymark/coder-react.git"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
   }
   option {
     name = "Coder v2 OSS project"
-    value = "coder/coder.git"
+    value = "https://github.com/coder/coder.git"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }  
   option {
     name = "Coder code-server project"
-    value = "coder/code-server.git"
+    value = "https://github.com/coder/code-server.git"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }
   option {
     name = "Golang command line app"
-    value = "sharkymark/commissions.git"
+    value = "https://github.com/sharkymark/commissions.git"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
   }
   option {
-    name = "Java Hello, World! command line app"
-    value = "sharkymark/java_helloworld.git"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  }  
-  option {
     name = "Python command line app"
-    value = "sharkymark/python_commissions.git"
+    value = "https://github.com/sharkymark/python_commissions.git"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }
-  option {
-    name = "Shark's rust sample apps"
-    value = "sharkymark/rust-hw.git"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }     
+  }    
+}
+
+data "coder_git_auth" "github" {
+  # Matches the ID of the git auth provider in Coder.
+  id = "primary-github"
 }
 
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+
+  metadata {
+    key          = "mem-used"
+    display_name = "Memory Usage"
+    interval     = 300
+    timeout      = 1
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
+    EOT
+  }    
+
+  login_before_ready = false
+  startup_script_timeout = 300  
   dir = "/home/coder"
+
+  env = {
+    GITHUB_TOKEN : data.coder_git_auth.github.access_token
+  }
+
   startup_script = <<EOT
 #!/bin/bash
 
 # clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${data.coder_parameter.repo.value} &
+if test -z "${data.coder_parameter.repo.value}" 
+then
+  echo "No git repo specified, skipping"
+else
+  if [ ! -d "${local.folder_name}" ] 
+  then
+    echo "Cloning git repo..."
+    git clone ${data.coder_parameter.repo.value}
+  fi
+fi
+
+# install and start the latest code-server
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+/tmp/code-server/bin/code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
-
-# if rust is the desired programming languge, install
-if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
-fi
-
-# install and start the latest code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
-/tmp/code-server/bin/code-server --auth none --port 13337 &
 
   EOT  
 }
@@ -301,10 +324,6 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "image"
     value = data.coder_parameter.image.value
-  }
-  item {
-    key   = "repo cloned"
-    value = "docker.io/${data.coder_parameter.repo.value}"
   }  
   item {
     key   = "disk"

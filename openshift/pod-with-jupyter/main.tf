@@ -10,12 +10,12 @@ terraform {
 }
 
 locals {
-  cpu-limit = "1"
-  memory-limit = "2G"
+  cpu-limit = "2"
+  memory-limit = "4G"
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
-  image = "image-registry.openshift-image-registry.svc:5000/demo/enterprise-jupyter:latest"
+  image = "image-registry.openshift-image-registry.svc:5000/oss/enterprise-jupyter-oss:latest"
   repo = "git clone https://github.com/sharkymark/pandas_automl.git"
 }
 
@@ -25,7 +25,6 @@ provider "coder" {
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -35,40 +34,48 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
-
+  default = ""
 }
 
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 locals {
-  jupyter-type-arg = "${var.jupyter == "notebook" ? "Notebook" : "Server"}"
+  jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
 }
 
-variable "jupyter" {
-  description = "Jupyter IDE type"
+data "coder_parameter" "jupyter" {
+  name        = "Jupyter IDE type"
+  type        = "string"
+  description = "What type of Jupyter do you want?"
+  mutable     = true
   default     = "lab"
-  validation {
-    condition = contains([
-      "notebook",
-      "lab",
-    ], var.jupyter)
-    error_message = "Invalid Jupyter!"   
-}
+  icon        = "/icon/jupyter.svg"
+
+  option {
+    name = "Jupyter Lab"
+    value = "lab"
+    icon = "https://raw.githubusercontent.com/gist/egormkn/672764e7ce3bdaf549b62a5e70eece79/raw/559e34c690ea4765001d4ba0e715106edea7439f/jupyter-lab.svg"
+  }
+  option {
+    name = "Jupyter Notebook"
+    value = "notebook"
+    icon = "https://codingbootcamps.io/wp-content/uploads/jupyter_notebook.png"
+  }       
 }
 
 
@@ -79,30 +86,73 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
+data "coder_git_auth" "github" {
+  # Matches the ID of the git auth provider in Coder.
+  id = "primary-github"
+}
+
+
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+
+  metadata {
+    key          = "mem-used"
+    display_name = "Memory Usage"
+    interval     = 300
+    timeout      = 1
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
+    EOT
+  }    
+
+  login_before_ready = false
+  startup_script_timeout = 300  
+
+
   dir = "/home/coder"
   startup_script = <<EOT
+
 #!/bin/bash
 
-# use coder CLI to clone and install dotfiles
-if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
-fi
-
 # start jupyter 
-jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
+
+# clone repo
+if [ ! -d "pandas_automl" ]; then
+  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+  git clone https://github.com/sharkymark/pandas_automl.git &
+fi
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh -s -- --method standalone --prefix=/tmp/code-server
-/tmp/code-server/bin/code-server --auth none --port 13337 &
+/tmp/code-server/bin/code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # add some Python libraries
 pip3 install --user pandas &
 
 # install VS Code extensions into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension python.python
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter >/dev/null 2>&1 &
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-python.python >/dev/null 2>&1 &
+
+# use coder CLI to clone and install dotfiles
+if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+fi
 
 EOT
 }
@@ -127,7 +177,7 @@ resource "coder_app" "code-server" {
 resource "coder_app" "jupyter" {
   agent_id      = coder_agent.coder.id
   slug          = "j"  
-  display_name  = "jupyter-${var.jupyter}"
+  display_name  = "jupyter-${data.coder_parameter.jupyter.value}"
   icon          = "/icon/jupyter.svg"
   url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j"
   share         = "owner"
@@ -170,12 +220,7 @@ resource "kubernetes_pod" "main" {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
       }
-      security_context {
-        allow_privilege_escalation = true
-        capabilities {
-          add = ["SETUID", "SETGID"]
-        }
-      }      
+     
       resources {
         requests = {
           cpu    = local.cpu-request
@@ -255,7 +300,7 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "jupyter"
-    value = "${var.jupyter}"
+    value = "${data.coder_parameter.jupyter.value}"
   }
   item {
     key   = "volume"

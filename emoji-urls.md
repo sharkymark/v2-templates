@@ -120,6 +120,10 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [openstack - red](https://object-storage-ca-ymq-1.vexxhost.net/swift/v1/6e4619c416ff4bd19e1c087f27a43eea/www-images-prod/openstack-logo/OpenStack-Logo-Mark.png)
 
+[openshift](https://assets.openshift.com/hubfs/images/logos/Logo-RedHat-A-Reverse-RGB.svg)
+
+[openshift circle only](https://seeklogo.com/images/O/openshift-logo-259A9CB017-seeklogo.com.png)
+
 [green man - deal with it, glasses](https://i.pinimg.com/originals/86/3d/46/863d4617520195f470c7c1112e9d9a8a.gif)
 
 [circling blue head man](https://i.gifer.com/4jx8.gif)
