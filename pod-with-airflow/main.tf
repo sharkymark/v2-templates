@@ -13,9 +13,10 @@ locals {
   cpu-limit = "2"
   memory-limit = "4G"
   cpu-request = "500m"
-  memory-request = "1G" 
+  memory-request = "1" 
   home-volume = "10Gi"
-  image = "docker.io/marktmilligan/rstudio:no-args"
+  image = "docker.io/codercom/enterprise-base:ubuntu"
+  repo = "git@github.com:sharkymark/airflow_wac.git"
 }
 
 provider "coder" {
@@ -53,6 +54,8 @@ data "coder_parameter" "dotfiles_url" {
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
+
+
 provider "kubernetes" {
   # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
   config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
@@ -67,25 +70,29 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/bash
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh 
-code-server --auth none --port 13337 >/dev/null 2>&1 &
-
-# start rstudio
-/usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1 >/dev/null 2>&1 &
+export PATH=$PATH:$HOME/.local/bin
 
 # add some Python libraries
-pip3 install --user pandas
+pip3 install --user pandas numpy &
 
-# clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:rstudio/connect-examples.git &
-git clone --progress git@github.com:rstudio/shiny-examples.git &
+# install code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 2>&1 >/dev/null 2>&1 &
+
+# install and start airflow
+pip3 install apache-airflow
+/home/coder/.local/bin/airflow standalone >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
+
+# clone repo
+if [ ! -d "airflow_wac" ]; then
+  mkdir -p ~/.ssh
+  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+  git clone --progress ${local.repo} &
 fi
 
 EOT
@@ -108,20 +115,20 @@ resource "coder_app" "code-server" {
   } 
 }
 
-# rstudio
-resource "coder_app" "rstudio" {
+# airflow
+resource "coder_app" "airflow" {
   agent_id      = coder_agent.coder.id
-  slug          = "rstudio"  
-  display_name  = "RStudio"
-  icon          = "/icon/rstudio.svg"
-  url           = "http://localhost:8787"
+  slug          = "airflow"  
+  display_name  = "Airflow"
+  icon          = "https://upload.wikimedia.org/wikipedia/commons/d/de/AirflowLogo.png"
+  url           = "http://localhost:8080"
   subdomain = true
   share     = "owner"
 
   healthcheck {
-    url       = "http://localhost:8787/healthz"
-    interval  = 3
-    threshold = 10
+    url       = "http://localhost:8080/healthz"
+    interval  = 10
+    threshold = 60
   } 
 }
 
@@ -137,7 +144,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }     
     container {
-      name    = "rstudio"
+      name    = "airflow"
       image   = local.image
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
@@ -157,7 +164,7 @@ resource "kubernetes_pod" "main" {
           cpu    = local.cpu-limit
           memory = local.memory-limit
         }
-      }                       
+      }                          
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
@@ -181,7 +188,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${local.home-volume}"
+        storage = local.home-volume
       }
     }
   }
@@ -200,11 +207,11 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "image"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].image}"
+    value = "codercom/enterprise-base:ubuntu"
   } 
   item {
     key   = "disk"
-    value = "${local.home-volume}"
+    value = local.home-volume
   }
   item {
     key   = "volume"

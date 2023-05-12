@@ -74,7 +74,7 @@ resource "coder_agent" "coder" {
   metadata {
     key          = "disk"
     display_name = "Home Volume Disk Usage"
-    interval     = 300 # every 5 minutes
+    interval     = 600 # every 10 minutes
     timeout      = 30  # df can take a while on large filesystems
     script       = <<-EOT
       #!/bin/bash
@@ -86,7 +86,7 @@ resource "coder_agent" "coder" {
   metadata {
     key          = "mem-used"
     display_name = "Memory Usage"
-    interval     = 1
+    interval     = 30
     timeout      = 1
     script       = <<-EOT
       #!/bin/bash
@@ -96,7 +96,7 @@ resource "coder_agent" "coder" {
   } 
 
   dir                     = "/home/coder"
-  login_before_ready = false
+  login_before_ready = true
   startup_script_timeout = 200   
   env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
@@ -104,25 +104,25 @@ resource "coder_agent" "coder" {
 
 set -e
 
-# use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URL" ]; then
-  echo "Installing dotfiles from $DOTFILES_URL"
-  coder dotfiles -y "$DOTFILES_URL"
-fi
-
 # clone repo
 if [ ! -d "${local.repo-name}" ]; then
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone ${local.repo}
+git clone ${local.repo} >/dev/null 2>&1 &
 fi
 
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
  
 if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_pycharm" ]; then
-    /opt/pycharm/bin/remote-dev-server.sh registerBackendLocationForGateway
+    /opt/pycharm/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
 fi 
+
+# use coder CLI to clone and install dotfiles
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
 
   EOT  
 }

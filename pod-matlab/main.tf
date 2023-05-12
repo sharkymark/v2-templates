@@ -15,7 +15,7 @@ locals {
   cpu-request = "500m"
   memory-request = "1G" 
   home-volume = "10Gi"
-  image = "docker.io/marktmilligan/rstudio:no-args"
+  image = "docker.io/marktmilligan/matlab:r2023a"
 }
 
 provider "coder" {
@@ -71,17 +71,8 @@ resource "coder_agent" "coder" {
 curl -fsSL https://code-server.dev/install.sh | sh 
 code-server --auth none --port 13337 >/dev/null 2>&1 &
 
-# start rstudio
-/usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1 >/dev/null 2>&1 &
-
-# add some Python libraries
-pip3 install --user pandas
-
-# clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:rstudio/connect-examples.git &
-git clone --progress git@github.com:rstudio/shiny-examples.git &
+# start matlab
+MWI_BASE_URL="/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/m" matlab-proxy-app >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
@@ -108,18 +99,18 @@ resource "coder_app" "code-server" {
   } 
 }
 
-# rstudio
-resource "coder_app" "rstudio" {
+# matlab
+resource "coder_app" "matlab" {
   agent_id      = coder_agent.coder.id
-  slug          = "rstudio"  
-  display_name  = "RStudio"
-  icon          = "/icon/rstudio.svg"
-  url           = "http://localhost:8787"
-  subdomain = true
-  share     = "owner"
+  slug          = "m"  
+  display_name  = "MATLAB"
+  icon          = "https://img.icons8.com/nolan/344/matlab.png"
+  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${data.coder_workspace.me.name}/apps/m"
+  subdomain = false
+
 
   healthcheck {
-    url       = "http://localhost:8787/healthz"
+    url       = "http://localhost:8888/healthz"
     interval  = 3
     threshold = 10
   } 
@@ -137,7 +128,7 @@ resource "kubernetes_pod" "main" {
       fs_group    = "1000"
     }     
     container {
-      name    = "rstudio"
+      name    = "matlab"
       image   = local.image
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
@@ -198,10 +189,6 @@ resource "coder_metadata" "workspace_info" {
     key   = "memory"
     value = "${local.memory-limit}"
   }  
-  item {
-    key   = "image"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].image}"
-  } 
   item {
     key   = "disk"
     value = "${local.home-volume}"

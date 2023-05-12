@@ -110,7 +110,7 @@ pip3 install --user pandas &
 if [ ! -d "pandas_automl" ]; then
   mkdir -p ~/.ssh
   ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-  git clone --progress git@github.com:sharkymark/pandas_automl.git 
+  git clone --progress git@github.com:sharkymark/pandas_automl.git &
 fi
 
 # install code-server
@@ -119,6 +119,7 @@ code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # install VS Code extension into code-server
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
