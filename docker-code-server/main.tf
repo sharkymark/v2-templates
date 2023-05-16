@@ -9,6 +9,11 @@ terraform {
   }
 }
 
+locals {
+  repo_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value))-1), "") 
+  folder_name = try(element(split(".", local.repo_name), length(split(".", local.repo_name))-2), "")  
+}
+
 data "coder_workspace" "me" {
 }
 
@@ -239,13 +244,14 @@ resource "coder_agent" "dev" {
     timeout = 1
   }
 
-
+  login_before_ready = false
+  startup_script_timeout = 300  
   startup_script  = <<EOT
 #!/bin/bash
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
@@ -256,12 +262,27 @@ if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
 fi
 
 # install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${data.coder_parameter.extension.value} &
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
 
 # clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone git@github.com:${data.coder_parameter.repo.value} &
+
+echo "folder_name: ${local.folder_name}"
+echo "repo_name: ${local.repo_name}"
+
+if test -z "${data.coder_parameter.repo.value}" 
+then
+  echo "No git repo specified, skipping"
+else
+  if [ ! -d "${local.folder_name}" ] 
+  then
+    mkdir -p ~/.ssh
+    ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts  
+    echo "Cloning git repo..."
+    git clone git@github.com:${data.coder_parameter.repo.value}
+  else
+    echo "directory and repo ${local.folder_name} exists, so skipping clone"
+  fi
+fi
 
   EOT  
 }
