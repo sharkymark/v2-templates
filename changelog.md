@@ -1,5 +1,8 @@
 # Changelog
 
+2023-05-20
+1. Add link to bpmct's templates
+
 02-03-23 mark@coder.com
 1. Moved all JetBrains `projector` templates to the deprecated along with others that may not work
 

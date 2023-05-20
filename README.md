@@ -14,7 +14,7 @@ Here are [some short videos](videos.md) installing, configuring and using Coder 
 
 # Templates
 
-Use the Docker, Kubernetes, Azure, AWS and Google Cloud templates in this repo to kick start your work. The example templates that ship with v2 are [here](https://github.com/coder/coder/tree/main/examples/templates).
+Use the Docker, Kubernetes, Azure, AWS and Google Cloud templates in this repo to kick start your work. The example templates that ship with v2 are [here](https://github.com/coder/coder/tree/main/examples/templates) and [bpmct](https://github.com/bpmct/coder-templates) has some sweet templates too like podman and nifty AWS VM template that only persists the home volume.
 
 # Template Emoji URLs
 
