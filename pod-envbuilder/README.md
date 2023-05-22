@@ -47,3 +47,5 @@ Be sure to enter a valid workspaces_namespace at template creation to point to t
 [devcontainer metadata reference](https://containers.dev/implementors/json_reference/)
 
 [Dev Containers explained (microsoft.com)](https://code.visualstudio.com/docs/devcontainers/containers)
+
+[Coder Terraform Provider - Agent resource](https://registry.terraform.io/providers/coder/coder/latest/docs/resources/agent)
