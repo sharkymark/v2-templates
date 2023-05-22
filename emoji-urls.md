@@ -29,6 +29,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [cpu](https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg)
 
+[deno](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Deno_2021.svg/2048px-Deno_2021.svg.png)
+
 [digital ocean](https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/DigitalOcean_logo.svg/1024px-DigitalOcean_logo.svg.png)
 
 [disk](https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png)
@@ -80,6 +82,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [hetzner](https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Logo_Hetzner.svg/2560px-Logo_Hetzner.svg.png)
 
+[kanico](https://plmlab.math.cnrs.fr/uploads/-/system/project/avatar/4980/logo-kaniko.png)
+
 [ibm blue](https://www.svgrepo.com/show/303377/ibm-logo.svg)
 
 [ibm white](https://cdn.freebiesupply.com/images/large/2x/ibm-logo-white.png)
@@ -108,6 +112,10 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [list app icon](https://cdn-icons-png.flaticon.com/512/1217/1217026.png)
 
+[microsoft .net core](https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/.NET_Core_Logo.svg/768px-.NET_Core_Logo.svg.png)
+
+[microsoft c++](https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Visual_Studio_Icon_2022.svg/1200px-Visual_Studio_Icon_2022.svg.png)
+
 [memory](https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png)
 
 [microsoft windows](https://upload.wikimedia.org/wikipedia/commons/5/5f/Windows_logo_-_2012.svg)
@@ -115,6 +123,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [classic microsoft windows](https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Windows_Logo_%281992-2001%29.svg/2362px-Windows_Logo_%281992-2001%29.svg.png)
 
 [minecraft - cat and dog](https://i.gifer.com/nS1.gif)
+
+[next.js](https://www.datocms-assets.com/75941/1657707878-nextjs_logo.png)
 
 [openstack - white](https://www.nicepng.com/png/full/608-6084823_openstack-logo-black-and-white-calligraphy.png)
 
