@@ -299,6 +299,7 @@ resource "kubernetes_persistent_volume_claim" "workspaces" {
     name      = "workspaces-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
