@@ -12,7 +12,7 @@ terraform {
 locals {
   cpu-request = "500m"
   memory-request = "2" 
-  image = "ghcr.io/coder/envbuilder"
+  image = "ghcr.io/coder/envbuilder:latest"
 }
 
 provider "coder" {
@@ -253,6 +253,10 @@ resource "kubernetes_pod" "main" {
       env {
         name  = "INIT_SCRIPT"
         value = coder_agent.coder.init_script
+      }
+      env {
+        name = "FALLBACK_IMAGE"
+        value = "ubuntu:latest"
       }
       env {
         name = "GIT_URL"
