@@ -18,12 +18,17 @@ locals {
   disk-size = "10Gi"
   #base-image = "docker.io/marktmilligan/pp-chown:2021.3.3"   
   base-image = "docker.io/marktmilligan/pp-chown:2022.1.4"  
-  #base-image = "docker.io/marktmilligan/pp-chown:latest"    
+  #base-image = "docker.io/marktmilligan/pp-chown:latest"
+  image_nametag = try(element(split("/", local.base-image), length(split("/", local.base-image)) - 1), "")       
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
+  default     = "false"
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -38,7 +43,7 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
+  default     = ""
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -53,25 +58,34 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default     = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 resource "coder_agent" "dev" {
   os             = "linux"
   arch           = "amd64"
   dir            = "/home/coder"
+  env = {
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }     
   startup_script = <<EOF
     #!/bin/sh
+
+    # use coder CLI to clone and install dotfiles
+    if [ -n "$DOTFILES_URL" ]; then
+      echo "Installing dotfiles from $DOTFILES_URL"
+      coder dotfiles -y "$DOTFILES_URL" &
+    fi
     
     # Start code-server
     # note code-server is in the container image
-    code-server --auth none --port 13337 &
+    code-server --auth none --port 13337 >/dev/null 2>&1 &
 
     # Configure and run JetBrains IDEs in a web browser
     # https://www.jetbrains.com/pycharm/download/other.html
@@ -88,12 +102,11 @@ resource "coder_agent" "dev" {
     /home/coder/.local/bin/projector --accept-license 
     
     /home/coder/.local/bin/projector config add pycharm1 /opt/pycharm --force --use-separate-config --port 9001 --hostname localhost
-    /home/coder/.local/bin/projector run pycharm1 &
+    /home/coder/.local/bin/projector run pycharm1 >/dev/null 2>&1 &
 
     # create symbolic link for JetBrains Gateway
-    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway
+    /opt/pycharm/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
 
-    ${var.dotfiles_uri != "" ? "coder dotfiles -y ${var.dotfiles_uri}" : ""}
   EOF
 }
 
@@ -101,7 +114,7 @@ resource "coder_agent" "dev" {
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"  
+  display_name  = "code-server"  
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -199,29 +212,25 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = kubernetes_pod.main[0].id
+  resource_id = kubernetes_pod.main[0].id    
   item {
-    key   = "kubernetes namespace"
-    value = "${var.workspaces_namespace}"
-  }    
-  item {
-    key   = "CPU (limits, requests)"
+    key   = "CPU"
     value = "${local.cpu-limit} cores"
   }
   item {
-    key   = "memory (limits, requests)"
+    key   = "memory"
     value = local.memory-limit
   }    
   item {
     key   = "image"
-    value = kubernetes_pod.main[0].spec[0].container[0].image
+    value = local.image_nametag
   } 
   item {
     key   = "disk"
-    value = "${local.disk-size}GiB"
+    value = "${local.disk-size}"
   }
   item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+    key   = "K8s namespace"
+    value = var.workspaces_namespace
   }       
 }

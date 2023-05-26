@@ -21,6 +21,8 @@ locals {
   postgres-image = "docker.io/marktmilligan/postgres:13"  
   dbeaver-image = "docker.io/dbeaver/cloudbeaver:latest"    
   pgadmin-image = "docker.io/dpage/pgadmin4:latest"    
+  folder_name = try(element(split("/", local.repo), length(split("/", local.repo)) - 1), "")  
+  repo_owner_name = try(element(split("/", local.repo), length(split("/", local.repo)) - 2), "")      
 }
 
 provider "coder" {
@@ -110,37 +112,97 @@ resource "coder_agent" "golang" {
   os   = "linux"
 
   metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
-    timeout = 1
-  }
-
-  metadata {
     display_name = "Load Average"
     key  = "load"
     script = <<EOT
         awk '{print $1,$2,$3,$4}' /proc/loadavg
     EOT
-    interval = 1
+    interval = 15
     timeout = 1
   }
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+
+  metadata {
+    display_name = "@CoderHQ Weather"
+    key  = "weather"
+    # for more info: https://github.com/chubin/wttr.in
+    script = <<EOT
+        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
+    EOT
+    interval = 600
+    timeout = 10
+  }
+
+  metadata {
+    key          = "mem-used"
+    display_name = "Memory Usage"
+    interval     = 30
+    timeout      = 1
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
+    EOT
+  } 
+
+
+    metadata {
+    key          = "cpu-used"
+    display_name = "CPU Usage"
+    interval     = 30
+    timeout      = 3
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+
+      tstart=$(date +%s%N)
+      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      sleep 1
+
+      tstop=$(date +%s%N)
+      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
+
+      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
+
+    EOT
+  }  
 
   arch = "amd64"
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
 
+# install bench/basic calculator
+sudo apt install bc 
+
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # add psql
 sudo apt-get install -y postgresql-client 
 
 # clone repo
-git clone ${local.repo} 
+if [ ! -d "${local.folder_name}" ] 
+then
+  echo "Cloning git repo..."
+  git clone ${local.repo}
+else
+  echo "Repo ${local.repo} already exists. Will not reclone"
+fi
+
 
 # use coder CLI to clone and install dotfiles
 coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} 
@@ -152,7 +214,7 @@ coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.golang.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -462,11 +524,11 @@ resource "coder_metadata" "workspace_info" {
     value = "${local.pgadmin-image}"
   }   
   item {
-    key   = "disk"
+    key   = "home directory disk"
     value = "${data.coder_parameter.disk_size.value}GiB"
   }
   item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
+    key   = "repo cloned"
+    value = "${local.repo_owner_name}/${local.folder_name}"
+  }   
 }

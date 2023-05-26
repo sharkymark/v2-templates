@@ -83,6 +83,27 @@ curl --request GET \
 </details>
 
 <details>
+    <summary>Create a workspace with a coder_parameter</summary>
+<br/><br/>
+
+curl --request POST \
+--url "$CODER_URL/api/v2/organizations/$ORG_ID/members/me/workspaces" \
+--header "Coder-Session-Token: $API_KEY" \
+  --data '{
+  "name": "jupyter-lab",
+  "rich_parameter_values": [
+    {
+      "name": "Git Repo URL",
+      "value": "https://github.com/sharkymark/pandas_automl"
+    }
+  ],
+  "template_id": "'$TEMPLATE_ID'"
+  }'
+
+</details>
+
+
+<details>
     <summary>Info about apikey's user</summary>
 <br/><br/>
 
