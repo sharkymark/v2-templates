@@ -35,3 +35,5 @@ tags: [local, docker]
 [Rust repo](https://github.com/sharkymark/rust-hw)
 
 [Python repo](https://github.com/sharkymark/python_commissions)
+
+[Docker Terraform provider](https://registry.terraform.io/providers/kreuzwerker/docker/latest/docs)

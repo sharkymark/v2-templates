@@ -6,7 +6,23 @@ This is an FAQ, tips and tricks, and best practices to get you going with Coder 
 
 > *2023-02-03* Any templates in the deprecated directory either do not work or may not work. e.g., [JetBrains no longer supports `projector`](https://lp.jetbrains.com/projector/) their project to run IDEs in a browser. Many of the deprecated templates use `projector` and should be ignored. JetBrains users should use [JetBrains Gateway]() and [our docs explain this in more depth](https://coder.com/docs/v2/latest/ides/gateway).
 
-The [official v2 docs](https://github.com/coder/coder/tree/main/docs) and [template examples](https://github.com/coder/coder/tree/main/examples/templates) are great resources too.
+The [official v2 docs](https://github.com/coder/coder/tree/main/docs) and [template examples](https://github.com/coder/coder/tree/main/examples/templates) are great resources too. Also my colleague [bpmct](https://github.com/bpmct/coder-templates) authors some amazing templates too.
+
+# Easiest way to getting started
+
+The easiest and fastest way to run Coder is from the command line with the `coder` binary.
+
+Download it here
+
+```sh
+curl -fsSL https://coder.com/install.sh | sh
+```
+
+You can pass parameters/flags after `coder server` but I have a nice [`coder.yaml`](./standalone-yaml/coder.yaml) to easily tweak settings.
+
+```sh
+coder server --config coder.yaml
+```
 
 # Videos
 

@@ -32,6 +32,23 @@ provider "coder" {
   feature_use_managed_variables = "true"
 }
 
+variable "socket" {
+  type        = string
+  description = <<-EOF
+  The Unix socket that the Docker daemon listens on and how containers
+  communicate with the Docker daemon.
+
+  Either Unix or TCP
+  e.g., unix:///var/run/docker.sock
+
+  EOF
+  default = "unix:///var/run/docker.sock"
+}
+
+provider "docker" {
+  host = var.socket
+}
+
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
@@ -73,57 +90,6 @@ data "coder_parameter" "ide" {
 
 }
 
-data "coder_parameter" "cpu" {
-  name        = "CPU Share"
-  type        = "number"
-  description = "What Docker CPU share do you want? (e.g., 1 physical CPU available, and 512 equates to 50% of the CPU)"
-  mutable     = true
-  default     = 1024
-  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
-
-  validation {
-    min       = 512
-    max       = 4096
-  }
-
-}
-
-data "coder_parameter" "memory" {
-  name        = "Memory"
-  type        = "number"
-  description = "What Docker memory do you want?"
-  mutable     = true
-  default     = 1024
-  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
-
-  validation {
-    min       = 512
-    max       = 4096
-  }
-
-}
-
-#data "coder_parameter" "disk_size" {
-#  name        = "Disk"
-#  type        = "number"
-#  description = "What Docker CPU share do you want?"
-#  mutable     = true
-#  default     = 10
-#  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
-#
-#  validation {
-#    min       = 10
-#    max       = 15
-#  }
-#
-#}
-
-
-
-provider "docker" {
-
-}
-
 data "coder_workspace" "me" {
 }
 
@@ -140,7 +106,7 @@ resource "coder_agent" "dev" {
         top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
         #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
     EOT
-    interval = 1
+    interval = 20
     timeout = 1
   }
 
@@ -148,7 +114,7 @@ resource "coder_agent" "dev" {
     display_name = "Disk Usage"
     key  = "disk"
     script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
+    interval = 600
     timeout = 1
   }
 
@@ -158,17 +124,7 @@ resource "coder_agent" "dev" {
     script = <<EOT
     free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
     EOT
-    interval = 1
-    timeout = 1
-  }
-
-  metadata {
-    display_name = "Memory Usage with /proc/meminfo"
-    key  = "memproc"
-    script = <<EOT
-    awk '/^MemTotal: /{mt=$2} /^MemAvailable: /{ma=$2} END{printf("%.2f%%", (mt-ma)/mt * 100.0)}' /proc/meminfo
-    EOT
-    interval = 1
+    interval = 20
     timeout = 1
   }
   
@@ -178,11 +134,11 @@ resource "coder_agent" "dev" {
     script = <<EOT
         awk '{print $1,$2,$3,$4}' /proc/loadavg
     EOT
-    interval = 1
+    interval = 20
     timeout = 1
   }
 
-  #login_before_ready      = false
+  login_before_ready      = false
   dir                     = "/home/coder"
   env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }  
   startup_script          = <<EOT
@@ -197,7 +153,7 @@ fi
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
 # More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
 cd /opt/${lookup(local.ide-dir, data.coder_parameter.ide.value)}/bin
-./remote-dev-server.sh registerBackendLocationForGateway
+./remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
 
   EOT  
 }
@@ -208,18 +164,7 @@ resource "docker_container" "workspace" {
   # Uses lower() to avoid Docker restriction on container names.
   name      = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname  = lower(data.coder_workspace.me.name)
-  dns       = ["1.1.1.1"]
-
-  # CPU usage
-  cpu_shares = data.coder_parameter.cpu.value
-
-  # GB memory
-  memory = data.coder_parameter.memory.value
-
-  # overlayfs (root filesystem)
-  #storage_opts = {
-  #  size = "${data.coder_parameter.disk_size.value}G"
-  #}  
+  dns       = ["1.1.1.1"] 
 
  entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
 

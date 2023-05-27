@@ -15,7 +15,6 @@ provider "coder" {
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -29,7 +28,6 @@ variable "use_kubeconfig" {
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -203,48 +201,10 @@ resource "coder_agent" "coder" {
     EOT
   }
 
-  metadata {
-    key          = "mem-used"
-    display_name = "Memory Usage"
-    interval     = 1
-    timeout      = 1
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
-    EOT
-  } 
-
-
-    metadata {
-    key          = "cpu-used"
-    display_name = "CPU Usage"
-    interval     = 3
-    timeout      = 3
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-
-      tstart=$(date +%s%N)
-      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      sleep 1
-
-      tstop=$(date +%s%N)
-      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
-
-    EOT
-  }
-
   arch = "amd64"
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
-
-# install bench/basic calculator
-sudo apt install bc 
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
@@ -344,9 +304,5 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "disk"
     value = "${data.coder_parameter.disk_size.value}GiB"
-  }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
+  } 
 }

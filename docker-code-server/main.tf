@@ -10,15 +10,30 @@ terraform {
 }
 
 locals {
-  repo_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value))-1), "") 
-  folder_name = try(element(split(".", local.repo_name), length(split(".", local.repo_name))-2), "")  
+  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
+  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")    
 }
+
+
 
 data "coder_workspace" "me" {
 }
 
-provider "docker" {
+variable "socket" {
+  type        = string
+  description = <<-EOF
+  The Unix socket that the Docker daemon listens on and how containers
+  communicate with the Docker daemon.
 
+  Either Unix or TCP
+  e.g., unix:///var/run/docker.sock
+
+  EOF
+  default = "unix:///var/run/docker.sock"
+}
+
+provider "docker" {
+  host = var.socket
 }
 
 provider "coder" {
@@ -70,41 +85,41 @@ data "coder_parameter" "repo" {
   description = "What source code repository do you want to clone?"
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  default     = "sharkymark/coder-react.git"
+  default     = "https://github.com/sharkymark/coder-react"
 
   option {
     name = "coder-react"
-    value = "sharkymark/coder-react.git"
+    value = "https://github.com/sharkymark/coder-react"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
   }
   option {
     name = "Coder v2 OSS project"
-    value = "coder/coder.git"
+    value = "https://github.com/coder/coder"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }  
   option {
     name = "Coder code-server project"
-    value = "coder/code-server.git"
+    value = "https://github.com/coder/code-server"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }
   option {
     name = "Golang command line app"
-    value = "sharkymark/commissions.git"
+    value = "https://github.com/sharkymark/commissions"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
   }
   option {
     name = "Java Hello, World! command line app"
-    value = "sharkymark/java_helloworld.git"
+    value = "https://github.com/sharkymark/java_helloworld"
     icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   }  
   option {
     name = "Python command line app"
-    value = "sharkymark/python_commissions.git"
+    value = "https://github.com/sharkymark/python_commissions"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
   }
   option {
     name = "Shark's rust sample apps"
-    value = "sharkymark/rust-hw.git"
+    value = "https://github.com/sharkymark/rust-hw"
     icon = "https://rustacean.net/assets/cuddlyferris.svg"
   }     
 }
@@ -114,7 +129,7 @@ data "coder_parameter" "extension" {
   type        = "string"
   description = "Which VS Code extension do you want?"
   mutable     = true
-  default     = "golang.go"
+  default     = "eg2.vscode-npm-script"
   icon        = "/icon/code.svg"
 
   option {
@@ -154,51 +169,6 @@ data "coder_parameter" "extension" {
   }            
 }
 
-data "coder_parameter" "cpu" {
-  name        = "CPU Share"
-  type        = "number"
-  description = "What Docker CPU share do you want? (e.g., 1 physical CPU available, and 512 equates to 50% of the CPU)"
-  mutable     = true
-  default     = 1024
-  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
-
-  validation {
-    min       = 512
-    max       = 4096
-  }
-
-}
-
-data "coder_parameter" "memory" {
-  name        = "Memory"
-  type        = "number"
-  description = "What Docker memory do you want?"
-  mutable     = true
-  default     = 1024
-  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
-
-  validation {
-    min       = 512
-    max       = 4096
-  }
-
-}
-
-#data "coder_parameter" "disk_size" {
-#  name        = "Disk"
-#  type        = "number"
-#  description = "What Docker CPU share do you want?"
-#  mutable     = true
-#  default     = 10
-#  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
-#
-#  validation {
-#    min       = 10
-#    max       = 15
-#  }
-#
-#}
-
 resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"
@@ -212,7 +182,7 @@ resource "coder_agent" "dev" {
         top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
         #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
     EOT
-    interval = 1
+    interval = 30
     timeout = 1
   }
 
@@ -220,7 +190,7 @@ resource "coder_agent" "dev" {
     display_name = "Disk Usage"
     key  = "disk"
     script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
+    interval = 600
     timeout = 1
   }
 
@@ -230,7 +200,7 @@ resource "coder_agent" "dev" {
     script = <<EOT
     free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
     EOT
-    interval = 1
+    interval = 30
     timeout = 1
   }
 
@@ -254,7 +224,9 @@ curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
 
 # if rust is the desired programming languge, install
 if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
@@ -267,18 +239,16 @@ SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vs
 # clone repo
 
 echo "folder_name: ${local.folder_name}"
-echo "repo_name: ${local.repo_name}"
+echo "repo_name: ${local.repo_owner_name}"
 
 if test -z "${data.coder_parameter.repo.value}" 
 then
   echo "No git repo specified, skipping"
 else
   if [ ! -d "${local.folder_name}" ] 
-  then
-    mkdir -p ~/.ssh
-    ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts  
+  then  
     echo "Cloning git repo..."
-    git clone git@github.com:${data.coder_parameter.repo.value}
+    git clone ${data.coder_parameter.repo.value}
   else
     echo "directory and repo ${local.folder_name} exists, so skipping clone"
   fi
@@ -290,7 +260,7 @@ fi
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
   subdomain = false
@@ -309,18 +279,7 @@ resource "docker_container" "workspace" {
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
-  dns      = ["1.1.1.1"]
-
-  # CPU usage
-  cpu_shares = data.coder_parameter.cpu.value
-
-  # GB memory
-  memory = data.coder_parameter.memory.value
-
-  # overlayfs (root filesystem)
-  #storage_opts = {
-  #  size = "${data.coder_parameter.disk_size.value}G"
-  #}  
+  dns      = ["1.1.1.1"] 
 
   # Use the docker gateway if the access URL is 127.0.0.1
   #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
@@ -349,4 +308,17 @@ resource "docker_container" "workspace" {
 
 resource "docker_volume" "coder_volume" {
   name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+}
+
+resource "coder_metadata" "workspace_info" {
+  count       = data.coder_workspace.me.start_count
+  resource_id = docker_container.workspace[0].id   
+  item {
+    key   = "image"
+    value = "${data.coder_parameter.image.value}"
+  }
+  item {
+    key   = "repo cloned"
+    value = "${local.repo_owner_name}/${local.folder_name}"
+  }  
 }

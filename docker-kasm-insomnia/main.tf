@@ -14,15 +14,28 @@ locals {
   user = "kasm-user"
 }
 
-provider "docker" {
+variable "socket" {
+  type        = string
+  description = <<-EOF
+  The Unix socket that the Docker daemon listens on and how containers
+  communicate with the Docker daemon.
 
+  Either Unix or TCP
+  e.g., unix:///var/run/docker.sock
+
+  EOF
+  default = "unix:///var/run/docker.sock"
 }
 
-data "coder_workspace" "me" {
+provider "docker" {
+  host = var.socket
 }
 
 provider "coder" {
   feature_use_managed_variables = "true"
+}
+
+data "coder_workspace" "me" {
 }
 
 data "coder_parameter" "dotfiles_url" {
