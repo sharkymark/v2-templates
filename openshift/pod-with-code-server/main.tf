@@ -177,18 +177,6 @@ resource "coder_agent" "coder" {
     EOT
   }
 
-  metadata {
-    key          = "mem-used"
-    display_name = "Memory Usage"
-    interval     = 300
-    timeout      = 1
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
-    EOT
-  }    
-
   login_before_ready = false
   startup_script_timeout = 300  
   dir = "/home/coder"
@@ -231,7 +219,7 @@ fi
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false

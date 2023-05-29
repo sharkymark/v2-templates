@@ -70,6 +70,19 @@ data "coder_parameter" "dotfiles_url" {
 resource "coder_agent" "dev" {
   os             = "linux"
   arch           = "amd64"
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+
   dir            = "/home/coder"
   login_before_ready = false
   startup_script_timeout = 200 
@@ -116,7 +129,7 @@ resource "coder_agent" "dev" {
 resource "coder_app" "code-server" {
   agent_id = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"  
+  display_name  = "code-server"  
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false

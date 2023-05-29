@@ -18,7 +18,7 @@ data "coder_parameter" "home_disk" {
   description = "How large should the disk storing the home directory be?"
   icon        = "https://cdn-icons-png.flaticon.com/512/2344/2344147.png"
   type        = "number"
-  default     = 10
+  default     = 50
   mutable     = true
   validation {
     min = 10
@@ -64,7 +64,7 @@ variable "max_cpus" {
 
 variable "min_cpus" {
   type        = string
-  default     = "2"
+  default     = ".5"
   description = "Minimum number of CPUs the workspace may use (e.g. .1)."
 }
 
@@ -155,7 +155,7 @@ resource "coder_agent" "main" {
 resource "coder_app" "code-server" {
   agent_id     = coder_agent.main.id
   slug         = "code-server"
-  display_name = "VS Code Web"
+  display_name = "code-server"
   icon         = "/icon/code.svg"
   url          = "http://localhost:13337?folder=/home/coder"
   subdomain    = false
