@@ -4,7 +4,7 @@ description: The goal is to enable code-server (VS Code) and VNC (Eclipse)
 tags: [cloud, kubernetes]
 ---
 
-# Eclipse IDE within VNC and code-server (VS Code) template for a workspace in a Kubernetes pod
+# Eclipse IDE within noVNC client and TigerVNC server template for a workspace in a Kubernetes pod
 
 ### Apps included
 1. A web-based terminal
@@ -14,6 +14,7 @@ tags: [cloud, kubernetes]
 
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
+1. Clone a sample Java repository
 1. Prompt user for compute options (CPU core, memory, and disk)
 1. Start VNC
 1. Start Eclipse
@@ -27,3 +28,7 @@ Be sure to change the workspaces_namespace variable to the Kubernetes namespace 
 
 ### Resources
 [Eclipse Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/eclipse/Dockerfile)
+
+[noVNC docs](https://novnc.com/info.html)
+
+[TigerVNC](https://tigervnc.org/)

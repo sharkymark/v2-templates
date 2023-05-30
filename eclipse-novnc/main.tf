@@ -9,9 +9,27 @@ terraform {
   }
 }
 
+locals {
+  image_name = "docker.io/marktmilligan/eclipse-vnc:latest"
+  repo_name = "https://github.com/sharkymark/java_helloworld"
+  image_tag = try(element(split("/", local.image_name), length(split("/", local.image_name)) - 1), "")  
+  folder_name = try(element(split("/", local.repo_name), length(split("/", local.repo_name)) - 1), "")  
+  repo_owner_name = try(element(split("/", local.repo_name), length(split("/", local.repo_name)) - 2), "")    
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
+}
+
+provider "kubernetes" {
+  # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
+  config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
+}
+
+data "coder_workspace" "me" {}
+
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -21,16 +39,15 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false
 }
 
-
 variable "workspaces_namespace" {
-  sensitive   = true
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
   EOF
-
+  default = ""
 }
 
 variable "dotfiles_uri" {
@@ -42,50 +59,74 @@ variable "dotfiles_uri" {
   default = "git@github.com:sharkymark/dotfiles.git"
 }
 
-variable "cpu" {
-  description = "CPU (__ cores)"
-  default     = 1
-  validation {
-    condition = contains([
-      "1",
-      "2",
-      "4",
-      "6"
-    ], var.cpu)
-    error_message = "Invalid cpu!"   
-}
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
-variable "memory" {
-  description = "Memory (__ GB)"
-  default     = 2
+data "coder_parameter" "disk_size" {
+  name        = "PVC storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
-    condition = contains([
-      "1",
-      "2",
-      "4",
-      "8"
-    ], var.memory)
-    error_message = "Invalid memory!"  
-}
-}
-
-variable "disk_size" {
-  description = "Disk size (__ GB)"
+    min       = 1
+    max       = 20
+    monotonic = "increasing"
+  }
+  mutable     = true
   default     = 10
 }
 
-provider "kubernetes" {
-  # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
-  config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
+data "coder_parameter" "cpu" {
+  name        = "CPU cores"
+  type        = "number"
+  description = "CPU cores - be sure the cluster nodes have the capacity"
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+  validation {
+    min       = 1
+    max       = 4
+  }
+  mutable     = true
+  default     = 2
 }
 
-data "coder_workspace" "me" {}
+data "coder_parameter" "memory" {
+  name        = "Memory (__ GB)"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+  validation {
+    min       = 1
+    max       = 8
+  }
+  mutable     = true
+  default     = 4
+}
 
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+    
   dir = "/home/coder"
+  login_before_ready = false
+  startup_script_timeout = 300  
   startup_script = <<EOT
 #!/bin/bash
 
@@ -102,19 +143,25 @@ nohup supervisord
 # https://github.com/sharkymark/dockerfiles/blob/main/eclipse/Dockerfile
 
 # eclipse
-DISPLAY=:90 /opt/eclipse/eclipse -data /home/coder sh &
+DISPLAY=:90 /opt/eclipse/eclipse -data /home/coder sh >/dev/null 2>&1 &
 
 # install code-server
-curl -fsSL https://code-server.dev/install.sh | sh 
-code-server --auth none --port 13337 &
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
 
 # clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:sharkymark/java_helloworld.git
+if [ ! -d "${local.folder_name}" ] 
+then
+  echo "Cloning git repo..."
+  git clone ${local.repo_name}
+else
+  echo "Repo ${local.repo_name} already exists. Will not reclone"
+fi
 
 EOT
 }
@@ -123,7 +170,7 @@ EOT
 resource "coder_app" "code-server" {
   agent_id = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code"  
+  display_name  = "code-server"  
   icon     = "/icon/code.svg"
   url      = "http://localhost:13337"
   subdomain = false
@@ -166,7 +213,7 @@ resource "kubernetes_pod" "main" {
     }     
     container {
       name    = "eclipse"
-      image   = "docker.io/marktmilligan/eclipse-vnc:latest"
+      image   = local.image_name
       command = ["sh", "-c", coder_agent.coder.init_script]
       image_pull_policy = "Always"
       security_context {
@@ -182,8 +229,8 @@ resource "kubernetes_pod" "main" {
           memory = "250Mi"
         }        
         limits = {
-          cpu    = "${var.cpu}"
-          memory = "${var.memory}G"
+          cpu    = "${data.coder_parameter.cpu.value}"
+          memory = "${data.coder_parameter.memory.value}G"
         }
       }                       
       volume_mount {
@@ -205,11 +252,12 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false   
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${var.disk_size}Gi"
+        storage = "${data.coder_parameter.disk_size.value}Gi"
       }
     }
   }
@@ -224,18 +272,18 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${var.memory}GB"
+    value = "${data.coder_parameter.memory.value}GB"
   }  
   item {
     key   = "image"
-    value = "docker.io/marktmilligan/eclipse-vnc:latest"
+    value = local.image_tag
   } 
   item {
-    key   = "disk"
-    value = "${var.disk_size}GiB"
-  }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
+    key   = "repo"
+    value = "${local.repo_owner_name}/${local.folder_name}"
   }  
+  item {
+    key   = "disk"
+    value = "${data.coder_parameter.disk_size.value}GiB"
+  } 
 }

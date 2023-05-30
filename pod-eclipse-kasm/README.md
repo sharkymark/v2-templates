@@ -57,6 +57,10 @@ Be sure an admin enters a valid workspaces_namespace in the locals section of th
 
 [KasmVNC and Eclipse Dockerfile](https://github.com/sharkymark/dockerfiles/tree/main/eclipse/kasm)
 
-[marktmilligan/hello_javaworld](https://github.com/sharkymark/java_helloworld)
+[sameple Java repo: hello_javaworld](https://github.com/sharkymark/java_helloworld)
 
 [Eclipse releases](https://download.eclipse.org/eclipse/downloads/)
+
+[KasmVNC home page](https://www.kasmweb.com/kasmvnc)
+
+[KasmVNC repository](https://github.com/kasmtech/KasmVNC)

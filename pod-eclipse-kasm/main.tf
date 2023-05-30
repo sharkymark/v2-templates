@@ -10,14 +10,17 @@ terraform {
 }
 
 locals {
-  cpu-limit = "4"
+  cpu-limit = "2"
   memory-limit = "4G"
-  cpu-request = "500m"
-  memory-request = "1" 
+  cpu-request = "250m"
+  memory-request = "250m" 
   home-volume = "10Gi"
-  repo = "git@github.com:sharkymark/java_helloworld.git" 
-  repo-name = "java_helloworld"  
+  repo = "https://github.com/sharkymark/java_helloworld" 
+  repo_name = "sharkymark/java_helloworld"  
+  folder_name = try(element(split("/", local.repo), length(split("/", local.repo)) - 1), "")  
+  repo_owner_name = try(element(split("/", local.repo), length(split("/", local.repo)) - 2), "")       
   image = "docker.io/marktmilligan/eclipse-kasm:2023-03"
+  image_tag = try(element(split("/", local.image), length(split("/", local.image)) - 1), "")   
   user = "kasm-user"  
 }
 
@@ -79,52 +82,6 @@ resource "coder_agent" "coder" {
     EOT
   }
 
-  metadata {
-    display_name = "@CoderHQ Weather"
-    key  = "weather"
-    # for more info: https://github.com/chubin/wttr.in
-    script = <<EOT
-        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
-    EOT
-    interval = 600
-    timeout = 10
-  }
-
-  metadata {
-    key          = "mem-used"
-    display_name = "Memory Usage"
-    interval     = 1
-    timeout      = 1
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
-    EOT
-  } 
-
-
-    metadata {
-    key          = "cpu-used"
-    display_name = "CPU Usage"
-    interval     = 3
-    timeout      = 3
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-
-      tstart=$(date +%s%N)
-      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      sleep 1
-
-      tstop=$(date +%s%N)
-      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
-
-    EOT
-  }
-
   dir = "/home/${local.user}"
   login_before_ready = false
   startup_script_timeout = 200   
@@ -133,9 +90,6 @@ resource "coder_agent" "coder" {
 #!/bin/sh
 
 set -e
-
-# install bench/basic calculator
-sudo apt install bc
 
 echo "starting KasmVNC"
 /dockerstartup/kasm_default_profile.sh
@@ -147,18 +101,20 @@ if [ -n "$DOTFILES_URL" ]; then
   coder dotfiles -y "$DOTFILES_URL"
 fi
 
-# clone java repo
-if [ ! -d "${local.repo-name}" ]; then
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone ${local.repo}
+# clone repo
+if [ ! -d "${local.folder_name}" ] 
+then
+  echo "Cloning git repo..."
+  git clone ${local.repo}
+else
+  echo "Repo ${local.repo} already exists. Will not reclone"
 fi
 
 # Eclipse needs KasmVNC fully running to start, so sleep let it complete
 sleep 5
 
 echo "starting Eclipse IDE"
-/opt/eclipse/eclipse &
+/opt/eclipse/eclipse >/dev/null 2>&1 &
 
 # change shell
 sudo chsh -s $(which bash) $(whoami)
@@ -256,22 +212,18 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "memory"
-    value = "${local.memory-limit} GiB"
+    value = "${local.memory-limit}"
   }  
   item {
     key   = "disk"
     value = "${local.home-volume}"
   }
   item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }
-  item {
     key   = "image"
-    value = local.image
-  }    
+    value = local.image_tag
+  }     
   item {
     key   = "repo"
-    value = local.repo-name
+    value = local.repo_name
   }   
 }
