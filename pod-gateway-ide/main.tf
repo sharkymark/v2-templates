@@ -177,18 +177,6 @@ data "coder_parameter" "weather" {
 resource "coder_agent" "coder" {
   os   = "linux"
 
-
-  metadata {
-    display_name = "Weather"
-    key  = "weather"
-    # for more info: https://github.com/chubin/wttr.in
-    script = <<EOT
-        curl -s 'wttr.in/{${data.coder_parameter.weather.value}}?format=3&u' 2>&1 | awk '{print}'
-    EOT
-    interval = 600
-    timeout = 10
-  }
-
   metadata {
     key          = "disk"
     display_name = "Home Volume Disk Usage"

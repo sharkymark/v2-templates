@@ -187,20 +187,9 @@ resource "coder_agent" "coder" {
     EOT
   }
 
-  metadata {
-    display_name = "@CoderHQ Weather"
-    key  = "weather"
-    # for more info: https://github.com/chubin/wttr.in
-    script = <<EOT
-        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
-    EOT
-    interval = 600
-    timeout = 10
-  }
-
     
   dir = "/home/coder"
-  login_before_ready = false
+  startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script = <<EOT
 #!/bin/sh
