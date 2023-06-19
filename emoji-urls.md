@@ -37,6 +37,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [docker](https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png)
 
+[docker whale with containers](https://www.docker.com/wp-content/uploads/2022/03/Moby-logo.png)
+
 [donkey kong climbing latter](https://i.makeagif.com/media/2-28-2017/6UDF_C.gif)
 
 [donkey kong whole screen](https://j.gifs.com/BgvMBX.gif)
@@ -81,6 +83,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [hacker news](https://cdn.iconscout.com/icon/free/png-256/hacker-news-3521477-2944921.png)
 
 [hetzner](https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Logo_Hetzner.svg/2560px-Logo_Hetzner.svg.png)
+
+[home - house](https://cdn3d.iconscout.com/3d/premium/thumb/house-3260441-2725134.png)
 
 [kanico](https://plmlab.math.cnrs.fr/uploads/-/system/project/avatar/4980/logo-kaniko.png)
 
