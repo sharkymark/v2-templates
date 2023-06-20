@@ -16,7 +16,7 @@ locals {
   memory-request = "1" 
   home-volume = "10Gi"
   repo-owner = "docker.io/marktmilligan"
-  repo = "git@github.com:sharkymark/python_commissions.git" 
+  repo = "https://github.com/sharkymark/" 
   repo-name = "python_commissions"  
   #image = "pycharm-pro:2022.3.2"
   image = "pycharm-pro:2023.1"  
@@ -83,20 +83,8 @@ resource "coder_agent" "coder" {
     EOT
   }
 
-  metadata {
-    key          = "mem-used"
-    display_name = "Memory Usage"
-    interval     = 30
-    timeout      = 1
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
-    EOT
-  } 
-
   dir                     = "/home/coder"
-  login_before_ready = true
+  startup_script_behavior = "blocking"
   startup_script_timeout = 200   
   env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
   startup_script = <<EOT
@@ -109,6 +97,14 @@ if [ ! -d "${local.repo-name}" ]; then
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 git clone ${local.repo} >/dev/null 2>&1 &
+fi
+
+if [ ! -d "${local.repo-name}" ] 
+then
+  echo "Cloning git repo..."
+  git clone ${local.repo}/${local.repo-name}
+else
+  echo "Repo ${local.repo}/${local.repo-name} already exists. Will not reclone"
 fi
 
 # script to symlink JetBrains Gateway IDE directory to image-installed IDE directory

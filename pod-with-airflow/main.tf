@@ -16,7 +16,8 @@ locals {
   memory-request = "1" 
   home-volume = "10Gi"
   image = "docker.io/codercom/enterprise-base:ubuntu"
-  repo = "git@github.com:sharkymark/airflow_wac.git"
+  repo = "https://github.com/sharkymark" 
+  repo-name = "airflow_wac"    
 }
 
 provider "coder" {
@@ -67,6 +68,21 @@ resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
   dir = "/home/coder"
+
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/coder | awk NR==2'{print $5}'
+    EOT
+  }
+
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 200    
   startup_script = <<EOT
 #!/bin/bash
 
@@ -89,10 +105,12 @@ if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
 fi
 
 # clone repo
-if [ ! -d "airflow_wac" ]; then
-  mkdir -p ~/.ssh
-  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-  git clone --progress ${local.repo} &
+if [ ! -d "${local.repo-name}" ] 
+then
+  echo "Cloning git repo..."
+  git clone ${local.repo}/${local.repo-name}
+else
+  echo "Repo ${local.repo}/${local.repo-name} already exists. Will not reclone"
 fi
 
 EOT
@@ -102,7 +120,7 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
