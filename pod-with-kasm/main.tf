@@ -66,13 +66,32 @@ resource "coder_agent" "coder" {
   arch                    = "amd64"
   dir                     = "/home/${local.user}"
 
+  metadata {
+    key          = "disk"
+    display_name = "Home Volume Disk Usage"
+    interval     = 600 # every 10 minutes
+    timeout      = 30  # df can take a while on large filesystems
+    script       = <<-EOT
+      #!/bin/bash
+      set -e
+      df /home/${local.user} | awk NR==2'{print $5}'
+    EOT
+  }
+
   env = { 
     "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
     }
 
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 200
+
   startup_script = <<EOT
 
 #!/bin/bash
+
+# install and start the latest code-server
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
@@ -107,6 +126,23 @@ resource "coder_app" "kasm" {
     interval  = 5
     threshold = 15
   } 
+}
+
+# code-server
+resource "coder_app" "code-server" {
+  agent_id      = coder_agent.coder.id
+  slug          = "code-server"  
+  display_name  = "code-server"
+  icon          = "/icon/code.svg"
+  url           = "http://localhost:13337?folder=/home/${local.user}"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }  
 }
 
 resource "kubernetes_pod" "main" {
