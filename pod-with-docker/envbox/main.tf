@@ -112,7 +112,9 @@ resource "coder_agent" "main" {
     EOT
   }
 
-  login_before_ready = false  
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300  
+  
   env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }      
   startup_script = <<EOT
     #!/bin/sh
