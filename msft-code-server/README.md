@@ -57,6 +57,8 @@ Be sure to specify the workspaces_namespace variable during workspace creation t
 
 [Matifali Dockerfile adding Microsoft VS Code Server](https://github.com/matifali/dockerdl/blob/main/base.Dockerfile)
 
+[Microsoft VS Code Server home page](https://code.visualstudio.com/docs/remote/vscode-server)
+
 [NodeJS coder-react repo](https://github.com/mark-theshark/coder-react)
 
 [Coder's GoLang v2 repo](https://github.com/coder/coder)
