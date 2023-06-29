@@ -214,14 +214,18 @@ resource "coder_agent" "dev" {
     timeout = 1
   }
 
-  login_before_ready = false
+  startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script  = <<EOT
 #!/bin/bash
 
-# install code-server
+# install and start coder technologies' code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
+
+# install and start microsoft visual studio code server
+wget -O- https://aka.ms/install-vscode-server/setup.sh | sh
+code-server --accept-server-license-terms serve-local --without-connection-token --quality stable --telemetry-level off >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
@@ -233,8 +237,12 @@ if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
 fi
 
-# install VS Code extension into code-server
+# install VS Code extension into coder technologies' code-server from openvsx's marketplace
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
+
+
+# install VS Code extension into microsoft's code-server from microsoft's marketplace
+code-server serve-local --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
 
 # clone repo
 
@@ -257,10 +265,11 @@ fi
   EOT  
 }
 
-resource "coder_app" "code-server" {
+# coder technologies' code-server
+resource "coder_app" "coder-code-server" {
   agent_id = coder_agent.dev.id
-  slug          = "code-server"  
-  display_name  = "code-server"
+  slug          = "coder"  
+  display_name  = "Coder's code-server"
   url      = "http://localhost:13337/?folder=/home/coder"
   icon     = "/icon/code.svg"
   subdomain = false
@@ -268,6 +277,23 @@ resource "coder_app" "code-server" {
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
+    interval  = 5
+    threshold = 15
+  }  
+}
+
+# microsoft vs code server
+resource "coder_app" "msft-code-server" {
+  agent_id      = coder_agent.dev.id
+  slug          = "msft"  
+  display_name  = "Microsoft's VS Code Server"
+  icon          = "/icon/code.svg"
+  url           = "http://localhost:8000?folder=/home/coder"
+  subdomain = true
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:8000/healthz"
     interval  = 5
     threshold = 15
   }  

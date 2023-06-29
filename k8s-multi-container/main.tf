@@ -112,16 +112,6 @@ resource "coder_agent" "golang" {
   os   = "linux"
 
   metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
-    EOT
-    interval = 15
-    timeout = 1
-  }
-
-  metadata {
     key          = "disk"
     display_name = "Home Volume Disk Usage"
     interval     = 600 # every 10 minutes
@@ -131,61 +121,15 @@ resource "coder_agent" "golang" {
       set -e
       df /home/coder | awk NR==2'{print $5}'
     EOT
-  }
-
-  metadata {
-    display_name = "@CoderHQ Weather"
-    key  = "weather"
-    # for more info: https://github.com/chubin/wttr.in
-    script = <<EOT
-        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
-    EOT
-    interval = 600
-    timeout = 10
-  }
-
-  metadata {
-    key          = "mem-used"
-    display_name = "Memory Usage"
-    interval     = 30
-    timeout      = 1
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
-    EOT
   } 
-
-
-    metadata {
-    key          = "cpu-used"
-    display_name = "CPU Usage"
-    interval     = 30
-    timeout      = 3
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-
-      tstart=$(date +%s%N)
-      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      sleep 1
-
-      tstop=$(date +%s%N)
-      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
-
-    EOT
-  }  
 
   arch = "amd64"
   dir = "/home/coder"
+
+  env = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }  
+
   startup_script = <<EOT
 #!/bin/bash
-
-# install bench/basic calculator
-sudo apt install bc 
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -205,7 +149,10 @@ fi
 
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} 
+if [ -n "$DOTFILES_URI" ]; then
+  echo "Installing dotfiles from $DOTFILES_URI"
+  coder dotfiles -y "$DOTFILES_URI"
+fi
 
   EOT  
 }
