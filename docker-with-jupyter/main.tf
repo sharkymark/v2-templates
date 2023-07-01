@@ -9,8 +9,21 @@ terraform {
   }
 }
 
-provider "docker" {
+variable "socket" {
+  type        = string
+  description = <<-EOF
+  The Unix socket that the Docker daemon listens on and how containers
+  communicate with the Docker daemon.
 
+  Either Unix or TCP
+  e.g., unix:///var/run/docker.sock
+
+  EOF
+  default = "unix:///var/run/docker.sock"
+}
+
+provider "docker" {
+  host = var.socket
 }
 
 data "coder_workspace" "me" {
@@ -67,8 +80,8 @@ resource "coder_agent" "dev" {
   env = { 
     "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
     }
-  login_before_ready = false
-  startup_script_timeout = 300   
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300  
   startup_script  = <<EOT
 #!/bin/sh
 

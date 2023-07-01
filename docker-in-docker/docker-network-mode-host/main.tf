@@ -9,39 +9,59 @@ terraform {
   }
 }
 
-provider "docker" {
+variable "socket" {
+  type        = string
+  description = <<-EOF
+  The Unix socket that the Docker daemon listens on and how containers
+  communicate with the Docker daemon.
 
+  Either Unix or TCP
+  e.g., unix:///var/run/docker.sock
+
+  EOF
+  default = "unix:///var/run/docker.sock"
+}
+
+provider "docker" {
+  host = var.socket
+}
+
+provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
 
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
   dir = "/home/coder"
+  env = { 
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }  
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300    
   startup_script = <<EOT
 #!/bin/bash
 
-# clone coder/coder repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:sharkymark/flask-redis-docker-compose.git &
-
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
 
-# install and start code-server
+# install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
   EOT  
 }
@@ -50,7 +70,7 @@ code-server --auth none --port 13337 &
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
