@@ -26,11 +26,25 @@ locals {
 
 }
 
-provider "docker" {
+variable "socket" {
+  type        = string
+  description = <<-EOF
+  The Unix socket that the Docker daemon listens on and how containers
+  communicate with the Docker daemon.
 
+  Either Unix or TCP
+  e.g., unix:///var/run/docker.sock
+
+  EOF
+  default = "unix:///var/run/docker.sock"
+}
+
+provider "docker" {
+  host = var.socket
 }
 
 provider "coder" {
+  feature_use_managed_variables = "true"
 }
 
 data "coder_workspace" "me" {
@@ -121,6 +135,9 @@ resource "coder_agent" "dev" {
   }
 
   dir = "/home/coder"
+  env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }   
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300    
   startup_script = <<EOT
 #!/bin/bash
 
@@ -130,11 +147,14 @@ ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 git clone --progress git@github.com:${lookup(local.repo, data.coder_parameter.lang.value)}
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri}
+if [ -n "$DOTFILES_URI" ]; then
+  echo "Installing dotfiles from $DOTFILES_URI"
+  coder dotfiles -y "$DOTFILES_URI"
+fi
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
   EOT  
 }
@@ -143,7 +163,7 @@ code-server --auth none --port 13337 &
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -158,7 +178,7 @@ resource "coder_app" "code-server" {
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = "docker.io/${lookup(local.image, var.lang)}"
+  image = "docker.io/${lookup(local.image, data.coder_parameter.lang.value)}"
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
