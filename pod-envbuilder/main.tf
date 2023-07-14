@@ -16,7 +16,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 data "coder_provisioner" "me" {
@@ -186,6 +186,37 @@ data "coder_git_auth" "github" {
 resource "coder_agent" "coder" {
   os                      = "linux"
   arch                    = data.coder_provisioner.me.arch
+
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+
   dir                     = "/workspaces/${basename(data.coder_parameter.devcontainer-repo.value)}"
   env                     = {
     "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
@@ -317,18 +348,6 @@ resource "kubernetes_persistent_volume_claim" "workspaces" {
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
-  item {
-    key   = "CPU"
-    value = "${data.coder_parameter.cpu.value} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${data.coder_parameter.memory.value}G"
-  }  
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
-  }
   item {
     key   = "image"
     value = local.image

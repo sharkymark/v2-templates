@@ -37,7 +37,6 @@ provider "docker" {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
 }
 
 data "coder_parameter" "dotfiles_url" {
@@ -173,45 +172,35 @@ resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"
 
-  metadata {
-    display_name = "CPU Usage"
-    key  = "cpu"
-    # calculates CPU usage by summing the "us", "sy" and "id" columns of
-    # vmstat.
-    script = <<EOT
-        top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
-        #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
-    EOT
-    interval = 30
-    timeout = 1
-  }
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
 
-    metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 600
-    timeout = 1
-  }
+# 2023-07-12 commenting out since fails on docker
+#  metadata {
+#    display_name = "CPU Usage"
+#    key          = "0_cpu_usage"
+#    script       = "coder stat cpu"
+#    interval     = 10
+#    timeout      = 1
+#  }
 
   metadata {
-    display_name = "Memory Usage"
-    key  = "mem"
-    script = <<EOT
-    free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
-    EOT
-    interval = 30
-    timeout = 1
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
-    EOT
-    interval = 1
-    timeout = 1
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
   }
 
   startup_script_behavior = "blocking"
@@ -222,10 +211,6 @@ resource "coder_agent" "dev" {
 # install and start coder technologies' code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
-
-# install and start microsoft visual studio code server
-wget -O- https://aka.ms/install-vscode-server/setup.sh | sh
-code-server --accept-server-license-terms serve-local --without-connection-token --quality stable --telemetry-level off >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
@@ -239,10 +224,6 @@ fi
 
 # install VS Code extension into coder technologies' code-server from openvsx's marketplace
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
-
-
-# install VS Code extension into microsoft's code-server from microsoft's marketplace
-code-server serve-local --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
 
 # clone repo
 
@@ -277,23 +258,6 @@ resource "coder_app" "coder-code-server" {
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
-    interval  = 5
-    threshold = 15
-  }  
-}
-
-# microsoft vs code server
-resource "coder_app" "msft-code-server" {
-  agent_id      = coder_agent.dev.id
-  slug          = "msft"  
-  display_name  = "Microsoft's VS Code Server"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:8000?folder=/home/coder"
-  subdomain = true
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:8000/healthz"
     interval  = 5
     threshold = 15
   }  

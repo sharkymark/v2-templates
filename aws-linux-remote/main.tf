@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "access-key-id" {
@@ -182,48 +182,40 @@ resource "coder_agent" "main" {
   arch                   = "amd64"
   auth                   = "aws-instance-identity"
 
-  metadata {
-    display_name = "Memory Usage"
-    key  = "pod-mem"
-    script = "awk '{ print $1 }' /sys/fs/cgroup/memory/memory.usage_in_bytes | numfmt --to=iec"
-    interval = 1
-    timeout = 1
-  }
-
+ # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
     display_name = "CPU Usage"
-    key  = "cpu"
-    # calculates CPU usage by summing the "us", "sy" and "id" columns of
-    # vmstat.
-    script = <<EOT
-        top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
-        #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
-    EOT
-    interval = 1
-    timeout = 1
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
-    timeout = 1
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    display_name = "Memory Used"
-    key  = "mem3"
-    script = <<EOT
-    free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
-    EOT
-    interval = 1
-    timeout = 1
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
   }   
 
   os                     = "linux"
-  login_before_ready     = false
-  startup_script_timeout = 180
+
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300 
+
   startup_script         = <<-EOT
     set -e
 
@@ -236,7 +228,7 @@ resource "coder_agent" "main" {
 resource "coder_app" "code-server" {
   agent_id     = coder_agent.main.id
   slug         = "code-server"
-  display_name = "VS Code Web"
+  display_name = "code-server"
   url          = "http://localhost:13337/?folder=/home/coder"
   icon         = "/icon/code.svg"
   subdomain    = false
@@ -335,9 +327,5 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "instance type"
     value = aws_instance.dev.instance_type
-  }
-  item {
-    key   = "disk"
-    value = "${aws_instance.dev.root_block_device[0].volume_size} GiB"
   }
 }

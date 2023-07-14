@@ -9,37 +9,28 @@ terraform {
   }
 }
 
+locals {
+  image = "codercom/enterprise-base:ubuntu"
+}
+
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 data "coder_workspace" "me" {}
 
-variable "ca" {
-  sensitive   = true
+variable "use_kubeconfig" {
+  type        = bool
   description = <<-EOF
-  Kubernetes cluster namespace's CA certificate
+  Use host kubeconfig? (true/false)
 
+  Set this to false if the Coder host is itself running as a Pod on the same
+  Kubernetes cluster as you are deploying workspaces to.
+
+  Set this to true if the Coder host is running outside the Kubernetes cluster
+  for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
-  default = ""
-}
-
-variable "token" {
-  sensitive   = true
-  description = <<-EOF
-  Kubernetes cluster namespace's service account token
-
-  EOF
-  default = ""
-}
-
-variable "host" {
-  sensitive   = true
-  description = <<-EOF
-  Kubernetes cluster host
-
-  EOF
-  default = ""
+  default = false
 }
 
 variable "workspaces_namespace" {
@@ -51,9 +42,8 @@ variable "workspaces_namespace" {
 }
 
 provider "kubernetes" {
-  host                   = var.host
-  cluster_ca_certificate = base64decode(var.ca)
-  token                  = base64decode(var.token)
+  # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
+  config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
 }
 
 data "coder_parameter" "disk_size" {
@@ -63,7 +53,7 @@ data "coder_parameter" "disk_size" {
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
-    max       = 20
+    max       = 50
     monotonic = "increasing"
   }
   mutable     = true
@@ -109,32 +99,38 @@ resource "coder_agent" "main" {
   os   = "linux"
   arch = "amd64"
 
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
-    EOT
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    display_name = "@CoderHQ Weather"
-    key  = "weather"
-    # for more info: https://github.com/chubin/wttr.in
-    script = <<EOT
-        curl -s 'wttr.in/{Austin}?format=3&u' 2>&1 | awk '{print}'
-    EOT
-    interval = 600
-    timeout = 10
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
   }
 
   dir = "/home/coder"
-  login_before_ready = false
-  startup_script_timeout = 300  
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300   
   startup_script = <<EOT
 #!/bin/sh
 
@@ -193,7 +189,7 @@ resource "kubernetes_deployment" "main" {
 
       spec {
         container {
-          image = "codercom/enterprise-base:ubuntu"
+          image = local.image
           name  = "hello-world"
           command           = ["sh", "-c", coder_agent.main.init_script]
 
@@ -220,25 +216,9 @@ resource "kubernetes_deployment" "main" {
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = kubernetes_deployment.main.id
+  resource_id = kubernetes_deployment.main.id   
   item {
-    key   = "CPU"
-    value = "${data.coder_parameter.cpu.value} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${data.coder_parameter.memory.value}GB"
-  }  
-  item {
-    key   = "CPU requests"
-    value = "${kubernetes_deployment.main.spec[0].template[0].spec[0].container[0].resources[0].requests.cpu}"
-  }
-  item {
-    key   = "memory requests"
-    value = "${kubernetes_deployment.main.spec[0].template[0].spec[0].container[0].resources[0].requests.memory}"
-  }   
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
+    key   = "image"
+    value = local.image
   } 
 }

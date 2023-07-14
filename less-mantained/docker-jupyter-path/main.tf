@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "socket" {
@@ -43,71 +43,72 @@ data "coder_parameter" "dotfiles_url" {
 }
 
 locals {
-  jupyter-type-arg = "${var.jupyter == "notebook" ? "Notebook" : "Server"}"
+  jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
 }
 
-variable "jupyter" {
-  description = "Jupyter IDE type"
-  default     = "notebook"
-  validation {
-    condition = contains([
-      "notebook",
-      "lab",
-    ], var.jupyter)
-    error_message = "Invalid Jupyter!"   
-}
+data "coder_parameter" "jupyter" {
+  name        = "Jupyter IDE type"
+  type        = "string"
+  description = "What type of Jupyter do you want?"
+  mutable     = true
+  default     = "lab"
+  icon        = "/icon/jupyter.svg"
+
+  option {
+    name = "Jupyter Lab"
+    value = "lab"
+    icon = "https://raw.githubusercontent.com/gist/egormkn/672764e7ce3bdaf549b62a5e70eece79/raw/559e34c690ea4765001d4ba0e715106edea7439f/jupyter-lab.svg"
+  }
+  option {
+    name = "Jupyter Notebook"
+    value = "notebook"
+    icon = "https://codingbootcamps.io/wp-content/uploads/jupyter_notebook.png"
+  }       
 }
 
 resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"
 
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+
+# 2023-07-12 commenting out since fails on docker
+#  metadata {
+#    display_name = "CPU Usage"
+#    key          = "0_cpu_usage"
+#    script       = "coder stat cpu"
+#    interval     = 10
+#    timeout      = 1
+#  }
+
   metadata {
-    display_name = "CPU Usage"
-    key  = "cpu"
-    # calculates CPU usage by summing the "us", "sy" and "id" columns of
-    # vmstat.
-    script = <<EOT
-        top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
-        #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
-    EOT
-    interval = 20
-    timeout = 1
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 600
-    timeout = 1
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
   }
 
-  metadata {
-    display_name = "Memory Usage"
-    key  = "mem"
-    script = <<EOT
-    free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
-    EOT
-    interval = 20
-    timeout = 1
-  }
-  
-  metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
-    EOT
-    interval = 20
-    timeout = 1
-  }
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300  
 
   startup_script  = <<EOT
 #!/bin/bash
 
 # start jupyter 
-jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -122,8 +123,13 @@ if [ -n "$DOTFILES_URI" ]; then
   coder dotfiles -y "$DOTFILES_URI"
 fi
 
-# clone repo
-git clone --progress https://github.com/sharkymark/pandas_automl &
+if [ ! -d "pandas_automl" ] 
+then  
+  echo "Cloning git repo..."
+  git clone --progress https://github.com/sharkymark/pandas_automl &
+else
+  echo "directory and repo pandas_automl exists, so skipping clone"
+fi
 
   EOT  
 }
@@ -131,7 +137,7 @@ git clone --progress https://github.com/sharkymark/pandas_automl &
 resource "coder_app" "jupyter" {
   agent_id      = coder_agent.dev.id
   slug          = "j"  
-  display_name  = "jupyter-${var.jupyter}"
+  display_name  = "jupyter-${data.coder_parameter.jupyter.value}"
   icon          = "/icon/jupyter.svg"
   url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j"
   share         = "owner"
@@ -209,6 +215,6 @@ resource "coder_metadata" "workspace_info" {
   }  
   item {
     key   = "jupyter"
-    value = "${var.jupyter}"
+    value = "${data.coder_parameter.jupyter.value}"
   }    
 }

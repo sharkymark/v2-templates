@@ -26,7 +26,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -74,16 +74,33 @@ resource "coder_agent" "coder" {
   os                      = "linux"
   arch                    = data.coder_provisioner.me.arch
 
+ # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
-    EOT
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
   }
 
 
@@ -200,18 +217,6 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   daily_cost  = 20
-  item {
-    key   = "CPU"
-    value = "${local.cpu-limit} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${local.memory-limit}"
-  }  
-  item {
-    key   = "disk"
-    value = "${local.home-volume}"
-  }
   item {
     key   = "image"
     value = local.image

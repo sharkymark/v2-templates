@@ -14,10 +14,6 @@ locals {
   repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")    
 }
 
-provider "coder" {
-  feature_use_managed_variables = "true"
-}
-
 variable "use_kubeconfig" {
   type        = bool
   description = <<-EOF
@@ -175,16 +171,33 @@ resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
 
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
-    EOT
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
   }
 
     
@@ -313,23 +326,11 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${data.coder_parameter.cpu.value} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${data.coder_parameter.memory.value}GB"
-  }   
-  item {
     key   = "image"
     value = "${data.coder_parameter.image.value}"
   }
   item {
     key   = "repo cloned"
     value = "${local.repo_owner_name}/${local.folder_name}"
-  }  
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
-  } 
+  }   
 }

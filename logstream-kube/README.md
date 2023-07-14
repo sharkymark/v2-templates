@@ -19,60 +19,7 @@ The workspace must be a deployment and not a pod resource in Terraform
 
 ## Authentication
 
-This template passes Terraform variables at template creation for:
-
-1. `host` obtained with `kubectl cluster-info`
-2. service account `ca cert` and `token` obtained with `kubectl get secrets -n <your namespace> -o jsonpath="{.items[?(@.metadata.annotations['kubernetes\.io/service-account\.name']=='coder')].data}{'\n'}"`
-
-The coder service account does not have deployment permissions so a role and rolebinding to the coder service account are required:
-
-```sh
-kubectl create clusterrole deployer --verb=get,list,watch,create,delete,patch,update --resource=deployments.apps --namespace=<your namespace>
-kubectl create clusterrolebinding deployer-srvacct-default-binding --clusterrole=deployer --namespace=<your namespace> --serviceaccount=<your namespace>:coder
-```
-
-Alternatively, you can create a new service account for the namespace:
-
-```yaml
-kubectl apply -n <your namespace> -f - <<EOF
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: coder
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: coder-service-account-token
-  annotations:
-    kubernetes.io/service-account.name: coder
-type: kubernetes.io/service-account-token
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: coder
-rules:
-  - apiGroups: ["", "apps", "networking.k8s.io"] # "" indicates the core API group
-    resources: ["persistentvolumeclaims", "pods", "deployments", "services", "secrets", "pods/exec","pods/log", "events", "networkpolicies", "serviceaccounts"]
-    verbs: ["create", "get", "list", "watch", "update", "patch", "delete", "deletecollection"]
-  - apiGroups: ["metrics.k8s.io", "storage.k8s.io"]
-    resources: ["pods", "storageclasses"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: coder
-subjects:
-  - kind: ServiceAccount
-    name: coder
-roleRef:
-  kind: Role
-  name: coder
-  apiGroup: rbac.authorization.k8s.io
-EOF
-```
+This template prompts the template administrator for the cluster namespace and whether to use the `.kube/config` on the host (true) or the Coder control plane's service account (false)
 
 ## code-server
 

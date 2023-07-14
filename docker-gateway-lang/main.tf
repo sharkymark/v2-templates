@@ -44,7 +44,7 @@ provider "docker" {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 data "coder_workspace" "me" {
@@ -93,45 +93,35 @@ resource "coder_agent" "dev" {
   os   = "linux"
   arch = "amd64"
 
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+
+# 2023-07-12 commenting out since fails on docker
+#  metadata {
+#    display_name = "CPU Usage"
+#    key          = "0_cpu_usage"
+#    script       = "coder stat cpu"
+#    interval     = 10
+#    timeout      = 1
+#  }
+
   metadata {
-    display_name = "CPU Usage"
-    key  = "cpu"
-    # calculates CPU usage by summing the "us", "sy" and "id" columns of
-    # vmstat.
-    script = <<EOT
-        top -bn1 | awk 'FNR==3 {printf "%2.0f%%", $2+$3+$4}'
-        #vmstat | awk 'FNR==3 {printf "%2.0f%%", $13+$14+$16}'
-    EOT
-    interval = 1
-    timeout = 1
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    display_name = "Disk Usage"
-    key  = "disk"
-    script = "df -h | awk '$6 ~ /^\\/$/ { print $5 }'"
-    interval = 1
-    timeout = 1
-  }
-
-  metadata {
-    display_name = "Memory Usage"
-    key  = "mem"
-    script = <<EOT
-    free | awk '/^Mem/ { printf("%.0f%%", $3/$2 * 100.0) }'
-    EOT
-    interval = 1
-    timeout = 1
-  }
-
-  metadata {
-    display_name = "Load Average"
-    key  = "load"
-    script = <<EOT
-        awk '{print $1,$2,$3,$4}' /proc/loadavg
-    EOT
-    interval = 1
-    timeout = 1
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
   }
 
   dir = "/home/coder"

@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "access-key-id" {
@@ -219,8 +219,10 @@ resource "coder_agent" "main" {
   arch           = "amd64"
   auth           = "aws-instance-identity"
   os             = "windows"
-  # if set to false, this will prevent RDP from working until visual studio is installed and the windows environment is ready. change to true if you need to get into the windows environment sooner.
-  login_before_ready = true
+
+  startup_script_behavior = "non-blocking"
+  #startup_script_timeout = 500   
+
   startup_script = <<EOF
 # Set admin password
 Get-LocalUser -Name "Administrator" | Set-LocalUser -Password (ConvertTo-SecureString -AsPlainText "${local.admin_password}" -Force)
@@ -309,10 +311,6 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "instance type"
     value = aws_instance.dev.instance_type
-  }
-  item {
-    key   = "disk"
-    value = "${aws_instance.dev.root_block_device[0].volume_size} GiB"
   }
   item {
     key   = "windows os"
