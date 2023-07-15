@@ -65,6 +65,7 @@ data "coder_workspace" "me" {}
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
+  order        = 5
   type        = "string"
   default     = "git@github.com:sharkymark/dotfiles.git"
   mutable     = true 
@@ -75,6 +76,7 @@ data "coder_parameter" "disk_size" {
   name        = "PVC (your $HOME directory) storage size"
   type        = "number"
   description = "Number of GB of storage"
+  order        = 1
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
@@ -89,6 +91,7 @@ data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
   description = "Be sure the cluster nodes have the capacity"
+  order        = 2
   icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
   validation {
     min       = 1
@@ -102,6 +105,7 @@ data "coder_parameter" "memory" {
   name        = "Memory (__ GB)"
   type        = "number"
   description = "Be sure the cluster nodes have the capacity"
+  order        = 3
   icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
   validation {
     min       = 1
@@ -114,6 +118,7 @@ data "coder_parameter" "memory" {
 data "coder_parameter" "devcontainer-repo" {
   name         = "devcontainer-repo"
   display_name = "Repository"
+  order        = 3
   description  = "Select a repository to automatically clone and start working with a devcontainer and Dockerfile."
   mutable      = true
   option {
@@ -175,8 +180,24 @@ data "coder_parameter" "devcontainer-repo" {
     description = "PHP"
     icon        = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/.NET_Core_Logo.svg/768px-.NET_Core_Logo.svg.png"
     value       = "https://github.com/microsoft/vscode-remote-try-dotnet"
-  }      
+  }
+  option {
+    name        = "Custom"
+    icon        = "/emojis/1f5c3.png"
+    description = "Specify a custom repo URL below"
+    value       = "custom"
+  }        
 }
+
+data "coder_parameter" "custom_repo_url" {
+  name         = "custom_repo"
+  display_name = "Repository URL (custom)"
+  order        = 4
+  default      = ""
+  description  = "Optionally enter a custom repository URL, see [awesome-devcontainers](https://github.com/manekinekko/awesome-devcontainers)."
+  mutable      = true
+}
+
 
 data "coder_git_auth" "github" {
   # Matches the ID of the git auth provider in Coder.
@@ -217,7 +238,7 @@ resource "coder_agent" "coder" {
   }
 
 
-  dir                     = "/workspaces/${basename(data.coder_parameter.devcontainer-repo.value)}"
+  dir                     = "/workspaces/"
   env                     = {
     "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
     }    
@@ -291,7 +312,7 @@ resource "kubernetes_pod" "main" {
       }
       env {
         name = "GIT_URL"
-        value = data.coder_parameter.devcontainer-repo.value
+        value = data.coder_parameter.devcontainer-repo.value == "custom" ? data.coder_parameter.custom_repo_url.value : data.coder_parameter.devcontainer-repo.value
       }  
       env {
         name = "GITHUB_TOKEN"
