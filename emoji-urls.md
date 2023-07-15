@@ -21,6 +21,12 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [cat eating noodles](https://thumbs.gfycat.com/AridDecisiveCrab-size_restricted.gif)
 
+[california san francisco golden gate bridge](https://cdn3.iconfinder.com/data/icons/travel-emoji/50/Bridge-512.png)
+
+[california san francisco golden gate bridge - fog](https://img.icons8.com/emoji/512/foggy.png)
+
+[california san francisco golden gate bridge - photo](https://qph.cf2.quoracdn.net/main-qimg-ec81b987c8e27681dbc5d5964a3109d7-lq)
+
 [chelsea fc](https://assets.stickpng.com/images/580b57fcd9996e24bc43c4e1.png)
 
 [clion](https://resources.jetbrains.com/storage/products/company/brand/logos/CLion_icon.svg?_ga=2.213423890.785417507.1675279285-1717186880.1621809973&_gl=1*b8pf15*_ga*MTcxNzE4Njg4MC4xNjIxODA5OTcz*_ga_9J976DJZ68*MTY3NTM3MDk4OS44Ny4xLjE2NzUzNzI1NDUuNTcuMC4w)
@@ -143,6 +149,12 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [circling blue head man](https://i.gifer.com/4jx8.gif)
 
 [man walking with shovel](https://cdna.artstation.com/p/assets/images/images/034/189/590/original/kevin-v-iskall-run.gif?1611648955)
+
+[texas flag](https://cdn.freebiesupply.com/flags/large/2x/texas-state-flag.png)
+
+[california state flag](https://upload.wikimedia.org/wikipedia/commons/6/65/Flag_of_California.png)
+
+[california state flag, bolder](https://www.sourcewatch.org/images/6/62/California_state_flag.png)
 
 [walking hamburger](https://cdnb.artstation.com/p/assets/images/images/041/925/273/original/furguston-burg.gif?1633080139)
 
