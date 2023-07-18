@@ -118,6 +118,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [kubernetes](https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Kubernetes_logo_without_workmark.svg/1200px-Kubernetes_logo_without_workmark.svg.png)
 
+[minikube](https://miro.medium.com/v2/resize:fit:400/0*KzqL3xqmXzV5PPjX.png)
+
 [left shark dancing](https://i.gifer.com/origin/d8/d8c2c87772378b7e00deeefd8c843a12.gif)
 
 [list app icon](https://cdn-icons-png.flaticon.com/512/1217/1217026.png)
