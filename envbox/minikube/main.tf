@@ -80,6 +80,31 @@ variable "min_memory" {
   description = "Minimum amount of memory to allocate the workspace (in GB)."
 }
 
+data "coder_parameter" "k8s-release" {
+  name        = "Kubernetes Release"
+  type        = "string"
+  description = "What release of Kubernetes do you want?"
+  mutable     = true
+  default     = "1.25.11"
+
+  option {
+    name = "1.24.15"
+    value = "1.24.15"
+  }
+  option {
+    name = "1.25.11"
+    value = "1.25.11"
+  } 
+  option {
+    name = "1.26.6"
+    value = "1.26.6"
+  } 
+  option {
+    name = "1.27.3"
+    value = "1.27.3"
+  }      
+}
+
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
@@ -131,7 +156,7 @@ resource "coder_agent" "main" {
 
   dir = "/home/coder"
   startup_script_behavior = "blocking"
-  startup_script_timeout = 200  
+  startup_script_timeout = 600  
   
   env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }      
   startup_script = <<EOT
@@ -158,7 +183,7 @@ resource "coder_agent" "main" {
     # install and start minikube
     curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
     sudo install minikube-linux-amd64 /usr/local/bin/minikube
-    minikube start
+    minikube start --kubernetes-version=v${data.coder_parameter.k8s-release.value}
 
     # create a deployment
     DEPLOYMENT=`minikube kubectl -- get deployment hello-minikube | tail -n +2 | awk '{print $1}'`
