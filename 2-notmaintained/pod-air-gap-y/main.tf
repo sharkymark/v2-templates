@@ -14,7 +14,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -58,7 +58,7 @@ data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -139,77 +139,74 @@ data "coder_parameter" "repo" {
   description = "What source code repository do you want to clone?"
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  default     = "git@github.com:sharkymark/coder-react.git"
+  default     = "https://github.com/sharkymark/coder-react"
 
   option {
     name = "coder-react"
-    value = "git@github.com:sharkymark/coder-react.git"
+    value = "https://github.com/sharkymark/coder-react"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
   }
   option {
     name = "Coder v2 OSS project"
-    value = "git@github.com:coder/coder.git"
+    value = "https://github.com/coder/coder"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }  
   option {
     name = "Coder code-server project"
-    value = "git@github.com:coder/code-server.git"
+    value = "https://github.com/coder/code-server"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }
   option {
     name = "Golang command line app"
-    value = "git@github.com:sharkymark/commissions.git"
+    value = "https://github.com/sharkymark/commissions"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
   }
   option {
-    name = "Java Hello, World! command line app"
-    value = "git@github.com:sharkymark/java_helloworld.git"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  }  
-  option {
     name = "Python command line app"
-    value = "git@github.com:sharkymark/python_commissions.git"
+    value = "https://github.com/sharkymark/python_commissions"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }
-  option {
-    name = "Shark's rust sample apps"
-    value = "git@github.com:sharkymark/rust-hw.git"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }     
+  }    
 }
 
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
 
+ # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
-    EOT
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    key          = "mem-used"
-    display_name = "Memory Usage"
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
     interval     = 60
-    timeout      = 3
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
-    EOT
-  } 
+    timeout      = 1
+  }
+
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 200   
 
     
   dir = "/home/coder"
-  login_before_ready = false
-  startup_script_timeout = 300 
+
   # specify an internal vs code extensions marketplace https://github.com/coder/code-marketplace#usage-in-code-server
   env = { "EXTENSIONS_GALLERY" = "{\"serviceUrl\":\"${var.marketplace}/api\", \"itemUrl\":\"${var.marketplace}/item\", \"resourceUrlTemplate\": \"${var.marketplace}/files/{publisher}/{name}/{version}/{path}\"}" }     
   startup_script = <<EOT
@@ -250,7 +247,7 @@ fi
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -333,36 +330,12 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${data.coder_parameter.cpu.value} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${data.coder_parameter.memory.value}GB"
-  }  
-  item {
-    key   = "CPU requests"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
-  }
-  item {
-    key   = "memory requests"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
-  }   
-  item {
     key   = "image"
     value = "docker.io/${data.coder_parameter.image.value}"
   }
   item {
     key   = "repo cloned"
     value = "docker.io/${data.coder_parameter.repo.value}"
-  }  
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
-  }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
   }  
   item {
     key   = "extensions marketplace"
