@@ -11,11 +11,11 @@ terraform {
 
 
 locals {
-  cpu-limit = "4"
-  memory-limit = "8G"
+  cpu-limit = "3"
+  memory-limit = "4G"
   cpu-request = "500m"
-  memory-request = "4G" 
-  home-volume = "5Gi"
+  memory-request = "2G" 
+  home-volume = "10Gi"
 
   repo = {
     "Java"    = "sharkymark/java_helloworld.git" 
@@ -33,7 +33,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -71,7 +71,7 @@ data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -109,60 +109,43 @@ data "coder_parameter" "lang" {
 resource "coder_agent" "dev" {
   os   = "linux"
 
+ # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
-    EOT
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    key          = "mem-used"
-    display_name = "Memory Usage"
-    interval     = 1
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
     timeout      = 1
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
-    EOT
-  } 
+  }
 
-
-    metadata {
-    key          = "cpu-used"
-    display_name = "CPU Usage"
-    interval     = 3
-    timeout      = 3
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-
-      tstart=$(date +%s%N)
-      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      sleep 1
-
-      tstop=$(date +%s%N)
-      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
-
-    EOT
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
   }
 
   arch = "amd64"
   dir = "/home/coder"
+
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 200  
+
   startup_script = <<EOT
 #!/bin/bash
-
-# install bench/basic calculator
-sudo apt install bc 
 
 # clone repo
 mkdir -p ~/.ssh
@@ -185,7 +168,7 @@ fi
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -266,23 +249,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = kubernetes_pod.main[0].id
-  item {
-    key   = "CPU limits"
-    value = "${local.cpu-limit} cores"
-  }
-  item {
-    key   = "memory limits"
-    value = "${local.memory-limit}"
-  } 
-  item {
-    key   = "CPU requests"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
-  }
-  item {
-    key   = "memory requests"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
-  }    
+  resource_id = kubernetes_pod.main[0].id  
   item {
     key   = "image"
     value = "docker.io/${lookup(local.image, data.coder_parameter.lang.value)}"
@@ -290,13 +257,5 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "repo cloned"
     value = "docker.io/${lookup(local.repo, data.coder_parameter.lang.value)}"
-  }  
-  item {
-    key   = "disk"
-    value = "${local.home-volume}GiB"
-  }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
   }  
 }
