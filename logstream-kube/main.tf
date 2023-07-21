@@ -164,6 +164,7 @@ resource "coder_app" "code-server" {
 }
 
 resource "kubernetes_deployment" "main" {
+  count = data.coder_workspace.me.start_count
   wait_for_rollout = false
   metadata {
     name = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}"
@@ -216,7 +217,7 @@ resource "kubernetes_deployment" "main" {
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = kubernetes_deployment.main.id   
+  resource_id = kubernetes_deployment.main[0].id   
   item {
     key   = "image"
     value = local.image
