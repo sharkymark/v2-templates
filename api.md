@@ -68,6 +68,22 @@ curl --request GET \
 </details>
 
 <details>
+    <summary>Info about apikey's user including organization id which is needed for other endpoints</summary>
+<br/><br/>
+
+This is helpful to retrieve the organization_id, needed for other API calls. This endpoint also shows the last time the user was active aka `last_seen-at`. The user's roles are shown as well. e.g., `owner`, `template-admin`, etc.
+<br/><br/>
+
+```sh
+curl --request GET \
+  --url "$CODER_URL/$API_ROUTE/users/me" \
+--header "Coder-Session-Token: $CODER_SESSION_TOKEN"
+```
+
+</details>
+
+
+<details>
     <summary>Get deployment info (e.g., environment variables)</summary>
 <br/><br/>
 
@@ -102,21 +118,6 @@ curl --request POST \
 
 </details>
 
-
-<details>
-    <summary>Info about apikey's user</summary>
-<br/><br/>
-
-This is helpful to retrieve the organization_id, needed for other API calls. This endpoint also shows the last time the user was active aka `last_seen-at`. The user's roles are shown as well. e.g., `owner`, `template-admin`, etc.
-<br/><br/>
-
-```sh
-curl --request GET \
-  --url "$CODER_URL/$API_ROUTE/users/me" \
---header "Coder-Session-Token: $CODER_SESSION_TOKEN"
-```
-
-</details>
 
 <details>
     <summary>See the templates you have access to</summary>
