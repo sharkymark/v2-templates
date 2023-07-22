@@ -1,6 +1,6 @@
 # Coder v2 OSS and v2 Enterprise help
 
-This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Enterprise (paid). If you're looking for an v2 enterprise trial key, contact [Sales](https://coder.com/contact)
+This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Enterprise (paid). If you're looking for an v2 enterprise trial key, fill out this [form](https://coder.com/trial) for a 30-day trial  or you can sign up when creating your admin user after deploying Coder.
 
 > These templates are examples and are not supported. They are meant to show how Coder templates work and there is no service level agreement or support on them.
 
@@ -17,6 +17,8 @@ Download it here
 ```sh
 curl -fsSL https://coder.com/install.sh | sh
 ```
+
+> BTW, the coder binary is also the Coder CLI, which you use to create, push templates, even create, start, stop workspaces, API Key tokens, etc.
 
 You can pass parameters/flags after `coder server` but I have a nice [`coder.yaml`](./standalone-yaml/coder.yaml) to easily tweak settings.
 
