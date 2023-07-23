@@ -57,7 +57,16 @@ Be sure to specify the workspaces_namespace variable during workspace creation t
 
 You will need a deployment resource and verbs to the apps api
 
-### add to the existing `coder-workspace-perms` role
+### enable deployments in the Coder Helm values.yaml
+
+```yaml
+coder:
+  serviceAccount:
+    workspacePerms: true
+    enableDeployments: true 
+```
+
+### OR add to the existing `coder-workspace-perms` role
 
 ```sh
 kubectl patch role coder-workspace-perms -n coder --type='json' -p='[{"op": "add", "path": "/rules/0", "value":{ "apiGroups": ["apps"], "resources": ["deployments"], "verbs": ["create","delete","deletecollection","get","list","update","patch","watch"]}}]'
