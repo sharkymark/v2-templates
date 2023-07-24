@@ -33,6 +33,10 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [coder](https://avatars.githubusercontent.com/u/95932066?s=200&v=4)
 
+[coder white on black](https://raw.githubusercontent.com/coder/presskit/main/logos/coder_logo_black_square.png)
+
+[coder white on black with letters](https://raw.githubusercontent.com/coder/presskit/main/logos/coder_logo_transparent_strip_white.png)
+
 [cpu](https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg)
 
 [deno](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Deno_2021.svg/2048px-Deno_2021.svg.png)
