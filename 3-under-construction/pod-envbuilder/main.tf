@@ -11,8 +11,8 @@ terraform {
 
 locals {
   cpu-request = "500m"
-  memory-request = "2" 
-  image = "ghcr.io/coder/envbuilder:latest"
+  memory-request = "4" 
+  image = "ghcr.io/coder/envbuilder:0.1.3"
 }
 
 provider "coder" {
@@ -94,7 +94,7 @@ data "coder_parameter" "cpu" {
   order        = 2
   icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
   validation {
-    min       = 1
+    min       = 2
     max       = 4
   }
   mutable     = true
@@ -108,7 +108,7 @@ data "coder_parameter" "memory" {
   order        = 3
   icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
   validation {
-    min       = 1
+    min       = 4
     max       = 8
   }
   mutable     = true
@@ -189,6 +189,37 @@ data "coder_parameter" "devcontainer-repo" {
   }        
 }
 
+data "coder_parameter" "image" {
+  name        = "Fallback Container Image"
+  type        = "string"
+  description = "What is the backup container image and language do you want?"
+  mutable     = true
+  default     = "codercom/enterprise-base:ubuntu"
+  icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
+
+  option {
+    name = "Node React"
+    value = "codercom/enterprise-node:ubuntu"
+    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
+  }
+  option {
+    name = "Golang"
+    value = "codercom/enterprise-golang:ubuntu"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
+  } 
+  option {
+    name = "Java"
+    value = "codercom/enterprise-java:ubuntu"
+    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  } 
+  option {
+    name = "Base including Python"
+    value = "codercom/enterprise-base:ubuntu"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
+  }      
+}
+
+
 data "coder_parameter" "custom_repo_url" {
   name         = "custom_repo"
   display_name = "Repository URL (custom)"
@@ -238,10 +269,12 @@ resource "coder_agent" "coder" {
   }
 
 
-  dir                     = "/workspaces/"
+  dir                     = "/workspaces"
   env                     = {
     "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
-    }    
+    }   
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 600       
   startup_script = <<EOT
 #!/bin/bash
 
@@ -264,7 +297,7 @@ resource "coder_app" "code-server" {
   slug          = "code-server"  
   display_name  = "code-server"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/workspaces/${basename(data.coder_parameter.devcontainer-repo.value)}"
+  url           = "http://localhost:13337?folder=/workspaces"
   subdomain = false
   share     = "owner"
 
@@ -285,15 +318,10 @@ resource "kubernetes_pod" "main" {
     namespace = var.workspaces_namespace
   }
   spec {
-
     automount_service_account_token = false  
     container {
       name    = "coder-container"
-      image   = local.image
-      image_pull_policy = "Always"     
-      security_context {
-        run_as_user = "0"
-      }   
+      image   = local.image     
       env {
         name  = "CODER_AGENT_URL"
         value = data.coder_workspace.me.access_url
@@ -305,27 +333,15 @@ resource "kubernetes_pod" "main" {
       env {
         name  = "INIT_SCRIPT"
         value = coder_agent.coder.init_script
-      }
+      }           
       env {
         name = "FALLBACK_IMAGE"
-        value = "ubuntu:latest"
+        value = data.coder_parameter.image.value
       }
       env {
         name = "GIT_URL"
         value = data.coder_parameter.devcontainer-repo.value == "custom" ? data.coder_parameter.custom_repo_url.value : data.coder_parameter.devcontainer-repo.value
-      }  
-      env {
-        name = "GITHUB_TOKEN"
-        value = data.coder_git_auth.github.access_token
-      }        
-      env {
-        name = "DOCKER_CONFIG_BASE64"
-        value = var.docker_config
-      } 
-      env {
-        name = "CACHE_REPO"
-        value = "docker.io/marktmilligan/kaniko-cache"
-      }       
+      }                     
       resources {
         requests = {
           cpu    = local.cpu-request
