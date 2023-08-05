@@ -179,13 +179,13 @@ resource "coder_agent" "dev" {
   # If you need more control, you can write your own script.
 
 # 2023-07-12 commenting out since fails on docker
-#  metadata {
-#    display_name = "CPU Usage"
-#    key          = "0_cpu_usage"
-#    script       = "coder stat cpu"
-#    interval     = 10
-#    timeout      = 1
-#  }
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
 
   metadata {
     display_name = "RAM Usage"
