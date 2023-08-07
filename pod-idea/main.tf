@@ -22,7 +22,8 @@ locals {
   #image = "intellij-idea-ultimate:2022.3.2"
   #image = "intellij-idea-ultimate:2022.1.4"
   #image = "intellij-idea-ultimate:2023.1"
-  image = "intellij-idea-ultimate:2023.1.1"        
+  #image = "intellij-idea-ultimate:2023.1.1"  
+  image = "intellij-idea-ultimate:2023.2"        
 }
 
 provider "coder" {
