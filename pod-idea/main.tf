@@ -11,7 +11,7 @@ terraform {
 
 locals {
   cpu-limit = "4"
-  memory-limit = "4G"
+  memory-limit = "8G"
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
