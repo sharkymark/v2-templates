@@ -19,7 +19,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -125,11 +125,42 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+
+
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 5
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 5
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 5
+  }
+
   dir = "/home/coder"
   env = { 
     "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
     }
-  login_before_ready = false
+  startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script = <<EOF
 #!/bin/sh
@@ -138,10 +169,10 @@ set -e
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" >/dev/null 2>&1 &
 
 # add some Python libraries
 pip3 install --user pandas &
@@ -154,13 +185,11 @@ fi
 
 # clone repo
 if [ ! -d "pandas_automl" ]; then
-  mkdir -p ~/.ssh
-  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-  git clone --progress git@github.com:sharkymark/pandas_automl.git 
+  git clone https://github.com/sharkymark/pandas_automl.git 
 fi
 
 # install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter >/dev/null 2>&1 &
 
 EOF
 }
@@ -169,7 +198,7 @@ EOF
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   share         = "owner"
@@ -265,18 +294,6 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${local.cpu-limit} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${local.memory-limit}"
-  }  
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}Gi"
-  }
-  item {
     key   = "sharability"
     value = data.coder_parameter.sharable.value
   }  
@@ -291,11 +308,7 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "jupyter"
     value = "${data.coder_parameter.jupyter.value}"
-  }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
+  } 
 }
 
 
