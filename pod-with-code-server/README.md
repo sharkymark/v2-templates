@@ -17,6 +17,7 @@ tags: [cloud, kubernetes]
 1. Prompt user for repo to clone
 1. Clone source code repo
 1. Download, install and start latest code-server (VS Code-in-a-browser)
+1. Download, install and start file-browser to show the contents of the `/home/coder` as a `coder_app` and web icon
 
 ### Images/languages to choose from
 1. NodeJS

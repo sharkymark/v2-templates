@@ -236,6 +236,10 @@ if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
+  # Install and launch filebrowser
+  curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
+  filebrowser --noauth --root /home/coder --port 13338 >/tmp/filebrowser.log 2>&1 &
+
   EOT  
 }
 
@@ -254,6 +258,16 @@ resource "coder_app" "code-server" {
     interval  = 3
     threshold = 10
   }  
+}
+
+resource "coder_app" "filebrowser" {
+  agent_id     = coder_agent.coder.id
+  display_name = "file browser"
+  slug         = "filebrowser"
+  url          = "http://localhost:13338"
+  icon         = "https://raw.githubusercontent.com/matifali/logos/main/database.svg"
+  subdomain    = true
+  share        = "owner"
 }
 
 resource "kubernetes_pod" "main" {
