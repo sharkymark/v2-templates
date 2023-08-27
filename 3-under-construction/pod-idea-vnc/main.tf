@@ -15,13 +15,15 @@ locals {
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
-  repo = "iluwatar/java-design-patterns.git"
-  image = "docker.io/marktmilligan/intellij-idea-community-vnc:2022.3.2"
+  repo = "git@github.com:sharkymark/java_helloworld.git"
+  repo-name = "java_helloworld" 
+  image = "intellij-idea-community-vnc"
+
 }
 
 variable "use_kubeconfig" {
   type        = bool
-  sensitive   = true
+  sensitive   = false
   description = <<-EOF
   Use host kubeconfig? (true/false)
 
@@ -31,10 +33,11 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false  
 }
 
 variable "workspaces_namespace" {
-  sensitive   = true
+  sensitive   = false
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -48,49 +51,111 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL"
+  description = "Personalize your workspace"
+  type        = "string"
+  default     = "git@github.com:sharkymark/dotfiles.git"
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
 
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "intellij-idea-version" {
+  name        = "IntelliJ IDEA Community Edition Version"
+  type        = "string"
+  description = "What version of IntelliJ IDEA Community Edition do you want?"
+  mutable     = true
+  default     = "2023.2.1"
+  icon        = "https://resources.jetbrains.com/storage/products/company/brand/logos/IntelliJ_IDEA_icon.svg"
+
+  option {
+    name = "2023.2.1"
+    value = "2023.2.1"
+  }
+  option {
+    name = "2022.3.2"
+    value = "2022.3.2"
+  }  
 }
 
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
-  dir = "/home/coder"
+
+ # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+
+  dir                     = "/home/coder"
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 200 
+
   startup_script = <<EOT
 #!/bin/bash
 
 # start VNC
-echo "Creating desktop..."
-mkdir -p "$XFCE_DEST_DIR"
-cp -rT "$XFCE_BASE_DIR" "$XFCE_DEST_DIR"
-# Skip default shell config prompt.
-cp /etc/zsh/newuser.zshrc.recommended $HOME/.zshrc
-echo "Initializing Supervisor..."
-nohup supervisord &
+# based on custom container images:
+# https://hub.docker.com/r/marktmilligan/intellij-idea-community-vnc
+# tags:
+# 2023.2.1
+# 2022.3.2
+#
+# Dockerfile:
+# https://github.com/sharkymark/dockerfiles/blob/main/intellij-idea/vnc/Dockerfile
+#
+# parent container image is noVNC and TurboVNC
+# https://hub.docker.com/r/marktmilligan/vnc
+# tags:
+# coder-v2
+#
+# Dockerfile:
+# https://github.com/sharkymark/dockerfiles/tree/main/vnc
+/coder/start_vnc >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL" >/dev/null 2>&1 &
+fi
 
-# clone java repo
+# clone repo
+if [ ! -d "${local.repo-name}" ]; then
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone git@github.com:${local.repo}
-
-# script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
-# More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
-cd /opt/idea/bin
-./remote-dev-server.sh registerBackendLocationForGateway
+git clone ${local.repo} >/dev/null 2>&1 &
+fi
 
 # start intellij idea community in vnc window
 # https://www.jetbrains.com/help/idea/run-for-the-first-time.html#linux
 # delay starting intellij in case vnc is not finished setting up
-sleep 10
-DISPLAY=:90 /opt/idea/bin/idea.sh &
+sleep 20
+DISPLAY=:90 /opt/idea/bin/idea.sh >/dev/null 2>&1 &
 
   EOT  
 }
@@ -98,7 +163,7 @@ DISPLAY=:90 /opt/idea/bin/idea.sh &
 resource "coder_app" "novnc" {
   agent_id      = coder_agent.coder.id
   slug          = "vnc"  
-  display_name  = "IntelliJ in VNC"
+  display_name  = "IntelliJ in noVNC"
   icon          = "/icon/intellij.svg"
   url           = "http://localhost:6081"
   subdomain = false
@@ -127,7 +192,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = local.image
+      image   = "docker.io/marktmilligan/${local.image}:${data.coder_parameter.intellij-idea-version.value}"
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -166,6 +231,7 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
     name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
+  wait_until_bound = false  
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -180,27 +246,11 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${local.cpu-limit} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${local.memory-limit} GiB"
-  }  
-  item {
-    key   = "disk"
-    value = "${local.home-volume}"
-  }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }
-  item {
     key   = "image"
     value = local.image
   }    
   item {
     key   = "repo"
-    value = local.repo
+    value = local.repo-name
   }   
 }

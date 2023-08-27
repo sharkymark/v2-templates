@@ -16,7 +16,7 @@ tags: [cloud, kubernetes]
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
 1. Clone [iluwatar/java-design-patterns](https://github.com/iluwatar/java-design-patterns) repo
-1. If Gateway will be also used later besides VNC, [run JetBrains script](https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup) to direct Gateway IDE path to the JetBrains directory in the image
+1. Start noVNC web client and TurboVNC server
 1. Start IntelliJ IDEA Community
 
 ### Starting IntelliJ in VNC - delaying 10 seconds so VNC can fully load

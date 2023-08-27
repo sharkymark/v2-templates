@@ -200,6 +200,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [nodejs](https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png)
 
+[novnc](https://avatars.githubusercontent.com/u/24572588?s=200&v=4)
+
 [oracle](https://i0.wp.com/grbizm.com/wp-content/uploads/2021/07/oracle-cloud-logo.png?fit=1024%2C662&ssl=1)
 
 [pgadmin](https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Postgresql_elephant.svg/1200px-Postgresql_elephant.svg.png)
@@ -271,6 +273,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [vmware](https://1000logos.net/wp-content/uploads/2021/05/VMware-logo.png)
 
 [webstorm](https://resources.jetbrains.com/storage/products/company/brand/logos/WebStorm_icon.svg?_ga=2.222901149.785417507.1675279285-1717186880.1621809973&_gl=1*1x810c4*_ga*MTcxNzE4Njg4MC4xNjIxODA5OTcz*_ga_9J976DJZ68*MTY3NTM3MDk4OS44Ny4xLjE2NzUzNzA5OTkuNTAuMC4w)
+
+[xfce4 mouse](https://upload.wikimedia.org/wikipedia/commons/5/5b/Xfce_logo.svg)
 
 [zombie crying](https://thumbs.gfycat.com/DigitalFloweryEgg-max-1mb.gif)
 
