@@ -9,6 +9,7 @@ tags: [cloud, kubernetes]
 ### Apps included
 1. A web-based terminal
 1. JetBrains IDE (accessible with VNC)
+1. noVNC `coder_app` to open a XFce Linux Desktop
 
 ### JetBrains IDE images to choose from
 1. [IntelliJ IDEA Community](https://www.jetbrains.com/idea/download/) [Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/intellij-idea/vnc/Dockerfile)

@@ -4,7 +4,7 @@ description: The goal is to enable a VNC container for a browser experience
 tags: [cloud, kubernetes]
 ---
 
-# VNC & IntelliJ IDEA Community template for a workspace in a Kubernetes pod
+# VNC template for a workspace in a Kubernetes pod
 
 ### Apps included
 1. A web-based terminal
