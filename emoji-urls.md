@@ -108,7 +108,7 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [intellij](https://resources.jetbrains.com/storage/products/company/brand/logos/IntelliJ_IDEA_icon.svg)
 
-[java](https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png)
+[java](https://www.vectorlogo.zone/logos/java/java-icon.svg)
 
 [jetbrains](https://www.jetbrains.com/company/brand/#logos-and-icons)
 
