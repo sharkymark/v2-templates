@@ -63,6 +63,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [england fc](https://logos-world.net/wp-content/uploads/2020/06/England-symbol.png)
 
+[fedora](https://upload.wikimedia.org/wikipedia/commons/4/41/Fedora_icon_%282021%29.svg)
+
 [firefox](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Firefox_logo%2C_2019.svg/1200px-Firefox_logo%2C_2019.svg.png)
 
 [fca](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Fiat_Chrysler_Automobiles_logo.svg/1200px-Fiat_Chrysler_Automobiles_logo.svg.png)
@@ -218,6 +220,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [react](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png)
 
+[red hat](https://upload.wikimedia.org/wikipedia/commons/d/d8/Red_Hat_logo.svg)
+
 [ruby on rails #1](https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Ruby_on_Rails_logo.svg/1200px-Ruby_on_Rails_logo.svg.png)
 
 [ruby on rails #1](https://cdn.freebiesupply.com/logos/large/2x/rails-logo-svg-vector.svg)
@@ -267,6 +271,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 [sysbox](https://static.wixstatic.com/media/110b50_8bc631296fd94605b650e6c8b5431dab~mv2.png/v1/fit/w_2500,h_1330,al_c/110b50_8bc631296fd94605b650e6c8b5431dab~mv2.png)
 
 [tigerVNC](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/TigerVNC_logo.svg/768px-TigerVNC_logo.svg.png)
+
+[ubuntu](https://upload.wikimedia.org/wikipedia/commons/9/9e/UbuntuCoF.svg)
 
 [vs code](https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Visual_Studio_Code_1.35_icon.svg/2048px-Visual_Studio_Code_1.35_icon.svg.png)
 
