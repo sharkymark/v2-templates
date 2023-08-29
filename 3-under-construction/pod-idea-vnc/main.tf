@@ -136,7 +136,7 @@ resource "coder_agent" "coder" {
 #
 # Dockerfile:
 # https://github.com/sharkymark/dockerfiles/tree/main/vnc
-/coder/start_vnc >/dev/null 2>&1 &
+/coder/start_vnc >/dev/null 2>&1 
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
@@ -154,7 +154,7 @@ fi
 # start intellij idea community in vnc window
 # https://www.jetbrains.com/help/idea/run-for-the-first-time.html#linux
 # delay starting intellij in case vnc is not finished setting up
-sleep 20
+sleep 5
 DISPLAY=:90 /opt/idea/bin/idea.sh >/dev/null 2>&1 &
 
   EOT  
