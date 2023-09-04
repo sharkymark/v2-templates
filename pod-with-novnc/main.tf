@@ -116,7 +116,7 @@ fi
 }
 
 resource "coder_app" "novnc" {
-  agent_id      = coder_agent.coder.id
+  agent_id      = coder_agent.coder[0].id
   slug          = "vnc"  
   display_name  = "noVNC"
   icon          = " https://upload.wikimedia.org/wikipedia/commons/5/5b/Xfce_logo.svg"
