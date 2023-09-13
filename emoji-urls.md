@@ -96,9 +96,13 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [hetzner](https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Logo_Hetzner.svg/2560px-Logo_Hetzner.svg.png)
 
+[slack](https://cdn2.hubspot.net/hubfs/521324/slack-logo.png)
+
 [home - house](https://cdn3d.iconscout.com/3d/premium/thumb/house-3260441-2725134.png)
 
-[kanico](https://plmlab.math.cnrs.fr/uploads/-/system/project/avatar/4980/logo-kaniko.png)
+[kaniko](https://plmlab.math.cnrs.fr/uploads/-/system/project/avatar/4980/logo-kaniko.png)
+
+[kaniko bigger](https://gitlab.com/uploads/-/system/project/avatar/19430116/kaniko_icon.png)
 
 [ibm blue](https://www.svgrepo.com/show/303377/ibm-logo.svg)
 
