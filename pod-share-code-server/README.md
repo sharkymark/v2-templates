@@ -1,0 +1,91 @@
+---
+name: Develop in a container in a Kubernetes pod and share code-server
+description: The goal is to enable only code-server (VS Code in a browser) and let owners and users access it
+tags: [cloud, kubernetes]
+---
+
+# code-server (VS Code) template for a workspace in a Kubernetes pod - where owners and users can access it
+
+### Apps included
+1. [code-server IDE](https://github.com/coder/code-server)
+
+### Additional input variables and bash scripting
+1. Prompt user and clone/install a dotfiles repository (for personalization settings)
+1. Prompt user for compute options (CPU core, memory, and disk)
+1. Prompt user for container image to use
+1. Prompt user for repo to clone
+1. Clone source code repo
+1. Download, install and start latest code-server (VS Code-in-a-browser)
+
+### Images/languages to choose from
+1. NodeJS
+1. Golang
+1. Java
+1. Base (for Rust and Python)
+
+> Note that Rust is installed during the startup script for `~/` configuration
+
+### Enable sharing of code-server
+
+> It is not recommended to share a web IDE, but if required, the following deployment environment variable settings are required
+
+In the `values.yaml` for the Kubernetes deployment, add:
+
+```yaml
+# allow authenticated users to access path-based workspace apps
+    - name: CODER_DANGEROUS_ALLOW_PATH_APP_SHARING
+      value: "true"
+
+# allow Coder owner roles to access path-based workspace apps
+    - name: CODER_DANGEROUS_ALLOW_PATH_APP_SITE_OWNER_ACCESS
+      value: "true"
+```
+
+Then `helm upgrade` to restart the Coder server with these configurations
+
+### Apps disabled
+1. `display_apps` is configured to disable `VS Code Desktop`, `SSH`, `Ports` and `Terminal` apps
+   
+### Parameters
+Parameters allow users who create workspaces to additional information required in the workspace build. This template will prompt the user for:
+1. A Dotfiles repository for workspace personalization `data "coder_parameter" "dotfiles_url"`
+2. The size of the persistent volume claim or `/home/coder` directory `data "coder_parameter" "pvc"`
+
+### Managed Terraform variables
+Managed Terraform variables can be freely managed by the template author to build templates. Workspace users are not able to modify template variables. This template has two managed Terraform variables:
+1. `use_kubeconfig` which tells Coder which cluster and where to get the Kubernetes service account
+2. `workspaces_namespace` which tells Coder which namespace to create the workspace pdo
+
+Managed terraform variables are set in coder templates create & coder templates push.
+
+`coder templates create --variable workspaces_namespace='my-namespace' --variable use_kubeconfig=true --default-ttl 2h -y`
+
+`coder templates push --variable workspaces_namespace='my-namespace' --variable use_kubeconfig=true  -y`
+
+Alternatively, the managed  terraform variables can be specified in the template UI
+
+### Authentication
+
+This template will use ~/.kube/config or if the control plane's service account token to authenticate to a Kubernetes cluster
+
+Be sure to specify the workspaces_namespace variable during workspace creation to the Kubernetes namespace the workspace will be deployed to
+
+### Resources
+[ Coder's Terraform Provider - agent with display_apps](https://registry.terraform.io/providers/coder/coder/latest/docs/resources/agent)
+
+[Coder's Terraform Provider - parameters](https://registry.terraform.io/providers/coder/coder/latest/docs/data-sources/parameter)
+
+[NodeJS coder-react repo](https://github.com/mark-theshark/coder-react)
+
+[Coder's GoLang v2 repo](https://github.com/coder/coder)
+
+[Coder's code-server TypeScript repo](https://github.com/coder/code-server)
+
+[Golang command line repo](https://github.com/sharkymark/commissions)
+
+[Java Hello World repo](https://github.com/sharkymark/java_helloworld)
+
+[Rust repo](https://github.com/sharkymark/rust-hw)
+
+[Python repo](https://github.com/sharkymark/python_commissions)
+

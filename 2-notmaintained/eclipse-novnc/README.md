@@ -1,15 +1,15 @@
 ---
 name: Develop with VNC (and Eclipse) in a container in a Kubernetes pod
-description: The goal is to enable code-server (VS Code) and VNC (Eclipse)
+description: The goal is to enable code-server (VS Code) and noVNC TurboVNC (Eclipse)
 tags: [cloud, kubernetes]
 ---
 
-# Eclipse IDE within noVNC client and TigerVNC server template for a workspace in a Kubernetes pod
+# Eclipse IDE within noVNC client and TurboVNC server template for a workspace in a Kubernetes pod
 
 ### Apps included
 1. A web-based terminal
 1. code-server IDE (VS Code-in-a-browser)
-1. noVNC and Tiger VNC
+1. noVNC and TurboVNC
 1. Eclipse 
 
 ### Additional bash scripting
@@ -27,8 +27,24 @@ This template will use ~/.kube/config to authenticate to a Kubernetes cluster on
 Be sure to change the workspaces_namespace variable to the Kubernetes namespace the workspace will be deployed to
 
 ### Resources
-[Eclipse Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/eclipse/Dockerfile)
+[Eclipse Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/eclipse/novnc/Dockerfile)
 
-[noVNC docs](https://novnc.com/info.html)
+[XFce4 Linux Desktop](https://www.xfce.org/)
 
-[TigerVNC](https://tigervnc.org/)
+[noVNC web client](https://novnc.com/info.html)
+
+[noVNC releases](https://github.com/novnc/noVNC/releases)
+
+[websocktify repo - convers websockets to sockets - part of noVNC solution](https://github.com/novnc/websockify)
+
+[websocktify releases](https://github.com/novnc/websockify/releases)
+
+[TurboVNC server](https://www.turbovnc.org/)
+
+[TurboVNC releases](https://sourceforge.net/projects/turbovnc/files/)
+
+[VirtualGL releases](https://sourceforge.net/projects/virtualgl/files/)
+
+[libjpeg releases](https://sourceforge.net/projects/libjpeg-turbo/files/)
+
+[codercom VNC Dockerfile - isn't using latest noVNC and TurboVNC](https://github.com/coder/enterprise-images/tree/main/images/vnc)

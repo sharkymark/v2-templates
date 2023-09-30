@@ -3,9 +3,9 @@ terraform {
     coder = {
       source  = "coder/coder"
     }
-    docker = {
-      source  = "kreuzwerker/docker"
-    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+    }   
   }
 }
 
@@ -14,38 +14,82 @@ locals {
   repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")    
 }
 
+variable "use_kubeconfig" {
+  type        = bool
+  description = <<-EOF
+  Use host kubeconfig? (true/false)
 
+  Set this to false if the Coder host is itself running as a Pod on the same
+  Kubernetes cluster as you are deploying workspaces to.
 
-data "coder_workspace" "me" {
+  Set this to true if the Coder host is running outside the Kubernetes cluster
+  for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
+  EOF
+  default = false
 }
 
-variable "socket" {
-  type        = string
+variable "workspaces_namespace" {
   description = <<-EOF
-  The Unix socket that the Docker daemon listens on and how containers
-  communicate with the Docker daemon.
-
-  Either Unix or TCP
-  e.g., unix:///var/run/docker.sock
+  Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "unix:///var/run/docker.sock"
+  default = ""
 }
 
-provider "docker" {
-  host = var.socket
+provider "kubernetes" {
+  # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
+  config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
 }
 
-provider "coder" {
-}
+data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = ""
+  default     = "git@github.com:sharkymark/dotfiles.git"
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+}
+
+data "coder_parameter" "disk_size" {
+  name        = "PVC storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
+  validation {
+    min       = 1
+    max       = 20
+    monotonic = "increasing"
+  }
+  mutable     = true
+  default     = 10
+}
+
+data "coder_parameter" "cpu" {
+  name        = "CPU cores"
+  type        = "number"
+  description = "CPU cores - be sure the cluster nodes have the capacity"
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+  validation {
+    min       = 1
+    max       = 4
+  }
+  mutable     = true
+  default     = 1
+}
+
+data "coder_parameter" "memory" {
+  name        = "Memory (__ GB)"
+  type        = "number"
+  description = "Be sure the cluster nodes have the capacity"
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+  validation {
+    min       = 1
+    max       = 8
+  }
+  mutable     = true
+  default     = 2
 }
 
 data "coder_parameter" "image" {
@@ -123,62 +167,15 @@ data "coder_parameter" "repo" {
   }     
 }
 
-data "coder_parameter" "extension" {
-  name        = "VS Code extension"
-  type        = "string"
-  description = "Which VS Code extension do you want?"
-  mutable     = true
-  default     = "eg2.vscode-npm-script"
-  icon        = "/icon/code.svg"
-
-  option {
-    name = "npm"
-    value = "eg2.vscode-npm-script"
-    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
-  }
-  option {
-    name = "Golang"
-    value = "golang.go"
-    icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
-  } 
-  option {
-    name = "rust-lang"
-    value = "rust-lang.rust"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  } 
-  option {
-    name = "rust analyzer"
-    value = "matklad.rust-analyzer"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }
-  option {
-    name = "Python"
-    value = "ms-python.python"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  } 
-  option {
-    name = "Jupyter"
-    value = "ms-toolsai.jupyter"
-    icon = "/icon/jupyter.svg"
-  } 
-  option {
-    name = "Java"
-    value = "redhat.java"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  }            
-}
-
-resource "coder_agent" "dev" {
-  arch           = "amd64"
-  os             = "linux"
+resource "coder_agent" "coder" {
+  os   = "linux"
+  arch = "amd64"
 
   # The following metadata blocks are optional. They are used to display
   # information about your workspace in the dashboard. You can remove them
   # if you don't want to display any information.
   # For basic resources, you can use the `coder stat` command.
   # If you need more control, you can write your own script.
-
-# 2023-07-12 commenting out since fails on docker
   metadata {
     display_name = "CPU Usage"
     key          = "0_cpu_usage"
@@ -203,12 +200,41 @@ resource "coder_agent" "dev" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = false
+  }
+    
+  dir = "/home/coder"
   startup_script_behavior = "blocking"
   startup_script_timeout = 300  
-  startup_script  = <<EOT
-#!/bin/bash
+  startup_script = <<EOT
+#!/bin/sh
 
-# install and start coder technologies' code-server
+# clone repo
+if test -z "${data.coder_parameter.repo.value}" 
+then
+  echo "No git repo specified, skipping"
+else
+  if [ ! -d "${local.folder_name}" ] 
+  then
+    echo "Cloning git repo..."
+    git clone ${data.coder_parameter.repo.value}
+  else
+    echo "Repo ${data.coder_parameter.repo.value} already exists. Will not reclone"
+  fi
+  cd ${local.folder_name}
+fi
+
+# if rust is the desired programming languge, install
+if [[ ${data.coder_parameter.repo.value} = "git@github.com:sharkymark/rust-hw.git" ]]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
+fi
+
+# install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
 
@@ -217,92 +243,95 @@ if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
-# if rust is the desired programming languge, install
-if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
-fi
-
-# install VS Code extension into coder technologies' code-server from openvsx's marketplace
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
-
-# clone repo
-
-echo "folder_name: ${local.folder_name}"
-echo "repo_name: ${local.repo_owner_name}"
-
-if test -z "${data.coder_parameter.repo.value}" 
-then
-  echo "No git repo specified, skipping"
-else
-  if [ ! -d "${local.folder_name}" ] 
-  then  
-    echo "Cloning git repo..."
-    git clone ${data.coder_parameter.repo.value}
-  else
-    echo "directory and repo ${local.folder_name} exists, so skipping clone"
-  fi
-fi
-
   EOT  
 }
 
-# coder technologies' code-server
-resource "coder_app" "coder-code-server" {
-  agent_id = coder_agent.dev.id
-  slug          = "coder"  
+# code-server
+resource "coder_app" "code-server" {
+  agent_id      = coder_agent.coder.id
+  slug          = "code-server"  
   display_name  = "code-server"
-  url      = "http://localhost:13337/?folder=/home/coder"
-  icon     = "/icon/code.svg"
+  icon          = "/icon/code.svg"
+  url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
-  share     = "owner"
+  share     = "authenticated"
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
-    interval  = 5
-    threshold = 15
+    interval  = 3
+    threshold = 10
   }  
 }
 
-resource "docker_container" "workspace" {
+resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
-  image = "${data.coder_parameter.image.value}"
-  # Uses lower() to avoid Docker restriction on container names.
-  name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
-  hostname = lower(data.coder_workspace.me.name)
-  dns      = ["1.1.1.1"] 
-
-  # Use the docker gateway if the access URL is 127.0.0.1
-  #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
-
-  # Use the docker gateway if the access URL is 127.0.0.1
-  command = [
-    "sh", "-c",
-    <<EOT
-    trap '[ $? -ne 0 ] && echo === Agent script exited with non-zero code. Sleeping infinitely to preserve logs... && sleep infinity' EXIT
-    ${replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}
-    EOT
-  ]
-
-
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
-  volumes {
-    container_path = "/home/coder/"
-    volume_name    = docker_volume.coder_volume.name
-    read_only      = false
-  }  
-  host {
-    host = "host.docker.internal"
-    ip   = "host-gateway"
+  depends_on = [
+    kubernetes_persistent_volume_claim.home-directory
+  ]  
+  metadata {
+    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    namespace = var.workspaces_namespace
+  }
+  spec {
+    security_context {
+      run_as_user = "1000"
+      fs_group    = "1000"
+    }    
+    container {
+      name    = "coder-container"
+      image   = "docker.io/${data.coder_parameter.image.value}"
+      image_pull_policy = "Always"
+      command = ["sh", "-c", coder_agent.coder.init_script]
+      security_context {
+        run_as_user = "1000"
+      }      
+      env {
+        name  = "CODER_AGENT_TOKEN"
+        value = coder_agent.coder.token
+      }  
+      resources {
+        requests = {
+          cpu    = "250m"
+          memory = "500Mi"
+        }        
+        limits = {
+          cpu    = "${data.coder_parameter.cpu.value}"
+          memory = "${data.coder_parameter.memory.value}G"
+        }
+      }                       
+      volume_mount {
+        mount_path = "/home/coder"
+        name       = "home-directory"
+      }      
+    }
+    volume {
+      name = "home-directory"
+      persistent_volume_claim {
+        claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+      }
+    }        
   }
 }
 
-resource "docker_volume" "coder_volume" {
-  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+resource "kubernetes_persistent_volume_claim" "home-directory" {
+  metadata {
+    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    namespace = var.workspaces_namespace
+  }
+  wait_until_bound = false    
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "${data.coder_parameter.disk_size.value}Gi"
+      }
+    }
+  }
 }
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = docker_container.workspace[0].id   
+  resource_id = kubernetes_pod.main[0].id
   item {
     key   = "image"
     value = "${data.coder_parameter.image.value}"
@@ -310,5 +339,5 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "repo cloned"
     value = "${local.repo_owner_name}/${local.folder_name}"
-  }  
+  }   
 }

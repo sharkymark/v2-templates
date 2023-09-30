@@ -10,7 +10,7 @@ terraform {
 }
 
 locals {
-  image_name = "docker.io/marktmilligan/eclipse-vnc:latest"
+  image_name = "docker.io/marktmilligan/eclipse-vnc:coder-v2"
   repo_name = "https://github.com/sharkymark/java_helloworld"
   image_tag = try(element(split("/", local.image_name), length(split("/", local.image_name)) - 1), "")  
   folder_name = try(element(split("/", local.repo_name), length(split("/", local.repo_name)) - 1), "")  
@@ -18,7 +18,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 provider "kubernetes" {
@@ -50,20 +50,11 @@ variable "workspaces_namespace" {
   default = ""
 }
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
-}
-
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -92,7 +83,7 @@ data "coder_parameter" "cpu" {
     max       = 4
   }
   mutable     = true
-  default     = 2
+  default     = 4
 }
 
 data "coder_parameter" "memory" {
@@ -112,21 +103,47 @@ resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
 
+ # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
-    EOT
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
   }
-    
-  dir = "/home/coder"
-  login_before_ready = false
-  startup_script_timeout = 300  
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
+  dir                     = "/home/coder"
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 200 
+
   startup_script = <<EOT
 #!/bin/bash
 
@@ -140,7 +157,7 @@ echo "Initializing Supervisor..."
 nohup supervisord
 
 # the dockerfile with eclipse
-# https://github.com/sharkymark/dockerfiles/blob/main/eclipse/Dockerfile
+# https://github.com/sharkymark/dockerfiles/blob/main/eclipse/novnc/Dockerfile
 
 # eclipse
 DISPLAY=:90 /opt/eclipse/eclipse -data /home/coder sh >/dev/null 2>&1 &
@@ -172,7 +189,7 @@ resource "coder_app" "code-server" {
   slug          = "code-server"  
   display_name  = "code-server"  
   icon     = "/icon/code.svg"
-  url      = "http://localhost:13337"
+  url      = "http://localhost:13337/?folder=/home/coder"
   subdomain = false
   share     = "owner"
 
@@ -225,8 +242,8 @@ resource "kubernetes_pod" "main" {
       }
       resources {
         requests = {
-          cpu    = "250m"
-          memory = "250Mi"
+          cpu    = "500m"
+          memory = "500Mi"
         }        
         limits = {
           cpu    = "${data.coder_parameter.cpu.value}"
@@ -267,14 +284,6 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].limits.cpu} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${data.coder_parameter.memory.value}GB"
-  }  
-  item {
     key   = "image"
     value = local.image_tag
   } 
@@ -282,8 +291,4 @@ resource "coder_metadata" "workspace_info" {
     key   = "repo"
     value = "${local.repo_owner_name}/${local.folder_name}"
   }  
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
-  } 
 }

@@ -25,7 +25,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -40,6 +40,7 @@ variable "use_kubeconfig" {
   Set this to true if the Coder host is running outside the Kubernetes cluster
   for workspaces.  A valid "~/.kube/config" must be present on the Coder host.
   EOF
+  default = false  
 }
 
 variable "workspaces_namespace" {
@@ -48,6 +49,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
+  default = ""  
 }
 
 provider "kubernetes" {
@@ -61,7 +63,7 @@ data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -70,21 +72,40 @@ resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
 
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/${local.user} | awk NR==2'{print $5}'
-    EOT
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
   }
 
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+    
   dir = "/home/${local.user}"
-  login_before_ready = false
-  startup_script_timeout = 200   
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300  
+ 
   env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }     
   startup_script = <<EOT
 #!/bin/sh
@@ -206,18 +227,6 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
-  item {
-    key   = "CPU"
-    value = "${local.cpu-limit} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${local.memory-limit}"
-  }  
-  item {
-    key   = "disk"
-    value = "${local.home-volume}"
-  }
   item {
     key   = "image"
     value = local.image_tag

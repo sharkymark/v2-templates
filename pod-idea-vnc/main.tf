@@ -55,7 +55,7 @@ data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL"
   description = "Personalize your workspace"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -65,9 +65,13 @@ data "coder_parameter" "intellij-idea-version" {
   type        = "string"
   description = "What version of IntelliJ IDEA Community Edition do you want?"
   mutable     = true
-  default     = "2023.2.1"
+  default     = "2023.2.2"
   icon        = "https://resources.jetbrains.com/storage/products/company/brand/logos/IntelliJ_IDEA_icon.svg"
 
+  option {
+    name = "2023.2.2"
+    value = "2023.2.2"
+  }
   option {
     name = "2023.2.1"
     value = "2023.2.1"
@@ -111,6 +115,13 @@ resource "coder_agent" "coder" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
 
   dir                     = "/home/coder"
   startup_script_behavior = "blocking"
@@ -122,9 +133,6 @@ resource "coder_agent" "coder" {
 # start VNC
 # based on custom container images:
 # https://hub.docker.com/r/marktmilligan/intellij-idea-community-vnc
-# tags:
-# 2023.2.1
-# 2022.3.2
 #
 # Dockerfile:
 # https://github.com/sharkymark/dockerfiles/blob/main/intellij-idea/vnc/Dockerfile
@@ -252,5 +260,9 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "repo"
     value = local.repo-name
-  }   
+  } 
+  item {
+    key   = "IntelliJ Community Version"
+    value = data.coder_parameter.intellij-idea-version.value
+  }     
 }
