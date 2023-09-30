@@ -15,7 +15,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -175,24 +175,63 @@ resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
 
+ # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
-    EOT
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
   }
 
-    
-  dir = "/home/coder"
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
+  dir                     = "/home/coder"
   startup_script_behavior = "blocking"
-  startup_script_timeout = 300  
+  startup_script_timeout = 200  
   startup_script = <<EOT
 #!/bin/sh
+
+# install OS packages expected by microsoft visual studio code
+
+sudo apt update -y
+sudo apt install -y libnss3 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcairo2 libdrm2 libgbm1 libgtk-3-0 libnspr4 libpango-1.0-0 libsecret-1-0 libxcomposite1 libxdamage1 libxfixes3 libxkbcommon0 libxkbfile1 libxrandr2 xdg-utils
+
+# install microsoft visual studio code server
+
+curl -L "https://update.code.visualstudio.com/1.82.2/linux-deb-x64/stable" -o /tmp/code.deb
+sudo dpkg -i /tmp/code.deb && sudo apt-get install -f -y
+
+code serve-web --port 13338 --without-connection-token --accept-server-license-terms >/tmp/vscode-web.log 2>&1 &
+
+# install github.copilot & github.copilot-chat - note setting the extensions directory under .vscode-server
+code --extensions-dir=/home/coder/.vscode-server/extensions --install-extension github.copilot &
 
 # clone repo
 if test -z "${data.coder_parameter.repo.value}" 
@@ -214,10 +253,6 @@ if [[ ${data.coder_parameter.repo.value} = "git@github.com:sharkymark/rust-hw.gi
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
 fi
 
-# install microsoft visual studio code server
-wget -O- https://aka.ms/install-vscode-server/setup.sh | sh
-code-server --accept-server-license-terms serve-local --without-connection-token --quality stable --telemetry-level off >/dev/null 2>&1 &
-
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
@@ -230,15 +265,15 @@ fi
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "Microsoft VS Code Server"
+  display_name  = "Microsoft VS Code Server & GitHub Copilot"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:8000?folder=/home/coder"
+  url           = "http://localhost:13338?folder=/home/coder"
   subdomain = true
   share     = "owner"
 
   healthcheck {
-    url       = "http://localhost:8000/healthz"
-    interval  = 3
+    url       = "http://localhost:13338/healthz"
+    interval  = 10
     threshold = 10
   }  
 }
@@ -313,14 +348,6 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${data.coder_parameter.cpu.value} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${data.coder_parameter.memory.value}GB"
-  }   
-  item {
     key   = "image"
     value = "${data.coder_parameter.image.value}"
   }
@@ -328,8 +355,4 @@ resource "coder_metadata" "workspace_info" {
     key   = "repo cloned"
     value = "${local.repo_owner_name}/${local.folder_name}"
   }  
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
-  } 
 }
