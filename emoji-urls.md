@@ -266,6 +266,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [celebrate balloon blast emoji](https://blog.trillian.im/hubfs/partying_face.gif)
 
+[terraform](https://static-00.iconduck.com/assets.00/terraform-icon-1803x2048-hodrzd3t.png)
+
 [shark fins](https://thumbs.gfycat.com/ContentForkedHochstettersfrog-max-1mb.gif)
 
 [space invaders - close](https://i.gifer.com/origin/cf/cf75a94995efd5a532afe5b4f08f6007.gif)
