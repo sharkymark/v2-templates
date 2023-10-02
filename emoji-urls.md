@@ -83,6 +83,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [go](https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png)
 
+[go](https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png)
+
 [go gopher](https://cdn.worldvectorlogo.com/logos/golang-gopher.svg
 )
 

@@ -101,14 +101,24 @@ data "coder_parameter" "image" {
   type        = "string"
   description = "What container image and language do you want?"
   mutable     = true
-  default     = "marktmilligan/base:vscodeserver"
+  default     = "marktmilligan/go:1.21.0"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
 
   option {
     name = "Base including Python"
     value = "marktmilligan/base:vscodeserver"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }      
+  } 
+  option {
+    name = "Golang"
+    value = "marktmilligan/go:1.21.0"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
+  } 
+  option {
+    name = "Node React"
+    value = "marktmilligan/node:latest"
+    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
+  }        
 }
 
 data "coder_parameter" "repo" {
@@ -117,7 +127,7 @@ data "coder_parameter" "repo" {
   description = "What source code repository do you want to clone?"
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  default     = "https://github.com/sharkymark/python_commissions"
+  default     = "https://github.com/coder/coder"
 
   option {
     name = "Coder v2 OSS project"
@@ -133,7 +143,37 @@ data "coder_parameter" "repo" {
     name = "Python command line app"
     value = "https://github.com/sharkymark/python_commissions"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }  
+  }
+  option {
+    name = "coder-react"
+    value = "https://github.com/sharkymark/coder-react"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
+  }    
+}
+
+data "coder_parameter" "extension" {
+  name        = "VS Code Extension"
+  type        = "string"
+  description = "What extension do you want to automatically add to VS Code Server?"
+  mutable     = true
+  icon        = "https://raw.githubusercontent.com/fabiospampinato/vscode-open-in-code/master/resources/logo.png"
+  default     = "golang.Go"
+
+  option {
+    name = "golang.Go"
+    value = "golang.Go"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
+  }
+  option {
+    name = "ms-python.python"
+    value = "ms-python.python"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
+  }
+  option {
+    name = "leizongmin.node-module-intellisense"
+    value = "leizongmin.node-module-intellisense"
+    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
+  }    
 }
 
 resource "coder_agent" "coder" {
@@ -193,11 +233,8 @@ code serve-web --port 13338 --without-connection-token --accept-server-license-t
 # install github.copilot & github.copilot-chat - note setting the extensions directory under .vscode-server
 code --extensions-dir=/home/coder/.vscode-server/extensions --install-extension github.copilot &
 
-# install python extension
-code --extensions-dir=/home/coder/.vscode-server/extensions --install-extension ms-python.python &
-
-# install go extension
-code --extensions-dir=/home/coder/.vscode-server/extensions --install-extension golang.Go &
+# install language extension specified in coder parameter input
+code --extensions-dir=/home/coder/.vscode-server/extensions --install-extension ${data.coder_parameter.extension.value} &
 
 # clone repo
 if test -z "${data.coder_parameter.repo.value}" 
