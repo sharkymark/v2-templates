@@ -18,6 +18,12 @@ Download it here
 curl -fsSL https://coder.com/install.sh | sh
 ```
 
+If you're on macOS and not a fan of `brew` like me, make sure you run this command instead:
+
+```sh
+curl -fsSL https://coder.com/install.sh | sh -s -- --method standalone
+```
+
 > BTW, the coder binary is also the Coder CLI, which you use to create, push templates, even create, start, stop workspaces, API Key tokens, etc.
 
 You can pass parameters/flags after `coder server` but I have a nice [`coder.yaml`](./standalone-yaml/coder.yaml) to easily tweak settings.
