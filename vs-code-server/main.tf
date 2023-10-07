@@ -15,6 +15,7 @@ locals {
   vscs_install_location = "/tmp/vscode-cli"
   vscs_port = "13338"
   vscs_log_path = "/tmp/vscs.log"
+  vscs_ext_log_path = "/tmp/vscs_extensions.log"
 }
 
 provider "coder" {
@@ -321,8 +322,9 @@ fi
 
 # install VS Code extension into vs code server from microsoft's marketplace
 sleep 5
-/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension ${data.coder_parameter.extension.value} &
-/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension github.copilot &
+VSCS_DIR=$(ls -td /home/coder/.vscode/cli/serve-web/*/ | head -1)
+$VSCS_DIR/bin/code-server --install-extension ${data.coder_parameter.extension.value} > ${local.vscs_ext_log_path} 2>&1 &
+$VSCS_DIR/bin/code-server --install-extension github.copilot > ${local.vscs_ext_log_path} 2>&1 &
   EOT  
 }
 
