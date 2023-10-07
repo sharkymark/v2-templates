@@ -100,6 +100,14 @@ resource "coder_agent" "coder" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = true
+    web_terminal = true
+  }
+
   dir                     = "/home/coder"
   startup_script_behavior = "blocking"
   startup_script_timeout = 200   

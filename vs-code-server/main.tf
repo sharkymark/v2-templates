@@ -182,6 +182,51 @@ data "coder_parameter" "repo" {
   }     
 }
 
+data "coder_parameter" "extension" {
+  name        = "VS Code extension"
+  type        = "string"
+  description = "Which VS Code extension do you want?"
+  mutable     = true
+  default     = "eg2.vscode-npm-script"
+  icon        = "/icon/code.svg"
+
+  option {
+    name = "npm"
+    value = "eg2.vscode-npm-script"
+    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
+  }
+  option {
+    name = "Golang"
+    value = "golang.go"
+    icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
+  } 
+  option {
+    name = "rust-lang"
+    value = "rust-lang.rust"
+    icon = "https://rustacean.net/assets/cuddlyferris.svg"
+  } 
+  option {
+    name = "rust analyzer"
+    value = "matklad.rust-analyzer"
+    icon = "https://rustacean.net/assets/cuddlyferris.svg"
+  }
+  option {
+    name = "Python"
+    value = "ms-python.python"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
+  } 
+  option {
+    name = "Jupyter"
+    value = "ms-toolsai.jupyter"
+    icon = "/icon/jupyter.svg"
+  } 
+  option {
+    name = "Java"
+    value = "redhat.java"
+    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  }            
+}
+
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
@@ -219,7 +264,7 @@ resource "coder_agent" "coder" {
     vscode = false
     vscode_insiders = false
     ssh_helper = false
-    port_forwarding_helper = false
+    port_forwarding_helper = true
     web_terminal = true
   }
 
@@ -274,6 +319,10 @@ if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
+# install VS Code extension into vs code server from microsoft's marketplace
+sleep 5
+/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension ${data.coder_parameter.extension.value} &
+/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension github.copilot &
   EOT  
 }
 

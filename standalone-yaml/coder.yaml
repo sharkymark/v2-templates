@@ -12,6 +12,7 @@ networking:
   # The URL that users will use to access the Coder deployment.
   # (default: <unset>, type: url)
   accessURL:
+  wildcardAccessURL:
   # Whether Coder only allows connections to workspaces via the browser.
   # (default: <unset>, type: bool)
   browserOnly: false
