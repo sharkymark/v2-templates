@@ -11,7 +11,7 @@ terraform {
 
 locals {
   folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
-  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")    
+  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")  
 }
 
 variable "use_kubeconfig" {
@@ -44,18 +44,19 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 7
 }
 
 data "coder_parameter" "disk_size" {
   name        = "PVC storage size"
   type        = "number"
-  description = "Number of GB of storage"
+  description = "Number of GB of storage for /home/coder and this will persist even when the workspace's Kubernetes pod and container are shutdown and deleted"
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
@@ -64,12 +65,13 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = true
   default     = 10
+  order       = 3  
 }
 
 data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
-  description = "CPU cores - be sure the cluster nodes have the capacity"
+  description = "CPU cores for your individual workspace"
   icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
   validation {
     min       = 1
@@ -77,12 +79,13 @@ data "coder_parameter" "cpu" {
   }
   mutable     = true
   default     = 1
+  order       = 1  
 }
 
 data "coder_parameter" "memory" {
   name        = "Memory (__ GB)"
   type        = "number"
-  description = "Be sure the cluster nodes have the capacity"
+  description = "Memory (__ GB) for your individual workspace"
   icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
   validation {
     min       = 1
@@ -90,6 +93,7 @@ data "coder_parameter" "memory" {
   }
   mutable     = true
   default     = 2
+  order       = 2  
 }
 
 data "coder_parameter" "image" {
@@ -119,11 +123,12 @@ data "coder_parameter" "image" {
     name = "Base including Python"
     value = "codercom/enterprise-base:ubuntu"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }      
+  }  
+  order       = 4      
 }
 
 data "coder_parameter" "repo" {
-  name        = "Source Code Repository"
+  name        = "Source Code Repository (optional)"
   type        = "string"
   description = "What source code repository do you want to clone?"
   mutable     = true
@@ -146,7 +151,7 @@ data "coder_parameter" "repo" {
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }
   option {
-    name = "Golang command line app"
+    name = "Go command line app"
     value = "https://github.com/sharkymark/commissions"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
   }
@@ -164,7 +169,8 @@ data "coder_parameter" "repo" {
     name = "Shark's rust sample apps"
     value = "https://github.com/sharkymark/rust-hw"
     icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }     
+  }    
+  order       = 5     
 }
 
 resource "coder_agent" "coder" {
@@ -200,6 +206,13 @@ resource "coder_agent" "coder" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = true
+    port_forwarding_helper = true
+    web_terminal = true
+  }
     
   dir = "/home/coder"
   startup_script_behavior = "blocking"
@@ -207,7 +220,7 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/sh
 
-# clone repo
+# clone repo selected by user
 if test -z "${data.coder_parameter.repo.value}" 
 then
   echo "No git repo specified, skipping"
@@ -222,12 +235,7 @@ else
   cd ${local.folder_name}
 fi
 
-# if rust is the desired programming languge, install
-if [[ ${data.coder_parameter.repo.value} = "git@github.com:sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
-fi
-
-# install code-server
+# install and code-server, VS Code in a browser 
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
 
@@ -236,9 +244,15 @@ if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
-  # Install and launch filebrowser
-  curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
-  filebrowser --noauth --root /home/coder --port 13338 >/tmp/filebrowser.log 2>&1 &
+# if rust is the desired programming languge, install
+if [[ ${data.coder_parameter.repo.value} = "https://github.com/sharkymark/rust-hw" ]]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1 &
+fi
+
+# commented out and not in use:
+# Install and launch filebrowser
+#curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
+#filebrowser --noauth --root /home/coder --port 13338 >/tmp/filebrowser.log 2>&1 &
 
   EOT  
 }
@@ -260,15 +274,21 @@ resource "coder_app" "code-server" {
   }  
 }
 
-resource "coder_app" "filebrowser" {
-  agent_id     = coder_agent.coder.id
-  display_name = "file browser"
-  slug         = "filebrowser"
-  url          = "http://localhost:13338"
-  icon         = "https://raw.githubusercontent.com/matifali/logos/main/database.svg"
-  subdomain    = true
-  share        = "owner"
-}
+# commented out and not in use:
+#resource "coder_app" "filebrowser" {
+#  agent_id     = coder_agent.coder.id
+#  display_name = "file browser"
+#  slug         = "filebrowser"
+#  url          = "http://localhost:13338"
+#  icon         = "https://raw.githubusercontent.com/matifali/logos/main/database.svg"
+#  subdomain    = true
+#  share        = "owner"
+#  healthcheck {
+#    url       = "http://localhost:13338/healthz"
+#    interval  = 3
+#    threshold = 10
+#  }
+#}
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count

@@ -12,8 +12,8 @@ terraform {
 locals {
   cpu-limit = "1"
   memory-limit = "2G"
-  cpu-request = "500m"
-  memory-request = "1" 
+  cpu-request = "250m"
+  memory-request = "500Mi" 
   home-volume = "10Gi"
   image = "codercom/enterprise-jupyter:ubuntu"
   repo = "docker.io/sharkymark/pandas_automl.git"
@@ -46,12 +46,13 @@ variable "workspaces_namespace" {
 }
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 2
 }
 
 data "coder_parameter" "jupyter" {
@@ -61,6 +62,7 @@ data "coder_parameter" "jupyter" {
   mutable     = true
   default     = "lab"
   icon        = "/icon/jupyter.svg"
+  order       = 1 
 
   option {
     name = "Jupyter Lab"
@@ -119,6 +121,13 @@ resource "coder_agent" "coder" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
 
   dir = "/home/coder"
   env = { 
@@ -141,14 +150,14 @@ pip3 install --user pandas &
 if [ ! -d "pandas_automl" ]; then
   mkdir -p ~/.ssh
   ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-  git clone --progress git@github.com:sharkymark/pandas_automl.git &
+  git clone --progress https://github.com/sharkymark/pandas_automl.git &
 fi
 
-# install code-server
+# install and code-server, VS Code in a browser 
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
 
-# install VS Code extension into code-server
+# install VS Code extensions into code-server
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
 
@@ -268,10 +277,6 @@ resource "coder_metadata" "workspace_info" {
     key   = "repo cloned"
     value = local.repo
   }  
-  item {
-    key   = "jupyter"
-    value = "${data.coder_parameter.jupyter.value}"
-  }
 }
 
 

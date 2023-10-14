@@ -17,13 +17,14 @@ locals {
   memory-request = "2" 
   disk-size = "10Gi"
   #base-image = "docker.io/marktmilligan/pp-chown:2021.3.3"   
-  base-image = "docker.io/marktmilligan/pp-chown:2022.1.4"  
+  #base-image = "docker.io/marktmilligan/pp-chown:2022.1.4" 
+  base-image = "docker.io/marktmilligan/pp-chown:2023.2.3"     
   #base-image = "docker.io/marktmilligan/pp-chown:latest"
   image_nametag = try(element(split("/", local.base-image), length(split("/", local.base-image)) - 1), "")       
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -59,15 +60,54 @@ data "coder_workspace" "me" {}
 
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
 }
 
 resource "coder_agent" "dev" {
+
+# The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
   os             = "linux"
   arch           = "amd64"
   dir            = "/home/coder"
@@ -83,8 +123,8 @@ resource "coder_agent" "dev" {
       coder dotfiles -y "$DOTFILES_URL" &
     fi
     
-    # Start code-server
-    # note code-server is in the container image
+    # install and code-server, VS Code in a browser 
+    curl -fsSL https://code-server.dev/install.sh | sh
     code-server --auth none --port 13337 >/dev/null 2>&1 &
 
     # Configure and run JetBrains IDEs in a web browser
@@ -212,25 +252,9 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = kubernetes_pod.main[0].id    
-  item {
-    key   = "CPU"
-    value = "${local.cpu-limit} cores"
-  }
-  item {
-    key   = "memory"
-    value = local.memory-limit
-  }    
+  resource_id = kubernetes_pod.main[0].id        
   item {
     key   = "image"
     value = local.image_nametag
-  } 
-  item {
-    key   = "disk"
-    value = "${local.disk-size}"
-  }
-  item {
-    key   = "K8s namespace"
-    value = var.workspaces_namespace
-  }       
+  }      
 }

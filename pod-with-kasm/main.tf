@@ -10,8 +10,8 @@ terraform {
 }
 
 locals {
-  cpu-limit = "1"
-  memory-limit = "2G"
+  cpu-limit = "2"
+  memory-limit = "4G"
   cpu-request = "500m"
   memory-request = "1" 
   home-volume = "10Gi"
@@ -46,12 +46,13 @@ variable "workspaces_namespace" {
 }
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
 }
 
 provider "kubernetes" {
@@ -95,6 +96,14 @@ resource "coder_agent" "coder" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
   env = { 
     "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
     }
@@ -104,11 +113,11 @@ resource "coder_agent" "coder" {
 
   startup_script = <<EOT
 
-#!/bin/bash
+#!/bin/sh
 
 # install and start the latest code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+/tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URL" ]; then
@@ -120,11 +129,11 @@ fi
 /dockerstartup/kasm_default_profile.sh
 /dockerstartup/vnc_startup.sh >/dev/null 2>&1 &
 
-# start Insomnia
+# start Insomnia 
 insomnia >/dev/null 2>&1 &
 
 # change shell
-sudo chsh -s $(which bash) $(whoami)
+sudo chsh -s $(which bash) $(whoami) >/dev/null 2>&1 &
 
   EOT  
 }
@@ -235,8 +244,4 @@ resource "coder_metadata" "workspace_info" {
     key   = "image"
     value = local.image
   }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  } 
 }

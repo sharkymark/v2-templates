@@ -12,7 +12,7 @@ terraform {
 locals {
   cpu-request = "500m"
   memory-request = "4" 
-  image = "ghcr.io/coder/envbuilder"
+  image = "ghcr.io/coder/envbuilder:latest"
 }
 
 data "coder_provisioner" "me" {
@@ -59,31 +59,16 @@ variable "cache_repo" {
   default = ""
 }
 
-data "coder_git_auth" "github" {
+data "coder_external_auth" "github" {
   # Matches the ID of the git auth provider in Coder.
   id = "primary-github"
-}
-
-data "coder_parameter" "disk_size" {
-  name        = "PVC (your $HOME directory) storage size"
-  type        = "number"
-  description = "Number of GB of storage"
-  order        = 1
-  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
-  validation {
-    min       = 1
-    max       = 200
-    monotonic = "increasing"
-  }
-  mutable     = true
-  default     = 100
 }
 
 data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
-  description = "Be sure the cluster nodes have the capacity"
-  order        = 2
+  description = "CPU cores for your workspace"
+  order        = 1
   icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
   validation {
     min       = 1
@@ -96,8 +81,8 @@ data "coder_parameter" "cpu" {
 data "coder_parameter" "memory" {
   name        = "Memory (__ GB)"
   type        = "number"
-  description = "Be sure the cluster nodes have the capacity"
-  order        = 3
+  description = "Memory (__ GB) for your workspace"
+  order        = 2
   icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
   validation {
     min       = 1
@@ -107,14 +92,76 @@ data "coder_parameter" "memory" {
   default     = 4
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+data "coder_parameter" "disk_size" {
+  name        = "PVC (your $HOME directory) storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  order        = 3
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
+  validation {
+    min       = 1
+    max       = 200
+    monotonic = "increasing"
+  }
+  mutable     = true
+  default     = 100
+}
+
+data "coder_parameter" "repo" {
+  name         = "repo"
+  display_name = "Repository (auto)"
+  order        = 4
+  description  = "Select a repository to automatically clone and start working with a devcontainer."
+  mutable      = true
+  option {
+    name        = "sharkymark/envbuilder-starter-devcontainer"
+    description = "An example repository for getting started with devcontainer.json and envbuilder."
+    value       = "https://github.com/sharkymark/envbuilder-starter-devcontainer"
+    icon        = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
+  }
+  option {
+    name        = "microsoft/vscode-remote-try-go"
+    description = "Golang"
+    value       = "https://github.com/microsoft/vscode-remote-try-go"
+    icon        = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
+  }
+  option {
+    name        = "microsoft/vscode-remote-try-node"
+    description = "Node.js"
+    value       = "https://github.com/microsoft/vscode-remote-try-node"
+    icon        = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
+  } 
+  option {
+    name        = "microsoft/vscode-remote-try-java"
+    description = "Java"
+    value       = "https://github.com/microsoft/vscode-remote-try-java"
+    icon        = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+  }
+  option {
+    name        = "Custom"
+    icon        = "/emojis/1f5c3.png"
+    description = "Specify a custom repo URL below"
+    value       = "custom"
+  }
+}
+
+data "coder_parameter" "custom_repo_url" {
+  name         = "custom_repo"
+  display_name = "Repository URL (custom)"
   order        = 5
+  default      = ""
+  description  = "Optionally enter a custom repository URL, see [awesome-devcontainers](https://github.com/manekinekko/awesome-devcontainers)."
+  mutable      = true
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 6
 }
 
 provider "kubernetes" {
@@ -162,11 +209,13 @@ resource "coder_agent" "main" {
   startup_script_behavior = "non-blocking"
 
   startup_script         = <<-EOT
-    set -e
+  #!/bin/sh
+  
+  set -e
 
-  # install code-server
-  curl -fsSL https://code-server.dev/install.sh | sh
-  code-server --auth none --port 13337 >/dev/null 2>&1 &
+  # install and start the latest code-server
+  curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+  /tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
   # use coder CLI to clone and install dotfiles
   if [ -n "$DOTFILES_URI" ]; then
@@ -233,53 +282,6 @@ resource "kubernetes_persistent_volume_claim" "workspaces" {
   }
 }
 
-data "coder_parameter" "repo" {
-  name         = "repo"
-  display_name = "Repository (auto)"
-  order        = 1
-  description  = "Select a repository to automatically clone and start working with a devcontainer."
-  mutable      = true
-  option {
-    name        = "sharkymark/envbuilder-starter-devcontainer"
-    description = "An example repository for getting started with devcontainer.json and envbuilder."
-    value       = "https://github.com/sharkymark/envbuilder-starter-devcontainer"
-    icon        = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
-  }
-  option {
-    name        = "microsoft/vscode-remote-try-go"
-    description = "Golang"
-    value       = "https://github.com/microsoft/vscode-remote-try-go"
-    icon        = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
-  }
-  option {
-    name        = "microsoft/vscode-remote-try-node"
-    description = "Node.js"
-    value       = "https://github.com/microsoft/vscode-remote-try-node"
-    icon        = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
-  } 
-  option {
-    name        = "microsoft/vscode-remote-try-java"
-    description = "Java"
-    value       = "https://github.com/microsoft/vscode-remote-try-java"
-    icon        = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  }
-  option {
-    name        = "Custom"
-    icon        = "/emojis/1f5c3.png"
-    description = "Specify a custom repo URL below"
-    value       = "custom"
-  }
-}
-
-data "coder_parameter" "custom_repo_url" {
-  name         = "custom_repo"
-  display_name = "Repository URL (custom)"
-  order        = 2
-  default      = ""
-  description  = "Optionally enter a custom repository URL, see [awesome-devcontainers](https://github.com/manekinekko/awesome-devcontainers)."
-  mutable      = true
-}
-
 resource "kubernetes_deployment" "workspace" {
   count = data.coder_workspace.me.start_count  
   metadata {
@@ -324,7 +326,7 @@ resource "kubernetes_deployment" "workspace" {
           }
           env {
             name = "GITHUB_TOKEN"
-            value = data.coder_git_auth.github.access_token
+            value = data.coder_external_auth.github.access_token
           }           
           env {
             name  = "INIT_SCRIPT"

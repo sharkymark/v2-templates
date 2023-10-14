@@ -59,19 +59,38 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+data "coder_parameter" "cpu" {
+  name        = "CPU cores"
+  type        = "number"
+  description = "CPU cores for your workspace"
+  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
+  validation {
+    min       = 1
+    max       = 4
+  }
+  mutable     = true
+  default     = 1
+  order       = 1  
+}
+
+data "coder_parameter" "memory" {
+  name        = "Memory (__ GB)"
+  type        = "number"
+  description = "Memory (__ GB) for your workspace"
+  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
+  validation {
+    min       = 1
+    max       = 8
+  }
+  mutable     = true
+  default     = 2
+  order       = 2
 }
 
 data "coder_parameter" "disk_size" {
   name        = "PVC storage size"
   type        = "number"
-  description = "Number of GB of storage"
+  description = "Number of GB of storage for /home/coder and this will persist even when the workspace's Kubernetes pod and container are shutdown and deleted"
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
@@ -80,32 +99,7 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = true
   default     = 10
-}
-
-data "coder_parameter" "cpu" {
-  name        = "CPU cores"
-  type        = "number"
-  description = "CPU cores - be sure the cluster nodes have the capacity"
-  icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
-  validation {
-    min       = 1
-    max       = 4
-  }
-  mutable     = true
-  default     = 1
-}
-
-data "coder_parameter" "memory" {
-  name        = "Memory (__ GB)"
-  type        = "number"
-  description = "Be sure the cluster nodes have the capacity"
-  icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
-  validation {
-    min       = 1
-    max       = 8
-  }
-  mutable     = true
-  default     = 2
+  order       = 3
 }
 
 data "coder_parameter" "image" {
@@ -115,6 +109,7 @@ data "coder_parameter" "image" {
   mutable     = true
   default     = "codercom/enterprise-node:ubuntu"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
+  order       = 4
 
   option {
     name = "Node React"
@@ -145,6 +140,7 @@ data "coder_parameter" "repo" {
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
   default     = "https://github.com/sharkymark/coder-react"
+  order       = 5
 
   option {
     name = "coder-react"
@@ -188,12 +184,13 @@ data "coder_parameter" "extension" {
   type        = "string"
   description = "Which VS Code extension do you want?"
   mutable     = true
-  default     = "eg2.vscode-npm-script"
+  default     = "leizongmin.node-module-intellisense"
   icon        = "/icon/code.svg"
+  order       = 6
 
   option {
-    name = "npm"
-    value = "eg2.vscode-npm-script"
+    name = "Node.js Modules Intellisense"
+    value = "leizongmin.node-module-intellisense"
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
@@ -226,6 +223,16 @@ data "coder_parameter" "extension" {
     value = "redhat.java"
     icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   }            
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 7
 }
 
 resource "coder_agent" "coder" {
@@ -273,7 +280,7 @@ resource "coder_agent" "coder" {
   startup_script_behavior = "blocking"
   startup_script_timeout = 200  
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 BOLD='\033[0;1m'
 
@@ -311,8 +318,8 @@ else
 fi
 
 # if rust is the desired programming languge, install
-if [[ ${data.coder_parameter.repo.value} = "git@github.com:sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
+if [[ ${data.coder_parameter.repo.value} = "https://github.com/sharkymark/rust-hw" ]]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1 &
 fi
 
 # use coder CLI to clone and install dotfiles
@@ -320,7 +327,7 @@ if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
-# install VS Code extension into vs code server from microsoft's marketplace
+# install VS Code extensions including GitHub Copilot into vs code server from microsoft's marketplace
 sleep 5
 VSCS_DIR=$(ls -td /home/coder/.vscode/cli/serve-web/*/ | head -1)
 $VSCS_DIR/bin/code-server --install-extension ${data.coder_parameter.extension.value} > ${local.vscs_ext_log_path} 2>&1 &

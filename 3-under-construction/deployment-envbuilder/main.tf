@@ -12,7 +12,7 @@ terraform {
 locals {
   cpu-request = "500m"
   memory-request = "2" 
-  image = "ghcr.io/coder/envbuilder:0.1.3"
+  image = "ghcr.io/coder/envbuilder:latest"
 }
 
 provider "coder" {
@@ -67,7 +67,7 @@ data "coder_parameter" "disk_size" {
   name        = "PVC (your $HOME directory) storage size"
   type        = "number"
   description = "Number of GB of storage"
-  order        = 1
+  order        = 3
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
@@ -82,7 +82,7 @@ data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
   description = "Be sure the cluster nodes have the capacity"
-  order        = 2
+  order        = 1
   icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
   validation {
     min       = 1
@@ -96,7 +96,7 @@ data "coder_parameter" "memory" {
   name        = "Memory (__ GB)"
   type        = "number"
   description = "Be sure the cluster nodes have the capacity"
-  order        = 3
+  order        = 2
   icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
   validation {
     min       = 1
@@ -109,7 +109,7 @@ data "coder_parameter" "memory" {
 data "coder_parameter" "devcontainer-repo" {
   name         = "devcontainer-repo"
   display_name = "Repository"
-  order        = 3
+  order        = 4
   description  = "Select a repository to automatically clone and start working with a devcontainer and Dockerfile."
   mutable      = true
   option {
@@ -267,11 +267,11 @@ resource "coder_agent" "coder" {
   startup_script_behavior = "blocking"
   startup_script_timeout = 600       
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 &
+# install and start the latest code-server
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+/tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URI" ]; then
