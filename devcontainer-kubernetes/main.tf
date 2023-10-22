@@ -156,7 +156,7 @@ data "coder_parameter" "custom_repo_url" {
 
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
@@ -209,7 +209,6 @@ resource "coder_agent" "main" {
   startup_script_behavior = "non-blocking"
 
   startup_script         = <<-EOT
-  #!/bin/sh
   
   set -e
 

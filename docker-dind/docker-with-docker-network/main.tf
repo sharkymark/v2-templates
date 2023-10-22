@@ -10,38 +10,67 @@ terraform {
 }
 
 provider "docker" {
+  host = var.socket
+}
 
+variable "socket" {
+  type        = string
+  description = <<-EOF
+  The Unix socket that the Docker daemon listens on and how containers
+  communicate with the Docker daemon.
+
+  Either Unix or TCP
+  e.g., unix:///var/run/docker.sock
+
+  EOF
+  default = "unix:///var/run/docker.sock"
 }
 
 data "coder_workspace" "me" {}
 
-variable "dotfiles_uri" {
-  description = <<-EOF
-  Dotfiles repo URI (optional)
-
-  see https://dotfiles.github.io
-  EOF
-  default = "git@github.com:sharkymark/dotfiles.git"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
 }
 
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = true
+    web_terminal = true
+  }
+
+  startup_script_behavior = "non-blocking"
+  startup_script_timeout = 300 
+
+
   dir = "/home/coder"
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
-# clone coder/coder repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:sharkymark/flask-redis-docker-compose.git &
+# clone repo
+if [ ! -d "flask-redis-docker-compose" ]; then
+  git clone --progress https://github.com/sharkymark/flask-redis-docker-compose.git 
+fi
 
 # use coder CLI to clone and install dotfiles
-coder dotfiles -y ${var.dotfiles_uri} &
+if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
   EOT  
 }
@@ -49,8 +78,8 @@ code-server --auth none --port 13337 &
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  slug          = "code-server"  
-  display_name  = "VS Code"
+  slug          = "cs"  
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
@@ -118,6 +147,6 @@ resource "coder_metadata" "workspace_info" {
   }
   item {
     key   = "repo cloned"
-    value = "docker.io/sharkymark/flask-redis-docker-compose.git"
+    value = "https://github.com/sharkymark/flask-redis-docker-compose.git"
   }     
 }

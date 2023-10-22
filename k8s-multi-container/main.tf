@@ -58,16 +58,6 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
-  type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-}
-
-
 data "coder_parameter" "disk_size" {
   name        = "PVC storage size"
   type        = "number"
@@ -80,6 +70,7 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = true
   default     = 2
+  order       = 1
 }
 
 data "coder_parameter" "cpu" {
@@ -93,6 +84,7 @@ data "coder_parameter" "cpu" {
   }
   mutable     = true
   default     = 1
+  order       = 2
 }
 
 data "coder_parameter" "memory" {
@@ -106,6 +98,17 @@ data "coder_parameter" "memory" {
   }
   mutable     = true
   default     = 1
+  order       = 3
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 4
 }
 
 resource "coder_agent" "golang" {
@@ -140,13 +143,20 @@ resource "coder_agent" "golang" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
   arch = "amd64"
   dir = "/home/coder"
 
-  env = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }  
+  env = {  }  
 
   startup_script = <<EOT
-#!/bin/bash
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
@@ -166,9 +176,8 @@ fi
 
 
 # use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URI" ]; then
-  echo "Installing dotfiles from $DOTFILES_URI"
-  coder dotfiles -y "$DOTFILES_URI"
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
   EOT  

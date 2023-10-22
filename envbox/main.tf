@@ -24,6 +24,17 @@ data "coder_parameter" "home_disk" {
     min = 10
     max = 100
   }
+order       = 1  
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 2
 }
 
 variable "use_kubeconfig" {
@@ -80,15 +91,6 @@ variable "min_memory" {
   description = "Minimum amount of memory to allocate the workspace (in GB)."
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-}
-
 provider "kubernetes" {
   # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
   config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
@@ -133,9 +135,8 @@ resource "coder_agent" "main" {
   startup_script_behavior = "blocking"
   startup_script_timeout = 200  
   
-  env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }      
+  env                     = {  }      
   startup_script = <<EOT
-    #!/bin/sh
 
     # home folder can be empty, so copying default bash settings
     if [ ! -f ~/.profile ]; then
@@ -150,9 +151,8 @@ resource "coder_agent" "main" {
     code-server --auth none --port 13337 > /dev/null 2>&1 &
 
     # use coder CLI to clone and install dotfiles
-    if [ -n "$DOTFILES_URI" ]; then
-      echo "Installing dotfiles from $DOTFILES_URI"
-      coder dotfiles -y "$DOTFILES_URI"
+    if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+      coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
     fi
 
     # pull the nginx image and expose on port with hello world template

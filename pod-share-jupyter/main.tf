@@ -5,25 +5,18 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-    }   
+    }
   }
 }
 
 locals {
-  cpu-limit = "4"
-  memory-limit = "8G"
-  cpu-request = "500m"
-  memory-request = "1" 
+  cpu-limit = "1"
+  memory-limit = "2G"
+  cpu-request = "250m"
+  memory-request = "500Mi" 
   home-volume = "10Gi"
-  #repo = "iluwatar/java-design-patterns.git"
-  repo = "https://github.com/sharkymark/java_helloworld.git" 
-  repo-name = "java_helloworld" 
-  repo-owner = "docker.io/marktmilligan"
-  #image = "intellij-idea-ultimate:2022.3.2"
-  #image = "intellij-idea-ultimate:2022.1.4"
-  #image = "intellij-idea-ultimate:2023.1"
-  #image = "intellij-idea-ultimate:2023.1.1"  
-  image = "intellij-idea-ultimate:2023.2"        
+  image = "codercom/enterprise-jupyter:ubuntu"
+  repo = "docker.io/sharkymark/pandas_automl.git"
 }
 
 provider "coder" {
@@ -52,6 +45,42 @@ variable "workspaces_namespace" {
   default = ""
 }
 
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 2
+}
+
+data "coder_parameter" "jupyter" {
+  name        = "Jupyter IDE type"
+  type        = "string"
+  description = "What type of Jupyter do you want?"
+  mutable     = true
+  default     = "lab"
+  icon        = "/icon/jupyter.svg"
+  order       = 1 
+
+  option {
+    name = "Jupyter Lab"
+    value = "lab"
+    icon = "https://raw.githubusercontent.com/gist/egormkn/672764e7ce3bdaf549b62a5e70eece79/raw/559e34c690ea4765001d4ba0e715106edea7439f/jupyter-lab.svg"
+  }
+  option {
+    name = "Jupyter Notebook"
+    value = "notebook"
+    icon = "https://codingbootcamps.io/wp-content/uploads/jupyter_notebook.png"
+  }       
+}
+
+locals {
+  jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
+}
+
+
 provider "kubernetes" {
   # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
   config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
@@ -59,24 +88,11 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 1
-}
-
-data "coder_provisioner" "me" {
-}
-
 resource "coder_agent" "coder" {
-  os                      = "linux"
-  arch                    = data.coder_provisioner.me.arch
+  os   = "linux"
+  arch = "amd64"
 
- # The following metadata blocks are optional. They are used to display
+# The following metadata blocks are optional. They are used to display
   # information about your workspace in the dashboard. You can remove them
   # if you don't want to display any information.
   # For basic resources, you can use the `coder stat` command.
@@ -103,7 +119,7 @@ resource "coder_agent" "coder" {
     script       = "coder stat disk --path $${HOME}"
     interval     = 60
     timeout      = 1
-  }  
+  }
 
   display_apps {
     vscode = false
@@ -113,38 +129,45 @@ resource "coder_agent" "coder" {
     web_terminal = true
   }
 
-  dir                     = "/home/coder"
+  dir = "/home/coder"
+  env = { 
+    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
+    }
   startup_script_behavior = "blocking"
-  startup_script_timeout = 200 
-  env                     = { }    
-  startup_script = <<EOT
+  startup_script_timeout = 300  
+  startup_script = <<EOF
+#!/bin/sh
 
 set -e
 
-# install and start code-server
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
-/tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
+# start jupyter 
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" >/dev/null 2>&1 &
 
-# use coder CLI to clone and install dotfiles
-if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
-fi
-
-# clone java repo
+# add some Python libraries
+pip3 install --user pandas &
 
 # clone repo
-if [ ! -d "${local.repo-name}" ]; then
-  git clone ${local.repo} >/dev/null 2>&1 &
+if [ ! -d "pandas_automl" ]; then
+  mkdir -p ~/.ssh
+  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+  git clone --progress https://github.com/sharkymark/pandas_automl.git &
 fi
 
+# install and code-server, VS Code in a browser 
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
-# script to symlink JetBrains Gateway IDE directory to image-installed IDE directory
-# More info: https://www.jetbrains.com/help/idea/remote-development-troubleshooting.html#setup
-if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_idea" ]; then
-    /opt/idea/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
-fi  
+# install VS Code extensions into code-server
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
 
-  EOT  
+# use coder CLI to clone and install dotfiles
+if [ -n "$DOTFILES_URL" ]; then
+  echo "Installing dotfiles from $DOTFILES_URL"
+  coder dotfiles -y "$DOTFILES_URL"
+fi
+
+EOF
 }
 
 # code-server
@@ -154,42 +177,55 @@ resource "coder_app" "code-server" {
   display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  subdomain = false
-  share     = "owner"
+  share         = "authenticated"
+  subdomain     = false  
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
     interval  = 3
     threshold = 10
+  }   
+}
+
+resource "coder_app" "jupyter" {
+  agent_id      = coder_agent.coder.id
+  slug          = "j"  
+  display_name  = "jupyter ${data.coder_parameter.jupyter.value}"
+  icon          = "/icon/jupyter.svg"
+  url           = "http://localhost:8888/"
+  share         = "authenticated"
+  subdomain     = true  
+
+  healthcheck {
+    url       = "http://localhost:8888/healthz/"
+    interval  = 10
+    threshold = 20
   }  
 }
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
-  depends_on = [
-    kubernetes_persistent_volume_claim.home-directory
-  ]  
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {
     security_context {
       run_as_user = "1000"
       fs_group    = "1000"
-    }    
+    }     
     container {
       name    = "coder-container"
-      image   = "${local.repo-owner}/${local.image}"
-      image_pull_policy = "Always"
+      image   = local.image
       command = ["sh", "-c", coder_agent.coder.init_script]
+      image_pull_policy = "Always"
       security_context {
         run_as_user = "1000"
-      }      
+      }
       env {
         name  = "CODER_AGENT_TOKEN"
         value = coder_agent.coder.token
-      }  
+      }
       resources {
         requests = {
           cpu    = local.cpu-request
@@ -203,27 +239,23 @@ resource "kubernetes_pod" "main" {
       volume_mount {
         mount_path = "/home/coder"
         name       = "home-directory"
-        read_only  = false
-      }      
+      }        
     }
     volume {
       name = "home-directory"
       persistent_volume_claim {
         claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
-        read_only  = false
       }
-    }        
+    }         
   }
 }
 
-
-
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
-  wait_until_bound = false
+  wait_until_bound = false  
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -234,26 +266,19 @@ resource "kubernetes_persistent_volume_claim" "home-directory" {
   }
 }
 
-resource "coder_metadata" "home-directory" {
-    resource_id = kubernetes_persistent_volume_claim.home-directory.id
-    daily_cost  = 10
-}
-
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
-  daily_cost  = 20
-  item {
-    key   = "download jetbrains gateway link"
-    value = "https://www.jetbrains.com/help/idea/jetbrains-gateway.html"
-  }  
   item {
     key   = "image"
     value = local.image
-  }  
+  }
   item {
-    key   = "repo"
-    value = local.repo-name
-  }                
+    key   = "repo cloned"
+    value = local.repo
+  }  
 }
+
+
+
 

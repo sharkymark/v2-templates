@@ -39,15 +39,6 @@ provider "docker" {
 provider "coder" {
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-}
-
 data "coder_parameter" "image" {
   name        = "Container Image"
   type        = "string"
@@ -75,7 +66,8 @@ data "coder_parameter" "image" {
     name = "Base including Python"
     value = "codercom/enterprise-base:ubuntu"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }      
+  }
+  order       = 1        
 }
 
 data "coder_parameter" "repo" {
@@ -120,7 +112,8 @@ data "coder_parameter" "repo" {
     name = "Shark's rust sample apps"
     value = "https://github.com/sharkymark/rust-hw"
     icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }     
+  }
+  order       = 2       
 }
 
 data "coder_parameter" "extension" {
@@ -165,7 +158,18 @@ data "coder_parameter" "extension" {
     name = "Java"
     value = "redhat.java"
     icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  }            
+  } 
+  order       = 3             
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 4
 }
 
 resource "coder_agent" "dev" {
@@ -178,7 +182,6 @@ resource "coder_agent" "dev" {
   # For basic resources, you can use the `coder stat` command.
   # If you need more control, you can write your own script.
 
-# 2023-07-12 commenting out since fails on docker
   metadata {
     display_name = "CPU Usage"
     key          = "0_cpu_usage"
@@ -203,10 +206,18 @@ resource "coder_agent" "dev" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = true
+    web_terminal = true
+  }
+
   startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script  = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 # install and start coder technologies' code-server
 curl -fsSL https://code-server.dev/install.sh | sh

@@ -64,12 +64,13 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
 }
 
 data "coder_provisioner" "me" {
@@ -106,23 +107,7 @@ resource "coder_agent" "coder" {
     script       = "coder stat disk --path $${HOME}"
     interval     = 60
     timeout      = 1
-  }
-
-  metadata {
-    display_name = "node CPU Usage"
-    key          = "4_node_cpu_usage"
-    script       = "coder stat cpu --host"
-    interval     = 10
-    timeout      = 1
-  }
-
-  metadata {
-    display_name = "node RAM Usage"
-    key          = "5_node_ram_usage"
-    script       = "coder stat mem --host"
-    interval     = 10
-    timeout      = 1
-  }  
+  } 
 
 
   dir                     = "/home/coder"
@@ -137,16 +122,15 @@ resource "coder_agent" "coder" {
     web_terminal = true
   }
 
-  env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
+  env                     = {  }    
   startup_script = <<EOT
 #!/bin/sh
 
 set -e
 
 # use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URL" ]; then
-  echo "Installing dotfiles from $DOTFILES_URL"
-  coder dotfiles -y "$DOTFILES_URL" >/dev/null 2>&1 &
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
 # clone java repo

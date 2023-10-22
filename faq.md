@@ -85,6 +85,13 @@ If starting the coder server from the command line, set these environment variab
 
 </details>
 
+<details>
+    <summary>How to configure NGINX as the reverse proxy in front of Coder</summary>
+<br/>
+
+[This doc](https://github.com/coder/coder/tree/main/examples/web-server/nginx#configure-nginx) in our repo explains in detail how to configure NGINX with Coder so that our Tailscale Wireguard networking works
+
+</details>
 
 <details>
     <summary>I want to hide some of the default icons in a workspace like VS Code Desktop, Terminal, SSH, Ports</summary>

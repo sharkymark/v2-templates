@@ -52,12 +52,13 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 2
 }
 
 data "coder_parameter" "intellij-idea-version" {
@@ -67,7 +68,7 @@ data "coder_parameter" "intellij-idea-version" {
   mutable     = true
   default     = "2023.2.2"
   icon        = "https://resources.jetbrains.com/storage/products/company/brand/logos/IntelliJ_IDEA_icon.svg"
-
+  order       = 1
   option {
     name = "2023.2.2"
     value = "2023.2.2"
@@ -128,7 +129,6 @@ resource "coder_agent" "coder" {
   startup_script_timeout = 200 
 
   startup_script = <<EOT
-#!/bin/bash
 
 # start VNC
 # based on custom container images:
@@ -147,9 +147,8 @@ resource "coder_agent" "coder" {
 /coder/start_vnc >/dev/null 2>&1 
 
 # use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URL" ]; then
-  echo "Installing dotfiles from $DOTFILES_URL"
-  coder dotfiles -y "$DOTFILES_URL" >/dev/null 2>&1 &
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
 # clone repo

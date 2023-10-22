@@ -44,12 +44,13 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 6
 }
 
 data "coder_parameter" "disk_size" {
@@ -64,6 +65,7 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = true
   default     = 10
+  order       = 3  
 }
 
 data "coder_parameter" "cpu" {
@@ -77,6 +79,7 @@ data "coder_parameter" "cpu" {
   }
   mutable     = true
   default     = 1
+  order       = 1  
 }
 
 data "coder_parameter" "memory" {
@@ -90,6 +93,7 @@ data "coder_parameter" "memory" {
   }
   mutable     = true
   default     = 2
+  order       = 2  
 }
 
 data "coder_parameter" "image" {
@@ -119,7 +123,8 @@ data "coder_parameter" "image" {
     name = "Base including Python"
     value = "codercom/enterprise-base:ubuntu"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }      
+  } 
+  order       = 4       
 }
 
 data "coder_parameter" "repo" {
@@ -164,7 +169,8 @@ data "coder_parameter" "repo" {
     name = "Shark's rust sample apps"
     value = "https://github.com/sharkymark/rust-hw"
     icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }     
+  }   
+  order       = 5    
 }
 
 resource "coder_agent" "coder" {

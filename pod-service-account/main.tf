@@ -114,12 +114,13 @@ variable "namespace" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 4
 }
 
 data "coder_parameter" "disk_size" {
@@ -129,11 +130,12 @@ data "coder_parameter" "disk_size" {
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
-    max       = 10
+    max       = 20
     monotonic = "increasing"
   }
   mutable     = true
   default     = 10
+  order       = 3
 }
 
 data "coder_parameter" "cpu" {
@@ -146,7 +148,8 @@ data "coder_parameter" "cpu" {
     max       = 4
   }
   mutable     = true
-  default     = 1
+  default     = 2
+  order       = 1
 }
 
 data "coder_parameter" "memory" {
@@ -159,7 +162,8 @@ data "coder_parameter" "memory" {
     max       = 8
   }
   mutable     = true
-  default     = 2
+  default     = 4
+  order       = 2
 }
 
 
@@ -199,16 +203,14 @@ resource "coder_agent" "coder" {
   dir                     = "/home/coder"
   startup_script_behavior = "blocking"
   startup_script_timeout = 200   
-  env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
+  env                     = {  }    
   startup_script = <<EOT
-#!/bin/sh
 
 set -e
 
 # use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URI" ]; then
-  echo "Installing dotfiles from $DOTFILES_URI"
-  coder dotfiles -y "$DOTFILES_URI"
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
 # install and start the latest code-server

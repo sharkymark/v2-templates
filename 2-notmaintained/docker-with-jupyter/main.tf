@@ -33,14 +33,6 @@ provider "coder" {
 
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
-  type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-}
 
 data "coder_parameter" "jupyter" {
   name        = "Jupyter IDE type"
@@ -49,6 +41,7 @@ data "coder_parameter" "jupyter" {
   mutable     = true
   default     = "lab"
   icon        = "/icon/jupyter.svg"
+  order       = 1
 
   option {
     name = "Jupyter Lab"
@@ -62,16 +55,19 @@ data "coder_parameter" "jupyter" {
   }       
 }
 
-locals {
-  jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 2
 }
 
-variable "api_key" {
-  description = <<-EOF
-  Arbitrary API Key to access Internet datasets (optional)
 
-  EOF
-  default=""
+locals {
+  jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
 }
 
 resource "coder_agent" "dev" {
@@ -84,14 +80,13 @@ resource "coder_agent" "dev" {
   # For basic resources, you can use the `coder stat` command.
   # If you need more control, you can write your own script.
 
-# 2023-07-12 commenting out since fails on docker
-#  metadata {
-#    display_name = "CPU Usage"
-#    key          = "0_cpu_usage"
-#    script       = "coder stat cpu"
-#    interval     = 10
-#    timeout      = 1
-#  }
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
 
   metadata {
     display_name = "RAM Usage"
@@ -107,6 +102,14 @@ resource "coder_agent" "dev" {
     script       = "coder stat disk --path $${HOME}"
     interval     = 60
     timeout      = 1
+  }
+
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
   }
 
   env = { 
@@ -125,9 +128,7 @@ pip3 install --user pandas &
 
 # clone repo
 if [ ! -d "pandas_automl" ]; then
-  mkdir -p ~/.ssh
-  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-  git clone --progress git@github.com:sharkymark/pandas_automl.git 
+  git clone --progress https://github.com/sharkymark/pandas_automl.git &
 fi
 
 # install code-server
@@ -157,9 +158,26 @@ resource "coder_app" "jupyter" {
 
   healthcheck {
     url       = "http://localhost:8888/healthz"
-    interval  = 10
-    threshold = 20
+    interval  = 3
+    threshold = 10
   }  
+}
+
+# code-server
+resource "coder_app" "code-server" {
+  agent_id      = coder_agent.dev.id
+  slug          = "cs"  
+  display_name  = "code-server"
+  icon          = "/icon/code.svg"
+  url           = "http://localhost:13337?folder=/home/coder"
+  share         = "owner"
+  subdomain     = false  
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }   
 }
 
 resource "docker_container" "workspace" {
@@ -180,7 +198,7 @@ resource "docker_container" "workspace" {
     EOT
   ]
 
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}", "API_KEY=${var.api_key}"]
+  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
@@ -207,9 +225,5 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "repo cloned"
     value = "docker.io/sharkymark/pandas_automl.git"
-  }  
-  item {
-    key   = "jupyter"
-    value = "${data.coder_parameter.jupyter.value}"
-  }    
+  }      
 }

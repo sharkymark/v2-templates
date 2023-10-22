@@ -148,8 +148,6 @@ pip3 install --user pandas &
 
 # clone repo
 if [ ! -d "pandas_automl" ]; then
-  mkdir -p ~/.ssh
-  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
   git clone --progress https://github.com/sharkymark/pandas_automl.git &
 fi
 

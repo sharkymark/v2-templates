@@ -56,12 +56,13 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
 }
 
 data "coder_provisioner" "me" {
@@ -111,7 +112,7 @@ resource "coder_agent" "coder" {
   dir                     = "/home/coder"
   startup_script_behavior = "blocking"
   startup_script_timeout = 200   
-  env                     = { "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }    
+  env                     = {  }    
   startup_script = <<EOT
 #!/bin/sh
 
@@ -140,9 +141,8 @@ if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_pycharm" ]; th
 fi 
 
 # use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URL" ]; then
-  echo "Installing dotfiles from $DOTFILES_URL"
-  coder dotfiles -y "$DOTFILES_URL"
+if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
   EOT  
@@ -223,6 +223,10 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   daily_cost  = 20
+  item {
+    key   = "download jetbrains gateway link"
+    value = "https://www.jetbrains.com/help/idea/jetbrains-gateway.html"
+  }   
   item {
     key   = "image"
     value = local.image

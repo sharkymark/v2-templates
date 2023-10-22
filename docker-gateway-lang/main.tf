@@ -50,13 +50,13 @@ provider "coder" {
 data "coder_workspace" "me" {
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
-  type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+module "jetbrains_gateway" {
+  source         = "https://registry.coder.com/modules/jetbrains-gateway"
+  agent_id       = coder_agent.dev.id
+  agent_name     = "dev"
+  folder         = "/home/coder"
+  jetbrains_ides = ["GO", "WS", "IU", "PY"]
+  default        = "IU"
 }
 
 data "coder_parameter" "lang" {
@@ -86,7 +86,18 @@ data "coder_parameter" "lang" {
     name = "Python"
     value = "Python"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }      
+  } 
+  order       = 1       
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 2
 }
 
 resource "coder_agent" "dev" {
@@ -124,17 +135,25 @@ resource "coder_agent" "dev" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = true
+    web_terminal = true
+  }
+
   dir = "/home/coder"
   env                     = { "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null }   
   startup_script_behavior = "blocking"
   startup_script_timeout = 300    
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 # clone repo
 mkdir -p ~/.ssh
 ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${lookup(local.repo, data.coder_parameter.lang.value)}
+git clone --progress https://github.com/${lookup(local.repo, data.coder_parameter.lang.value)}
 
 # use coder CLI to clone and install dotfiles
 if [ -n "$DOTFILES_URI" ]; then
@@ -152,7 +171,7 @@ code-server --auth none --port 13337 >/dev/null 2>&1 &
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.dev.id
-  slug          = "code-server"  
+  slug          = "cs"  
   display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
@@ -196,8 +215,8 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = docker_container.workspace[0].id   
   item {
-    key   = "image"
-    value = "docker.io/${lookup(local.image, data.coder_parameter.lang.value)}"
+    key   = "dockerhub-image"
+    value = "${lookup(local.image, data.coder_parameter.lang.value)}"
   }     
   item {
     key   = "language"

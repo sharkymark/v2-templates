@@ -121,7 +121,8 @@ data "coder_parameter" "region" {
     name  = "EU (Paris)"
     value = "eu-west-3"
     icon  = "/emojis/1f1ea-1f1fa.png"
-  }   
+  } 
+  order       = 1    
 }
 
 data "coder_parameter" "instance_type" {
@@ -153,6 +154,7 @@ data "coder_parameter" "instance_type" {
     name  = "8 vCPU, 32 GiB RAM t3.2xlarge"
     value = "t3.2xlarge"
   }
+  order       = 2  
 }
 
 data "coder_parameter" "disk_size" {
@@ -166,15 +168,17 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = false
   default     = 15
+  order       = 3  
 }
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 4
 }
 
 data "coder_workspace" "me" {
@@ -232,7 +236,6 @@ resource "coder_agent" "main" {
   startup_script_timeout = 300 
 
   startup_script = <<EOT
-    #!/bin/bash
 
     # install and start code-server
     curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server

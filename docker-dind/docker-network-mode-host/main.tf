@@ -27,18 +27,19 @@ provider "docker" {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
 }
 
 resource "coder_agent" "coder" {
@@ -46,22 +47,37 @@ resource "coder_agent" "coder" {
   arch = "amd64"
   dir = "/home/coder"
   env = { 
-    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
-    }  
+    } 
+
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = true
+    web_terminal = true
+  }    
+
   startup_script_behavior = "blocking"
   startup_script_timeout = 300    
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 # use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URL" ]; then
-  echo "Installing dotfiles from $DOTFILES_URL"
-  coder dotfiles -y "$DOTFILES_URL"
+if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
+
+# clone repo
+if [ ! -d "flask-redis-docker-compose" ]; then
+  git clone --progress https://github.com/sharkymark/flask-redis-docker-compose.git 
+fi 
+
+# start python web server
+python3 -m http.server > /dev/null 2>&1 &
 
   EOT  
 }
@@ -69,7 +85,7 @@ code-server --auth none --port 13337 >/dev/null 2>&1 &
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  slug          = "code-server"  
+  slug          = "cs"  
   display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
