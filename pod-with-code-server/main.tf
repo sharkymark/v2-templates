@@ -45,7 +45,7 @@ data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
@@ -218,7 +218,6 @@ resource "coder_agent" "coder" {
   startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script = <<EOT
-#!/bin/sh
 
 # clone repo selected by user
 if test -z "${data.coder_parameter.repo.value}" 
@@ -249,11 +248,6 @@ if [[ ${data.coder_parameter.repo.value} = "https://github.com/sharkymark/rust-h
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1 &
 fi
 
-# commented out and not in use:
-# Install and launch filebrowser
-#curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
-#filebrowser --noauth --root /home/coder --port 13338 >/tmp/filebrowser.log 2>&1 &
-
   EOT  
 }
 
@@ -273,22 +267,6 @@ resource "coder_app" "code-server" {
     threshold = 10
   }  
 }
-
-# commented out and not in use:
-#resource "coder_app" "filebrowser" {
-#  agent_id     = coder_agent.coder.id
-#  display_name = "file browser"
-#  slug         = "filebrowser"
-#  url          = "http://localhost:13338"
-#  icon         = "https://raw.githubusercontent.com/matifali/logos/main/database.svg"
-#  subdomain    = true
-#  share        = "owner"
-#  healthcheck {
-#    url       = "http://localhost:13338/healthz"
-#    interval  = 3
-#    threshold = 10
-#  }
-#}
 
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
