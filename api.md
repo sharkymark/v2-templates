@@ -162,6 +162,36 @@ curl --request GET \
 </details>
 
 <details>
+    <summary>Get User Info including Org Id</summary>
+<br/><br/>
+
+```sh
+curl --request GET \
+  --url "$CODER_URL/$API_ROUTE/users/me" \
+--header "Coder-Session-Token: $CODER_SESSION_TOKEN"
+```
+
+</details>
+
+<details>
+    <summary>Create a User</summary>
+<br/><br/>
+
+```sh
+curl --request POST \
+--url "$CODER_URL/api/v2/users" \
+--header "Coder-Session-Token: $CODER_SESSION_TOKEN" \
+  --data '{
+  "email": "mark@coder.com",
+  "organization_id": "<your org id>",
+  "password": "C0der1two3",
+  "username": "Mark"
+}'
+```
+
+</details>
+
+<details>
     <summary>Daily Active Users of a template</summary>
 <br/><br/>
 
