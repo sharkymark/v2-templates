@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "project_id" {
@@ -26,6 +26,7 @@ data "coder_parameter" "zone" {
   mutable       = false
   default       = "us-central1-a"
   icon          = "/emojis/1f30e.png"
+  order         = 1
 
   option {
     name = "northamerica-northeast1-a"
@@ -61,8 +62,12 @@ data "coder_parameter" "machine-type" {
   type          = "string"
   description   = "GCP machine type"
   mutable       = false
-  default       = "e2-medium"
-
+  default       = "e2-standard-4"
+  order         = 2 
+  option {
+    name = "e2-standard-8"
+    value = "e2-standard-8"
+  }
   option {
     name = "e2-standard-4"
     value = "e2-standard-4"
@@ -83,7 +88,6 @@ data "coder_parameter" "machine-type" {
     name = "e2-small"
     value = "e2-small"
   }       
-
 }
 
 data "coder_parameter" "os" {
@@ -93,7 +97,7 @@ data "coder_parameter" "os" {
   description         = "What release of Microsoft Windows Server?"
   mutable             = false
   default             = "windows-server-2022-dc-v20221109"
-
+  order               = 3
   option {
     name = "2022"
     value = "windows-server-2022-dc-v20221109"
@@ -111,7 +115,7 @@ data "coder_parameter" "vs" {
   description         = "What release of Microsoft Visual Studio Community?"
   mutable             = false
   default             = "visualstudio2022community"
-
+  order               = 4
   option {
     name = "2022"
     value = "visualstudio2022community"
@@ -150,8 +154,15 @@ resource "coder_agent" "main" {
   auth                   = "google-instance-identity"
   arch                   = "amd64"
   os                     = "windows"
-  login_before_ready     = false
-  #startup_script_timeout = 300  
+
+  display_apps {
+    vscode                  = true
+    vscode_insiders         = false
+    web_terminal            = true
+    ssh_helper              = false
+    port_forwarding_helper  = false
+  }
+ 
   startup_script = <<EOF
 
 # Set admin password and enable admin user (must be in this order)

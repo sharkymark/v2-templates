@@ -130,6 +130,8 @@ These are URLs to cool emojis representing languages, infrastructure, and IDEs, 
 
 [kubernetes](https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Kubernetes_logo_without_workmark.svg/1200px-Kubernetes_logo_without_workmark.svg.png)
 
+[metabase](https://images.crunchbase.com/image/upload/c_lpad,f_auto,q_auto:eco,dpr_1/v1444771390/alcxwm5ap5koe3jneaku.png)
+
 [minikube](https://miro.medium.com/v2/resize:fit:400/0*KzqL3xqmXzV5PPjX.png)
 
 [left shark dancing](https://i.gifer.com/origin/d8/d8c2c87772378b7e00deeefd8c843a12.gif)
