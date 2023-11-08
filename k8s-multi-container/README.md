@@ -1,6 +1,6 @@
 ---
-name: Develop with 4 containers in a Kubernetes pod
-description: The goal is to enable 4 containers, Postgres,Golang, DBeaver amd pgAdmin in a K8s pod 
+name: Develop with 4 containers in a Kubernetes pod including PostgresSQL
+description: The goal is to enable 4 containers, Postgres, Go, DBeaver amd pgAdmin in a K8s pod 
 tags: [cloud, kubernetes]
 ---
 
@@ -8,12 +8,12 @@ tags: [cloud, kubernetes]
 
 ### Apps included
 1. A web-based terminal
-1. code-server (VS Code Web)
+1. code-server (VS Code in a browser)
 1. DBeaver web UI
 1. pgAdmin web UI
 
 ### Images for the 4 containers
-1. [Golang](https://hub.docker.com/r/codercom/enterprise-golang)
+1. [Go](https://hub.docker.com/r/codercom/enterprise-golang)
 1. [Postgres](https://hub.docker.com/_/postgres)
 1. [DBeaver](https://hub.docker.com/r/dbeaver/cloudbeaver)
 1. [pgAdmin](https://hub.docker.com/r/dpage/pgadmin4/)
@@ -22,12 +22,12 @@ tags: [cloud, kubernetes]
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
 
 ### defaults
-1. (pgAdmin) Username: pgadmin@pgadmin.org Password: pgadmin (db settings will persist in a separate PVC)
-1. (Postgres) Username: postgres Password: postgres
-1. (DBeaver) Created during initial launch (no persistence on rebuild for credentials and db settings) e.g., cbadmin, cbadmin
+1. (pgAdmin) Username: `pgadmin@pgadmin.org` Password: `pgadmin`
+1. (Postgres) Username: `postgres` Password: `postgres`
+1. (DBeaver) You create the username and password during the first use of DBeaver - I created: `cbadmin`, `cbadmin` for username and password
 
 ### psql
-The `startup_script` adds `psql` to connect to PostgreSQL from a terminal.
+The `startup_script` installs `psql` with `pip3` to connect to PostgreSQL from a terminal.
 
 `psql -U postgres -h localhost`
 
