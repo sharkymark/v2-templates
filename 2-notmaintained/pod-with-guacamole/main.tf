@@ -23,7 +23,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -47,7 +47,7 @@ variable "workspaces_namespace" {
   Kubernetes namespace to deploy the workspace into
 
   EOF
-  default = "coder"
+  default = ""
 }
 
 provider "kubernetes" {
@@ -58,18 +58,52 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
 }
 
 resource "coder_agent" "base" {
   os   = "linux"
   arch = "amd64"
   dir = "/home/coder"
+
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
   startup_script = <<EOT
 #!/bin/bash
 
@@ -78,15 +112,15 @@ resource "coder_agent" "base" {
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 & 
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
-if [[ ${data.coder_parameter.dotfiles_url.value} != "" ]]; then
+if [ "${data.coder_parameter.dotfiles_url.value}" != "" ]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
 fi
 
 # remove xfce screen locker, since keyboard commands cannot unlock it
-sudo apt purge light-locker -y &
+sudo apt purge light-locker -y >/dev/null 2>&1 &
 
   EOT  
 }
@@ -95,7 +129,7 @@ sudo apt purge light-locker -y &
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.base.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
