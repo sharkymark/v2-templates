@@ -153,9 +153,7 @@ fi
 
 # clone repo
 if [ ! -d "${local.repo-name}" ]; then
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone ${local.repo} >/dev/null 2>&1 &
+  git clone ${local.repo} >/dev/null 2>&1 &
 fi
 
 # start intellij idea community in vnc window
@@ -170,7 +168,7 @@ DISPLAY=:90 /opt/idea/bin/idea.sh >/dev/null 2>&1 &
 resource "coder_app" "novnc" {
   agent_id      = coder_agent.coder.id
   slug          = "vnc"  
-  display_name  = "IntelliJ in noVNC"
+  display_name  = "IntelliJ Community in noVNC"
   icon          = "/icon/intellij.svg"
   url           = "http://localhost:6081"
   subdomain = false
