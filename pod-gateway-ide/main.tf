@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -43,12 +43,13 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 5
 }
 
 data "coder_parameter" "disk_size" {
@@ -58,11 +59,12 @@ data "coder_parameter" "disk_size" {
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
-    max       = 10
+    max       = 20
     monotonic = "increasing"
   }
   mutable     = true
-  default     = 5
+  default     = 10
+  order       = 1
 }
 
 data "coder_parameter" "cpu" {
@@ -76,6 +78,7 @@ data "coder_parameter" "cpu" {
   }
   mutable     = true
   default     = 4
+  order       = 2
 }
 
 data "coder_parameter" "memory" {
@@ -89,6 +92,7 @@ data "coder_parameter" "memory" {
   }
   mutable     = true
   default     = 4
+  order       = 3
 }
 
 data "coder_parameter" "ide" {
@@ -99,6 +103,7 @@ data "coder_parameter" "ide" {
   mutable     = true
   default     = "IntelliJ IDEA Ultimate"
   icon        = "https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg"
+  order       = 4
 
   option {
     name = "WebStorm"
@@ -177,16 +182,52 @@ data "coder_parameter" "weather" {
 resource "coder_agent" "coder" {
   os   = "linux"
 
+ # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
   metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Weather"
+    key  = "weather"
+    # for more info: https://github.com/chubin/wttr.in
+    script = <<EOT
+        curl -s 'wttr.in/{${data.coder_parameter.weather.value}}?format=3&u' 2>&1 | awk '{print}'
     EOT
+    interval = 600
+    timeout = 10
+  }
+
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
   }
 
   arch = "amd64"
@@ -278,19 +319,7 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${data.coder_parameter.cpu.value} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${data.coder_parameter.memory.value}GB"
-  }  
-  item {
     key   = "image"
     value = "${lookup(local.image, data.coder_parameter.ide.value)}"
   }
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
-  } 
 }

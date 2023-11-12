@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -42,15 +42,6 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
-  type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-}
-
 data "coder_parameter" "disk_size" {
   name        = "PVC storage size"
   type        = "number"
@@ -63,6 +54,7 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = true
   default     = 10
+  order       = 3
 }
 
 data "coder_parameter" "cpu" {
@@ -75,7 +67,8 @@ data "coder_parameter" "cpu" {
     max       = 4
   }
   mutable     = true
-  default     = 1
+  default     = 4
+  order       = 1
 }
 
 data "coder_parameter" "memory" {
@@ -88,103 +81,160 @@ data "coder_parameter" "memory" {
     max       = 8
   }
   mutable     = true
-  default     = 2
+  default     = 4
+  order       = 2
+}
+
+data "coder_parameter" "appshare" {
+  name        = "App Sharing"
+  type        = "string"
+  description = "What sharing level do you want on the Survey app?"
+  mutable     = true
+  default     = "owner"
+  icon        = "/emojis/1f30e.png"
+
+  option {
+    name = "Accessible outside the Coder deployment"
+    value = "public"
+    icon = "/emojis/1f30e.png"
+  }
+  option {
+    name = "Accessible by authenticated users of the Coder deployment"
+    value = "authenticated"
+    icon = "/emojis/1f465.png"
+  } 
+  option {
+    name = "Only accessible by the workspace owner"
+    value = "owner"
+    icon = "/emojis/1f510.png"
+  } 
+  order       = 4      
+}
+
+# dotfiles repo
+module "dotfiles" {
+    source    = "https://registry.coder.com/modules/dotfiles"
+    agent_id  = coder_agent.dev.id
+}
+
+# coder's code-server (vs code in browser)
+module "code-server" {
+    source    = "https://registry.coder.com/modules/code-server"
+    agent_id  = coder_agent.dev.id
+    folder    = "/home/coder"
+}
+
+# clone a repo
+module "git-clone" {
+    source   = "https://registry.coder.com/modules/git-clone"
+    agent_id = coder_agent.dev.id
+    url      = "https://github.com/sharkymark/rubyonrails"
+}
+
+# download rubymine jetbrains ide and open jetbrains gateway
+module "jetbrains_gateway" {
+  source         = "https://registry.coder.com/modules/jetbrains-gateway"
+  agent_id       = coder_agent.dev.id
+  agent_name     = "dev"
+  folder         = "/home/coder/rubyonrails"
+  jetbrains_ides = ["RM"]
+  default         = "RM"
 }
 
 resource "coder_agent" "dev" {
   os             = "linux"
   arch           = "amd64"
 
-metadata {
-    key          = "disk"
-    display_name = "Home Volume Disk Usage"
-    interval     = 600 # every 10 minutes
-    timeout      = 30  # df can take a while on large filesystems
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      df /home/coder | awk NR==2'{print $5}'
-    EOT
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
   }
 
   metadata {
-    key          = "mem-used"
-    display_name = "Memory Usage"
-    interval     = 1
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
     timeout      = 1
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-      awk '(NR == 1){tm=$1} (NR == 2){mu=$1} END{printf("%.0f%%",mu/tm * 100.0)}' /sys/fs/cgroup/memory/memory.limit_in_bytes /sys/fs/cgroup/memory/memory.usage_in_bytes
-    EOT
-  } 
+  }
 
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
 
-    metadata {
-    key          = "cpu-used"
-    display_name = "CPU Usage"
-    interval     = 3
-    timeout      = 3
-    script       = <<-EOT
-      #!/bin/bash
-      set -e
-
-      tstart=$(date +%s%N)
-      cstart=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      sleep 1
-
-      tstop=$(date +%s%N)
-      cstop=$(cat /sys/fs/cgroup/cpu/cpuacct.usage)
-
-      echo "($cstop - $cstart) / ($tstop - $tstart) * 100" | /usr/bin/bc -l | awk '{printf("%.0f%%",$1)}'      
-
-    EOT
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
   }
 
   dir = "/home/coder"
   env = { 
-    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
     }
-  login_before_ready = false
-  startup_script_timeout = 600  
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300   
   startup_script = <<EOF
-    #!/bin/sh
+  #!/bin/sh  
 
-    set -e
+    # Configure and run JetBrains IDEs in a web browser
+    # https://www.jetbrains.com/pycharm/download/other.html
+    # Using JetBrains projector; please migrate to Gateway
+    # https://lp.jetbrains.com/projector/
+    # https://coder.com/docs/v2/latest/ides/gateway
 
-    # install bench/basic calculator
-    sudo apt install bc 
-
-    # use coder CLI to clone and install dotfiles
-    if [ -n "$DOTFILES_URL" ]; then
-      echo "Installing dotfiles from $DOTFILES_URL"
-      coder dotfiles -y "$DOTFILES_URL"
-    fi
-
-   # clone rubyonrails employee survey repo
-
-    if [ ! -d "rubyonrails" ]; then
-      echo "Cloning the Ruby on Rails repo with an employee survey app"
-      mkdir -p ~/.ssh
-      ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-      git clone --progress git@github.com:sharkymark/rubyonrails.git 
-    fi
-  
-    # Ruby on Rails app - employee survey
-    # bundle Ruby gems
-    cd ~/rubyonrails
-    bundle install
-    # start Rails server as daemon
-    rails s -p 3002 -b 0.0.0.0 -d
+    # Assumes you have JetBrains IDE installed in /opt
+    # and pip3 installed in
+    # your image and the "coder" user has filesystem
+    # permissions for "/opt/*"
+   
+    pip3 install projector-installer --user
+    /home/coder/.local/bin/projector --accept-license 
+    
+    /home/coder/.local/bin/projector config add rubymine1 /opt/rubymine --force --use-separate-config --port 9001 --hostname localhost
+    /home/coder/.local/bin/projector run rubymine1 >/dev/null 2>&1 &
 
     # symlink to jetbrains rubymine
     if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_rubymine" ]; then
-        /opt/rubymine/bin/remote-dev-server.sh registerBackendLocationForGateway
-    fi    
+        /opt/rubymine/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
+    fi  
+
+    # Ruby on Rails app - employee survey
+    
+    # bundle Ruby gems
+    cd ~/rubyonrails
+    bundle config set --local path './bundled-gems'
+    bundle install
+    # start Rails server as daemon
+    rails s -p 3002 -b 0.0.0.0 -d  
 
   EOF
 }
+
+resource "coder_script" "shutdown" {
+  agent_id      = coder_agent.dev.id
+  display_name  = "Stop Rails daemon server"
+  run_on_stop   = true
+  icon          = "/emojis/1f6d1.png"
+  script        = <<EOF
+  #!/bin/sh 
+    kill $(lsof -i :3002 -t)
+  EOF
+}
+
 
 # employee survey
 resource "coder_app" "employeesurvey" {
@@ -194,7 +244,7 @@ resource "coder_app" "employeesurvey" {
   icon     = "https://cdn.iconscout.com/icon/free/png-256/hacker-news-3521477-2944921.png"
   url      = "http://localhost:3002"
   subdomain = true
-  share     = "authenticated"
+  share     = "${data.coder_parameter.appshare.value}"
 
   healthcheck {
     url       = "http://localhost:3002/healthz"
@@ -202,6 +252,22 @@ resource "coder_app" "employeesurvey" {
     threshold = 30
   }  
 
+}
+
+resource "coder_app" "rubymine1" {
+  agent_id = coder_agent.dev.id
+  slug          = "rm"  
+  display_name  = "RubyMine (browser)"  
+  icon          = "/icon/rubymine.svg"
+  url           = "http://localhost:9001"
+  subdomain     = false
+  share         = "owner"
+
+  healthcheck {
+    url         = "http://localhost:9001/healthz"
+    interval    = 6
+    threshold   = 20
+  }    
 }
 
 resource "kubernetes_pod" "main" {
@@ -220,7 +286,7 @@ resource "kubernetes_pod" "main" {
     }
     container {
       name    = "dev"
-      image   = "docker.io/marktmilligan/ruby-2-7-2:latest"
+      image   = "docker.io/marktmilligan/ruby-2-7-2:rm-2023.2.5"
       image_pull_policy = "Always"       
       command = ["sh", "-c", coder_agent.dev.init_script]
       security_context {
@@ -276,37 +342,9 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "kubernetes namespace"
     value = "${var.workspaces_namespace}"
-  }    
-  item {
-    key   = "CPU (limits, requests)"
-    value = "${data.coder_parameter.cpu.value} cores, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.cpu}"
-  }
-  item {
-    key   = "memory (limits, requests)"
-    value = "${data.coder_parameter.memory.value}GB, ${kubernetes_pod.main[0].spec[0].container[0].resources[0].requests.memory}"
-  }    
+  }       
   item {
     key   = "image"
     value = kubernetes_pod.main[0].spec[0].container[0].image
-  }
-  item {
-    key   = "container image pull policy"
-    value = kubernetes_pod.main[0].spec[0].container[0].image_pull_policy
-  }   
-  item {
-    key   = "disk"
-    value = "${data.coder_parameter.disk_size.value}GiB"
-  }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
-  item {
-    key   = "security context - container"
-    value = "run_as_user ${kubernetes_pod.main[0].spec[0].container[0].security_context[0].run_as_user}"
-  }   
-  item {
-    key   = "security context - pod"
-    value = "run_as_user ${kubernetes_pod.main[0].spec[0].security_context[0].run_as_user} fs_group ${kubernetes_pod.main[0].spec[0].security_context[0].fs_group}"
   }     
 }

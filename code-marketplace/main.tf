@@ -55,12 +55,13 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 6
 }
 
 data "coder_parameter" "disk_size" {
@@ -75,6 +76,7 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = true
   default     = 10
+  order       = 3
 }
 
 data "coder_parameter" "cpu" {
@@ -88,6 +90,7 @@ data "coder_parameter" "cpu" {
   }
   mutable     = true
   default     = 1
+  order       = 1
 }
 
 data "coder_parameter" "memory" {
@@ -101,6 +104,7 @@ data "coder_parameter" "memory" {
   }
   mutable     = true
   default     = 2
+  order       = 3
 }
 
 data "coder_parameter" "image" {
@@ -110,6 +114,7 @@ data "coder_parameter" "image" {
   mutable     = true
   default     = "codercom/enterprise-node:ubuntu"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
+  order       = 4
 
   option {
     name = "Node React"
@@ -140,7 +145,7 @@ data "coder_parameter" "repo" {
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
   default     = "https://github.com/sharkymark/coder-react"
-
+  order       = 5
   option {
     name = "coder-react"
     value = "https://github.com/sharkymark/coder-react"
@@ -166,6 +171,12 @@ data "coder_parameter" "repo" {
     value = "https://github.com/sharkymark/python_commissions"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
   }    
+}
+
+module "git-clone" {
+    source   = "https://registry.coder.com/modules/git-clone"
+    agent_id = coder_agent.coder.id
+    url      = "${data.coder_parameter.repo.value}"
 }
 
 resource "coder_agent" "coder" {
@@ -201,6 +212,14 @@ resource "coder_agent" "coder" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = true
+    web_terminal = true
+  }
+
   startup_script_behavior = "blocking"
   startup_script_timeout = 200   
 
@@ -212,18 +231,7 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/sh
 
-# clone repo
-if test -z "${data.coder_parameter.repo.value}" 
-then
-  echo "No git repo specified, skipping"
-else
-  if [ ! -d "${local.folder_name}" ] 
-  then
-    echo "Cloning git repo..."
-    git clone ${data.coder_parameter.repo.value}
-  fi
-  cd ${local.folder_name}
-fi
+
 
 # if rust is the desired programming languge, install
 if [[ ${data.coder_parameter.repo.value} = "git@github.com:sharkymark/rust-hw.git" ]]; then

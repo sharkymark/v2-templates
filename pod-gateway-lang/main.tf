@@ -11,17 +11,17 @@ terraform {
 
 
 locals {
-  cpu-limit = "3"
-  memory-limit = "4G"
+  cpu-limit = "4"
+  memory-limit = "8G"
   cpu-request = "500m"
   memory-request = "2G" 
   home-volume = "10Gi"
 
   repo = {
-    "Java"    = "sharkymark/java_helloworld.git" 
-    "Python"  = "sharkymark/python_commissions.git" 
-    "Golang"  = "coder/coder.git"
-    "Node"    = "sharkymark/coder-react.git"
+    "Java"    = "sharkymark/java_helloworld" 
+    "Python"  = "sharkymark/python_commissions" 
+    "Golang"  = "coder/coder"
+    "Node"    = "sharkymark/coder-react"
   }  
   image = {
     "Java"    = "codercom/enterprise-java:ubuntu" 
@@ -68,12 +68,13 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 2
 }
 
 data "coder_parameter" "lang" {
@@ -83,7 +84,7 @@ data "coder_parameter" "lang" {
   mutable     = true
   default     = "Java"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
-
+  order       = 1
   option {
     name = "Node"
     value = "Node"
@@ -104,6 +105,12 @@ data "coder_parameter" "lang" {
     value = "Python"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
   }      
+}
+
+module "git-clone" {
+    source   = "https://registry.coder.com/modules/git-clone"
+    agent_id = coder_agent.dev.id
+    url      = "https://github.com/${lookup(local.repo, data.coder_parameter.lang.value)}"
 }
 
 resource "coder_agent" "dev" {
@@ -138,6 +145,14 @@ resource "coder_agent" "dev" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
   arch = "amd64"
   dir = "/home/coder"
 
@@ -146,11 +161,6 @@ resource "coder_agent" "dev" {
 
   startup_script = <<EOT
 #!/bin/bash
-
-# clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:${lookup(local.repo, data.coder_parameter.lang.value)} >/dev/null 2>&1 &
 
 # install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
