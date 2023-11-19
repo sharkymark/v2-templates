@@ -52,7 +52,7 @@ data "coder_parameter" "dotfiles_url" {
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 2
+  order       = 3
 }
 
 data "coder_parameter" "jupyter" {
@@ -74,6 +74,32 @@ data "coder_parameter" "jupyter" {
     value = "notebook"
     icon = "https://codingbootcamps.io/wp-content/uploads/jupyter_notebook.png"
   }       
+}
+
+data "coder_parameter" "appshare" {
+  name        = "App Sharing"
+  type        = "string"
+  description = "What sharing level do you want for the IDEs?"
+  mutable     = true
+  default     = "owner"
+  icon        = "/emojis/1f30e.png"
+
+  option {
+    name = "Accessible outside the Coder deployment"
+    value = "public"
+    icon = "/emojis/1f30e.png"
+  }
+  option {
+    name = "Accessible by authenticated users of the Coder deployment"
+    value = "authenticated"
+    icon = "/emojis/1f465.png"
+  } 
+  option {
+    name = "Only accessible by the workspace owner"
+    value = "owner"
+    icon = "/emojis/1f510.png"
+  } 
+  order       = 2      
 }
 
 locals {
@@ -174,7 +200,7 @@ resource "coder_app" "code-server" {
   display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  share         = "owner"
+  share         = "${data.coder_parameter.appshare.value}"
   subdomain     = false  
 
   healthcheck {
@@ -190,7 +216,7 @@ resource "coder_app" "jupyter" {
   display_name  = "jupyter ${data.coder_parameter.jupyter.value}"
   icon          = "/icon/jupyter.svg"
   url           = "http://localhost:8888/"
-  share         = "owner"
+  share         = "${data.coder_parameter.appshare.value}"
   subdomain     = true  
 
   healthcheck {

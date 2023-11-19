@@ -229,9 +229,7 @@ resource "coder_agent" "coder" {
   # specify an internal vs code extensions marketplace https://github.com/coder/code-marketplace#usage-in-code-server
   env = { "EXTENSIONS_GALLERY" = "{\"serviceUrl\":\"${var.marketplace}/api\", \"itemUrl\":\"${var.marketplace}/item\", \"resourceUrlTemplate\": \"${var.marketplace}/files/{publisher}/{name}/{version}/{path}\"}" }     
   startup_script = <<EOT
-#!/bin/sh
-
-
+#!/bin/bash
 
 # if rust is the desired programming languge, install
 if [[ ${data.coder_parameter.repo.value} = "git@github.com:sharkymark/rust-hw.git" ]]; then
