@@ -1,10 +1,10 @@
 ---
-name: Develop with Jupyter in a container in a Kubernetes pod
-description: The goal is to enable code-server (VS Code) and Jupyter Lab or Jupyter Notebook
+name: Develop with Jupyter on a path in a container in a Kubernetes pod
+description: The goal is to enable code-server (VS Code) and Jupyter Lab or Jupyter Notebook on a path
 tags: [cloud, kubernetes]
 ---
 
-# Jupyter Lab & Notebook and code-server (VS Code) template for a workspace in a Kubernetes pod
+# Jupyter Lab on a path & Notebook and code-server (VS Code) template for a workspace in a Kubernetes pod
 
 ### Apps included
 1. A web-based terminal
@@ -22,6 +22,59 @@ tags: [cloud, kubernetes]
 1. Install Jupyter VS Code extension
 1. Start Jupyter Lab (or Notebook) (it is installed as part of the image)
 1. Download, install and start code-server (VS Code-in-a-browser)
+
+### Known limitations
+1. Alternatively, developers can run localhost and either use `coder port-forward <workspace name> --tcp 8888:8888` or `ssh -L 8888:localhost:8888 coder.<workspace name>`
+
+### Sharing
+
+There is a `coder_parameter` called `appshare` where the user can decide if the IDEs can be shared to other Coder deployment users, external to the deployment, or only the workspace owner.
+
+```hcl
+data "coder_parameter" "appshare" {
+  name        = "App Sharing"
+  type        = "string"
+  description = "What sharing level do you want on the Survey app?"
+  mutable     = true
+  default     = "owner"
+  icon        = "/emojis/1f30e.png"
+
+  option {
+    name = "Accessible outside the Coder deployment"
+    value = "public"
+    icon = "/emojis/1f30e.png"
+  }
+  option {
+    name = "Accessible by authenticated users of the Coder deployment"
+    value = "authenticated"
+    icon = "/emojis/1f465.png"
+  } 
+  option {
+    name = "Only accessible by the workspace owner"
+    value = "owner"
+    icon = "/emojis/1f510.png"
+  } 
+  order       = 2      
+}
+```
+
+```hcl
+resource "coder_app" "jupyter" {
+  agent_id      = coder_agent.coder.id
+  slug          = "j"  
+  display_name  = "jupyter ${data.coder_parameter.jupyter.value}"
+  icon          = "/icon/jupyter.svg"
+  url           = "http://localhost:8888/"
+  share         = "${data.coder_parameter.appshare.value}"
+  subdomain     = true  
+
+  healthcheck {
+    url       = "http://localhost:8888/healthz/"
+    interval  = 10
+    threshold = 20
+  }  
+}
+```
 
 ### Requirements
 1. With the `coder_app` `subdomain=false`, the workspace owner and workspace name must be added to the Jupyter `baseURL` in the `startup_script` and the `url` part of the `coder_app`

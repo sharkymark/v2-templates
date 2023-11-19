@@ -13,14 +13,13 @@ locals {
   cpu-limit = "1"
   memory-limit = "2G"
   cpu-request = "500m"
-  memory-request = "1" 
+  memory-request = "500Mi" 
   home-volume = "10Gi"
   image = "codercom/enterprise-jupyter:ubuntu"
   repo = "docker.io/sharkymark/pandas_automl.git"
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
 }
 
 variable "use_kubeconfig" {
@@ -46,12 +45,13 @@ variable "workspaces_namespace" {
 }
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 3
 }
 
 data "coder_parameter" "jupyter" {
@@ -61,6 +61,7 @@ data "coder_parameter" "jupyter" {
   mutable     = true
   default     = "lab"
   icon        = "/icon/jupyter.svg"
+  order       = 1 
 
   option {
     name = "Jupyter Lab"
@@ -72,6 +73,32 @@ data "coder_parameter" "jupyter" {
     value = "notebook"
     icon = "https://codingbootcamps.io/wp-content/uploads/jupyter_notebook.png"
   }       
+}
+
+data "coder_parameter" "appshare" {
+  name        = "App Sharing"
+  type        = "string"
+  description = "What sharing level do you want for the IDEs?"
+  mutable     = true
+  default     = "owner"
+  icon        = "/emojis/1f30e.png"
+
+  option {
+    name = "Accessible outside the Coder deployment"
+    value = "public"
+    icon = "/emojis/1f30e.png"
+  }
+  option {
+    name = "Accessible by authenticated users of the Coder deployment"
+    value = "authenticated"
+    icon = "/emojis/1f465.png"
+  } 
+  option {
+    name = "Only accessible by the workspace owner"
+    value = "owner"
+    icon = "/emojis/1f510.png"
+  } 
+  order       = 2      
 }
 
 locals {
@@ -89,30 +116,83 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+
+# The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
   dir = "/home/coder"
+  env = { 
+
+    }
+  startup_script_behavior = "blocking"
+  startup_script_timeout = 300  
+
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
+
+set -e
 
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 &
+code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
 
 # add some Python libraries
 pip3 install --user pandas &
 
-# use coder CLI to clone and install dotfiles
-coder dotfiles -y ${data.coder_parameter.dotfiles_url.value} &
-
 # clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:sharkymark/pandas_automl.git &
+if [ ! -d "pandas_automl" ]; then
+  git clone --progress https://github.com/sharkymark/pandas_automl.git &
+fi
 
-# install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter
+# install and code-server, VS Code in a browser 
+curl -fsSL https://code-server.dev/install.sh | sh
+code-server --auth none --port 13337 >/dev/null 2>&1 &
+
+# install VS Code extensions into code-server
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
+
+# use coder CLI to clone and install dotfiles
+if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
 
 EOT
 }
@@ -120,11 +200,11 @@ EOT
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  slug          = "code-server"  
-  display_name  = "VS Code Web"
+  slug          = "cc"  
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
-  share         = "owner"
+  share         = "${data.coder_parameter.appshare.value}"
   subdomain     = false  
 
   healthcheck {
@@ -140,7 +220,7 @@ resource "coder_app" "jupyter" {
   display_name  = "jupyter ${data.coder_parameter.jupyter.value}"
   icon          = "/icon/jupyter.svg"
   url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j"
-  share         = "owner"
+  share         = "${data.coder_parameter.appshare.value}"
   subdomain     = false  
 
   healthcheck {
@@ -217,18 +297,6 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${local.cpu-limit} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${local.memory-limit}"
-  }  
-  item {
-    key   = "disk"
-    value = "${local.home-volume}"
-  }
-  item {
     key   = "image"
     value = local.image
   }
@@ -240,10 +308,6 @@ resource "coder_metadata" "workspace_info" {
     key   = "jupyter"
     value = "${data.coder_parameter.jupyter.value}"
   }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
-  }  
 }
 
 
