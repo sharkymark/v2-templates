@@ -33,41 +33,28 @@ provider "coder" {
 
 }
 
-
-data "coder_parameter" "jupyter" {
-  name        = "Jupyter IDE type"
-  type        = "string"
-  description = "What type of Jupyter do you want?"
-  mutable     = true
-  default     = "lab"
-  icon        = "/icon/jupyter.svg"
-  order       = 1
-
-  option {
-    name = "Jupyter Lab"
-    value = "lab"
-    icon = "https://raw.githubusercontent.com/gist/egormkn/672764e7ce3bdaf549b62a5e70eece79/raw/559e34c690ea4765001d4ba0e715106edea7439f/jupyter-lab.svg"
-  }
-  option {
-    name = "Jupyter Notebook"
-    value = "notebook"
-    icon = "https://codingbootcamps.io/wp-content/uploads/jupyter_notebook.png"
-  }       
+# jupyterlab
+module "jupyterlab" {
+    source    = "https://registry.coder.com/modules/jupyterlab"
+    agent_id  = coder_agent.dev.id
+    log_path  = "/tmp/jupyterlab.log"
+    port      = 19999
+    share     = "owner"
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 2
+# coder's code-server (vs code in browser)
+module "code-server" {
+    source      = "https://registry.coder.com/modules/code-server"
+    agent_id    = coder_agent.dev.id
+    log_path  = "/tmp/code-server.log"    
+    folder      = "/home/coder"
+    extensions  = ["ms-toolsai.jupyter","ms-python.python"]
 }
 
-
-locals {
-  jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
+# dotfiles repo
+module "dotfiles" {
+    source    = "https://registry.coder.com/modules/dotfiles"
+    agent_id  = coder_agent.dev.id
 }
 
 resource "coder_agent" "dev" {
@@ -113,76 +100,21 @@ resource "coder_agent" "dev" {
   }
 
   env = { 
-    "DOTFILES_URL" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
     }
   startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script  = <<EOT
 #!/bin/sh
 
-# start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" >/dev/null 2>&1 &
-
 # add some Python libraries
-pip3 install --user pandas &
-
-# clone repo
-if [ ! -d "pandas_automl" ]; then
-  git clone --progress https://github.com/sharkymark/pandas_automl.git &
-fi
-
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 &
-
-# install VS Code extension into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
-
-# use coder CLI to clone and install dotfiles
-if [ -n "$DOTFILES_URL" ]; then
-  echo "Installing dotfiles from $DOTFILES_URL"
-  coder dotfiles -y "$DOTFILES_URL"
-fi
+pip3 install --user pandas >/dev/null 2>&1 &
 
   EOT  
 }
 
-resource "coder_app" "jupyter" {
-  agent_id      = coder_agent.dev.id
-  slug          = "j"  
-  display_name  = "jupyter-${data.coder_parameter.jupyter.value}"
-  icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/"
-  share         = "owner"
-  subdomain     = true  
-
-  healthcheck {
-    url       = "http://localhost:8888/healthz"
-    interval  = 3
-    threshold = 10
-  }  
-}
-
-# code-server
-resource "coder_app" "code-server" {
-  agent_id      = coder_agent.dev.id
-  slug          = "cs"  
-  display_name  = "code-server"
-  icon          = "/icon/code.svg"
-  url           = "http://localhost:13337?folder=/home/coder"
-  share         = "owner"
-  subdomain     = false  
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 3
-    threshold = 10
-  }   
-}
-
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = "codercom/enterprise-jupyter:ubuntu"
+  image = "codercom/enterprise-base:ubuntu"
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
@@ -220,10 +152,7 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id   
   item {
     key   = "image"
-    value = "codercom/enterprise-jupyter:ubuntu"
+    value = "codercom/enterprise-base:ubuntu"
   }
-  item {
-    key   = "repo cloned"
-    value = "docker.io/sharkymark/pandas_automl.git"
-  }      
+   
 }
