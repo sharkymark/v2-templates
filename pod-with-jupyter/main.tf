@@ -196,7 +196,7 @@ EOF
 # code-server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  slug          = "code-server"  
+  slug          = "cs"  
   display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
