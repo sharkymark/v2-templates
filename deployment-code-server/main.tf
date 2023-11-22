@@ -11,7 +11,8 @@ terraform {
 
 locals {
   folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
-  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")    
+  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")
+  copilot_version = "1.135.544"    
 }
 
 variable "use_kubeconfig" {
@@ -44,18 +45,19 @@ provider "kubernetes" {
 data "coder_workspace" "me" {}
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
-  default     = "git@github.com:sharkymark/dotfiles.git"
+  default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 7
 }
 
 data "coder_parameter" "disk_size" {
   name        = "PVC storage size"
   type        = "number"
-  description = "Number of GB of storage"
+  description = "Number of GB of storage for /home/coder and this will persist even when the workspace's Kubernetes pod and container are shutdown and deleted"
   icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
   validation {
     min       = 1
@@ -64,12 +66,13 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = true
   default     = 10
+  order       = 3  
 }
 
 data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
-  description = "CPU cores - be sure the cluster nodes have the capacity"
+  description = "CPU cores for your individual workspace"
   icon        = "https://png.pngtree.com/png-clipart/20191122/original/pngtree-processor-icon-png-image_5165793.jpg"
   validation {
     min       = 1
@@ -77,12 +80,13 @@ data "coder_parameter" "cpu" {
   }
   mutable     = true
   default     = 1
+  order       = 1  
 }
 
 data "coder_parameter" "memory" {
   name        = "Memory (__ GB)"
   type        = "number"
-  description = "Be sure the cluster nodes have the capacity"
+  description = "Memory (__ GB) for your individual workspace"
   icon        = "https://www.vhv.rs/dpng/d/33-338595_random-access-memory-logo-hd-png-download.png"
   validation {
     min       = 1
@@ -90,6 +94,7 @@ data "coder_parameter" "memory" {
   }
   mutable     = true
   default     = 2
+  order       = 2  
 }
 
 data "coder_parameter" "image" {
@@ -119,11 +124,12 @@ data "coder_parameter" "image" {
     name = "Base including Python"
     value = "codercom/enterprise-base:ubuntu"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }      
+  }  
+  order       = 4      
 }
 
 data "coder_parameter" "repo" {
-  name        = "Source Code Repository"
+  name        = "Source Code Repository (optional)"
   type        = "string"
   description = "What source code repository do you want to clone?"
   mutable     = true
@@ -146,7 +152,7 @@ data "coder_parameter" "repo" {
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }
   option {
-    name = "Golang command line app"
+    name = "Go command line app"
     value = "https://github.com/sharkymark/commissions"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
   }
@@ -164,7 +170,8 @@ data "coder_parameter" "repo" {
     name = "Shark's rust sample apps"
     value = "https://github.com/sharkymark/rust-hw"
     icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }     
+  }    
+  order       = 5     
 }
 
 resource "coder_agent" "coder" {
@@ -205,14 +212,14 @@ resource "coder_agent" "coder" {
   startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script = <<EOT
-#!/bin/sh
+#!/bin/bash
 
 # clone repo
 if test -z "${data.coder_parameter.repo.value}" 
 then
   echo "No git repo specified, skipping"
 else
-  if [ ! -d "${local.folder_name}" ] 
+  if [[ ! -d "${local.folder_name}" ]] 
   then
     echo "Cloning git repo..."
     git clone ${data.coder_parameter.repo.value}
@@ -223,13 +230,13 @@ else
 fi
 
 # if rust is the desired programming languge, install
-if [[ ${data.coder_parameter.repo.value} = "git@github.com:sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
+if [[ ${data.coder_parameter.repo.value} = "https://github.com/sharkymark/rust-hw" ]]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1 &
 fi
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 &
+# install and start code-server
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+/tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
@@ -265,74 +272,123 @@ resource "kubernetes_deployment" "main" {
   metadata {
     name = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
+    labels = {
+      "app.kubernetes.io/name"     = "coder-workspace"
+      "app.kubernetes.io/instance" = "coder-workspace-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}"
+      "app.kubernetes.io/part-of"  = "coder"
+      "com.coder.resource"         = "true"
+      "com.coder.workspace.id"     = data.coder_workspace.me.id
+      "com.coder.workspace.name"   = data.coder_workspace.me.name
+      "com.coder.user.id"          = data.coder_workspace.me.owner_id
+      "com.coder.user.username"    = data.coder_workspace.me.owner
+    }
+    annotations = {
+      "com.coder.user.email" = data.coder_workspace.me.owner_email
+    }    
   }
 
   spec {
     replicas = 1
-
     selector {
       match_labels = {
-        app = "code-server-template"
+        "app.kubernetes.io/name" = "coder-workspace"
       }
+    }
+
+    strategy {
+      type = "Recreate"
     }
 
     template {
       metadata {
         labels = {
-          app = "code-server-template"
-          "code-server.coder.example" = "true"
+          "app.kubernetes.io/name" = "coder-workspace"
         }
       }
    
-    spec {
+      spec {
 
-      security_context {
-        run_as_user = "1000"
-        fs_group    = "1000"
-      }          
-      container {
-        name    = "coder-container"
-        image   = "docker.io/${data.coder_parameter.image.value}"
-        image_pull_policy = "Always"
-        command = ["sh", "-c", coder_agent.coder.init_script]
         security_context {
           run_as_user = "1000"
-        }      
-        env {
-          name  = "CODER_AGENT_TOKEN"
-          value = coder_agent.coder.token
-        }  
-        resources {
-          requests = {
-            cpu    = "250m"
-            memory = "500Mi"
-          }        
-          limits = {
-            cpu    = "${data.coder_parameter.cpu.value}"
-            memory = "${data.coder_parameter.memory.value}G"
-          }
-        }                       
-        volume_mount {
-          mount_path = "/home/coder"
-          name       = "home-directory"
-        }      
-      }
-      volume {
-        name = "home-directory"
-        persistent_volume_claim {
-          claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+          fs_group    = "1000"
+        }          
+        container {
+          name    = "coder-container"
+          image   = "docker.io/${data.coder_parameter.image.value}"
+          image_pull_policy = "Always"
+          command = ["sh", "-c", coder_agent.coder.init_script]
+          security_context {
+            run_as_user = "1000"
+          }      
+          env {
+            name  = "CODER_AGENT_TOKEN"
+            value = coder_agent.coder.token
+          }  
+          resources {
+            requests = {
+              cpu    = "250m"
+              memory = "512Mi"
+            }        
+            limits = {
+              cpu    = "${data.coder_parameter.cpu.value}"
+              memory = "${data.coder_parameter.memory.value}Gi"
+            }
+          }                       
+          volume_mount {
+            mount_path = "/home/coder"
+            name       = "home-directory"
+            read_only  = false
+          }      
         }
-      }        
+        volume {
+          name = "home-directory"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.home-directory.metadata.0.name
+            read_only  = false
+          }
+        }
+        affinity {
+          // This affinity attempts to spread out all workspace pods evenly across
+          // nodes.
+          pod_anti_affinity {
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 1
+              pod_affinity_term {
+                topology_key = "kubernetes.io/hostname"
+                label_selector {
+                  match_expressions {
+                    key      = "app.kubernetes.io/name"
+                    operator = "In"
+                    values   = ["coder-workspace"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  }
-}
-
 }
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-home"
     namespace = var.workspaces_namespace
+    labels = {
+      "app.kubernetes.io/name"     = "coder-pvc"
+      "app.kubernetes.io/instance" = "coder-pvc-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}"
+      "app.kubernetes.io/part-of"  = "coder"
+      //Coder-specific labels
+      "com.coder.resource"       = "true"
+      "com.coder.workspace.id"   = data.coder_workspace.me.id
+      "com.coder.workspace.name" = data.coder_workspace.me.name
+      "com.coder.user.id"        = data.coder_workspace.me.owner_id
+      "com.coder.user.username"  = data.coder_workspace.me.owner
+    }
+    annotations = {
+      "com.coder.user.email" = data.coder_workspace.me.owner_email
+    }
   }
   wait_until_bound = false    
   spec {

@@ -331,3 +331,24 @@ Another way using local modules is to symlink the module directory inside the te
 [Coder docs](https://coder.com/docs/v2/latest/templates/change-management)
 
 </details>
+
+<details>
+    <summary>Can I run Coder in an air-gapped or offline mode? (no Internet)?</summary>
+<br/>
+
+Yes, Coder can be deployed in air-gapped or offline mode.
+https://coder.com/docs/v2/latest/install/offline
+
+Our product bundles with the Terraform binary so assume access to terraform.io during installation. The docs outline rebuilding the Coder container with Terraform built-in as well as any required Terraform providers.
+
+Direct networking from local SSH to a Coder workspace needs a STUN server. We default to Google's STUN servers. So you can either create your STUN server in your network or disable and force all traffic through the control plane's DERP proxy.
+
+</details>
+
+<details>
+    <summary>Can I?</summary>
+<br/>
+
+
+
+</details>
