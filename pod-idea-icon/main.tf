@@ -21,12 +21,14 @@ locals {
   repo-owner = "docker.io/codercom"
   image = "enterprise-java:ubuntu" 
 
+  # 2023-11-23 ide, build number change - former values: ideaIU-2023.2 | 232.9921.47
+
   # jetbrains product codes https://plugins.jetbrains.com/docs/marketplace/product-codes.html
   ide_product_code = "IU"
   # jetbrains builds https://www.jetbrains.com/idea/download/other.html   
-  ide_build_number = "232.9921.47"   
+  ide_build_number = "232.10203.10"   
   # IDE release downloads https://data.services.jetbrains.com/products/releases?code=IU
-  ide = "ideaIU-2023.2"
+  ide = "ideaIU-2023.2.5"
   ide_download_link = "https://download.jetbrains.com/idea/${local.ide}.tar.gz"  
 } 
 

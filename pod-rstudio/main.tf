@@ -19,7 +19,7 @@ locals {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 variable "use_kubeconfig" {
@@ -45,12 +45,39 @@ variable "workspaces_namespace" {
 }
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
+}
+
+data "coder_parameter" "appshare" {
+  name        = "App Sharing"
+  type        = "string"
+  description = "What sharing level do you want for the IDEs?"
+  mutable     = true
+  default     = "owner"
+  icon        = "/emojis/1f30e.png"
+
+  option {
+    name = "Accessible outside the Coder deployment"
+    value = "public"
+    icon = "/emojis/1f30e.png"
+  }
+  option {
+    name = "Accessible by authenticated users of the Coder deployment"
+    value = "authenticated"
+    icon = "/emojis/1f465.png"
+  } 
+  option {
+    name = "Only accessible by the workspace owner"
+    value = "owner"
+    icon = "/emojis/1f510.png"
+  } 
+  order       = 2      
 }
 
 provider "kubernetes" {
@@ -63,6 +90,44 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+
+# The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  display_apps {
+    vscode = false
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
   dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/bash
@@ -74,14 +139,13 @@ code-server --auth none --port 13337 >/dev/null 2>&1 &
 # start rstudio
 /usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --auth-none=1 >/dev/null 2>&1 &
 
-# add some Python libraries
-pip3 install --user pandas
-
 # clone repo
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone --progress git@github.com:rstudio/connect-examples.git &
-git clone --progress git@github.com:rstudio/shiny-examples.git &
+if [ ! -d "connect-examples" ]; then
+  git clone --progress https://github.com/rstudio/connect-examples.git &
+fi
+if [ ! -d "shiny-examples" ]; then
+  git clone --progress https://github.com/rstudio/shiny-examples.git &
+fi
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
@@ -95,11 +159,11 @@ EOT
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
   slug          = "code-server"  
-  display_name  = "VS Code Web"
+  display_name  = "code-server"
   icon          = "/icon/code.svg"
   url           = "http://localhost:13337?folder=/home/coder"
   subdomain = false
-  share     = "owner"
+  share     = "${data.coder_parameter.appshare.value}"
 
   healthcheck {
     url       = "http://localhost:13337/healthz"
@@ -116,7 +180,7 @@ resource "coder_app" "rstudio" {
   icon          = "/icon/rstudio.svg"
   url           = "http://localhost:8787"
   subdomain = true
-  share     = "owner"
+  share     = "${data.coder_parameter.appshare.value}"
 
   healthcheck {
     url       = "http://localhost:8787/healthz"
@@ -192,23 +256,7 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = kubernetes_pod.main[0].id
   item {
-    key   = "CPU"
-    value = "${kubernetes_pod.main[0].spec[0].container[0].resources[0].limits.cpu} cores"
-  }
-  item {
-    key   = "memory"
-    value = "${local.memory-limit}"
-  }  
-  item {
     key   = "image"
     value = "${kubernetes_pod.main[0].spec[0].container[0].image}"
-  } 
-  item {
-    key   = "disk"
-    value = "${local.home-volume}"
-  }
-  item {
-    key   = "volume"
-    value = kubernetes_pod.main[0].spec[0].container[0].volume_mount[0].mount_path
   }  
 }
