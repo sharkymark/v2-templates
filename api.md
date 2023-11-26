@@ -248,21 +248,6 @@ q=owner:$USER_NAME" \
 </details>
 
 <details>
-    <summary>Get a count of a user's workspaces</summary>
-<br/><br/>
-
-To see the number of workspaces for a user. Note the query parameter is the username, not the user email.
-
-```sh
-curl --request GET \
-  --url "$CODER_URL/$API_ROUTE/workspaces/count?\
-q=owner:$USER_NAME" \
---header "Coder-Session-Token: $CODER_SESSION_TOKEN"
-```
-
-</details>
-
-<details>
     <summary>Details about a workspace</summary>
 <br/><br/>
 

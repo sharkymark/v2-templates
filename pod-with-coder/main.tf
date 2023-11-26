@@ -136,6 +136,11 @@ data "coder_parameter" "repo" {
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }  
   option {
+    name = "Coder vscode-coder VS Code extension project"
+    value = "https://github.com/coder/vscode-coder"
+    icon = "/icon/code.svg"
+  }   
+  option {
     name = "Coder code-server project"
     value = "https://github.com/coder/code-server"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"

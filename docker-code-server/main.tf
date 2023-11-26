@@ -217,7 +217,7 @@ resource "coder_agent" "dev" {
   startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script  = <<EOT
-#!/bin/sh
+#!/bin/bash
 
 # install and start coder technologies' code-server
 curl -fsSL https://code-server.dev/install.sh | sh

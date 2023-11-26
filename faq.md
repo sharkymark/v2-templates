@@ -346,6 +346,63 @@ Direct networking from local SSH to a Coder workspace needs a STUN server. We de
 </details>
 
 <details>
+    <summary>Create a randomized computer_name for an Azure VM</summary>
+<br/>
+
+Azure VMs have a 15 character limit for the computer_name which can lead to duplicate name errors.
+
+This code produces a hashed value that will be difficult to replicate.
+
+```hcl
+locals {
+concatenated_string = "${data.coder_workspace.me.name}+${data.coder_workspace.me.owner}"
+hashed_string = md5(local.concatenated_string)
+truncated_hash = substr(local.hashed_string, 0, 16)
+}
+```
+
+</details>
+
+<details>
+    <summary>Do you have example JetBrains Gateway templates</summary>
+<br/>
+
+JetBrains certified our plugin in August which means it is more stable.
+
+You will see the Coder plugin in Gateway when you open it up.
+
+It depends on how you want to manage the JetBrains IDE version, but if you are open to it being downloaded from jetbrains.com, see my example template where I specify the product code, IDE version and build number in the `coder_app` resource. This will present an icon in the workspace dashboard which when clicked, will look for a locally installed Gateway, and open it.  Alternatively, you bake the IDE into the container image and manually open Gateway (or IntelliJ which has Gateway built-in), use a session token to Coder and then open the IDE. See the links below.
+
+https://github.com/sharkymark/v2-templates/tree/main/pod-idea-icon
+https://github.com/sharkymark/v2-templates/tree/main/pod-idea
+
+</details>
+
+<details>
+    <summary>What options do I have for adding VS Code extensions into code-server, VS Code Desktop or Microsoft's Code Server</summary>
+<br/>
+
+Coder has an open-source project called `code-marketplace` which is a private VS Code extension marketplace. There is even integration with JFrog Artifactory.
+
+[Blog post](https://coder.com/blog/running-a-private-vs-code-extension-marketplace)
+[OSS project](https://github.com/coder/code-marketplace)
+
+[See my example template](https://github.com/sharkymark/v2-templates/blob/main/code-marketplace/main.tf#L229C1-L232C12) where in the agent resource I specify the URL and config environment variables which code-server picks up and points the developer to.
+
+image.png
+
+
+Another option is to use Microsoft's code-server - which is like Coder's, but legally it can connect to Microsoft's extension marketplace so Copilot and chat can be retrieved there. [See a sample template here](https://github.com/sharkymark/v2-templates/blob/main/vs-code-server/main.tf).
+
+Another option is to use VS Code Desktop (local) and that connects to Microsoft's marketplace.
+https://github.com/sharkymark/v2-templates/blob/main/vs-code-server/main.tf
+
+Again, these are example templates with no SLAs on them.  It's your responsibility to author your own templates.
+
+</details>
+
+
+<details>
     <summary>Can I?</summary>
 <br/>
 
