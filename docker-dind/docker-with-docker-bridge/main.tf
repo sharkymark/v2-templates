@@ -9,6 +9,10 @@ terraform {
   }
 }
 
+provider "docker" {
+  host = var.socket
+}
+
 variable "socket" {
   type        = string
   description = <<-EOF
@@ -20,14 +24,6 @@ variable "socket" {
 
   EOF
   default = "unix:///var/run/docker.sock"
-}
-
-provider "docker" {
-  host = var.socket
-}
-
-provider "coder" {
-
 }
 
 data "coder_workspace" "me" {}
@@ -75,9 +71,6 @@ resource "coder_agent" "coder" {
     timeout      = 1
   }
 
-  dir = "/home/coder"
-  env = { 
-    } 
 
   display_apps {
     vscode = true
@@ -85,29 +78,29 @@ resource "coder_agent" "coder" {
     ssh_helper = false
     port_forwarding_helper = true
     web_terminal = true
-  }    
+  }
 
-  startup_script_behavior = "blocking"
-  startup_script_timeout = 300    
+  startup_script_behavior = "non-blocking"
+  startup_script_timeout = 300 
+
+
+  dir = "/home/coder"
   startup_script = <<EOT
 #!/bin/sh
+
+# clone repo
+if [ ! -d "flask-redis-docker-compose" ]; then
+  git clone --progress https://github.com/sharkymark/flask-redis-docker-compose.git 
+fi
 
 # use coder CLI to clone and install dotfiles
 if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
-# install code-server
+# install and start code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
-
-# clone repo
-if [ ! -d "flask-redis-docker-compose" ]; then
-  git clone --progress https://github.com/sharkymark/flask-redis-docker-compose.git 
-fi 
-
-# start python web server
-python3 -m http.server > /dev/null 2>&1 &
 
   EOT  
 }
@@ -131,15 +124,18 @@ resource "coder_app" "code-server" {
 
 resource "docker_network" "private_network" {
   name = "network-${data.coder_workspace.me.id}"
+  driver = "bridge"
 }
 
-resource "docker_container" "dind" {
+resource "docker_container" "dind" {  
   count   = data.coder_workspace.me.start_count  
   image      = "docker:dind"
   privileged = true
-  network_mode = "host"
   name       = "dind-${data.coder_workspace.me.id}"
-  entrypoint = ["dockerd", "-H", "tcp://0.0.0.0:2375"] 
+  entrypoint = ["dockerd", "-H", "tcp://0.0.0.0:2375"]
+  networks_advanced {
+    name = docker_network.private_network.name
+  }
 }
 
 resource "docker_container" "workspace" {
@@ -147,16 +143,18 @@ resource "docker_container" "workspace" {
   image   = "codercom/enterprise-base:ubuntu"
   name    = "dev-${data.coder_workspace.me.id}"
   command = ["sh", "-c", coder_agent.coder.init_script]
-  network_mode = "host"
   env = [
     "CODER_AGENT_TOKEN=${coder_agent.coder.token}",
-    "DOCKER_HOST=localhost:2375"
+    "DOCKER_HOST=${docker_container.dind[0].name}:2375"
   ]
   volumes {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
     read_only      = false
   }    
+  networks_advanced {
+    name = docker_network.private_network.name
+  }
 }
 
 resource "docker_volume" "coder_volume" {
@@ -168,14 +166,18 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id
   item {
     key   = "Docker host name"
-    value = "localhost:2375"
-  }       
+    value = docker_container.dind[0].name
+  }     
+  item {
+    key   = "Docker network name"
+    value = docker_network.private_network.name
+  }   
   item {
     key   = "image"
     value = "docker.io/codercom/enterprise-base:ubuntu"
   }
   item {
     key   = "repo cloned"
-    value = "docker.io/coder/sharkymark/flask-redis-docker-compose.git"
+    value = "https://github.com/sharkymark/flask-redis-docker-compose.git"
   }     
 }

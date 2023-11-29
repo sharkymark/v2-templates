@@ -243,6 +243,11 @@ data "coder_parameter" "weather" {
     value = "Helsinki"
     icon = "/emojis/1f1eb-1f1ee.png"
   }      
+  option {
+    name = "Provo, Utah"
+    value = "Provo"
+    icon = "/emojis/1f3d4.png"
+  } 
 }
 
 data "coder_parameter" "dotfiles_url" {
