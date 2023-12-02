@@ -248,6 +248,8 @@ if [[ ${data.coder_parameter.repo.value} = "https://github.com/sharkymark/rust-h
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1 &
 fi
 
+coder login ${data.coder_workspace.me.access_url} --token ${data.coder_workspace.me.owner_session_token}
+
   EOT  
 }
 

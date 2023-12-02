@@ -51,12 +51,13 @@ variable "workspaces_namespace" {
 }
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 4
 }
 
 data "coder_parameter" "disk_size" {
@@ -71,6 +72,7 @@ data "coder_parameter" "disk_size" {
   }
   mutable     = true
   default     = 10
+  order       = 3
 }
 
 data "coder_parameter" "cpu" {
@@ -84,6 +86,7 @@ data "coder_parameter" "cpu" {
   }
   mutable     = true
   default     = 4
+  order       = 1
 }
 
 data "coder_parameter" "memory" {
@@ -97,6 +100,7 @@ data "coder_parameter" "memory" {
   }
   mutable     = true
   default     = 4
+  order       = 2
 }
 
 resource "coder_agent" "coder" {

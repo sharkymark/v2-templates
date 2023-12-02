@@ -18,6 +18,7 @@ tags: [cloud, kubernetes]
 1. Clone source code repo
 1. Download, install and start latest code-server (VS Code-in-a-browser)
 1. Download, install and start file-browser to show the contents of the `/home/coder` as a `coder_app` and web icon
+1. Add the Access URL and user's Coder session token in the workspace to use the Coder CLI
 
 ### Images/languages to choose from
 1. NodeJS
@@ -48,6 +49,13 @@ Managed terraform variables are set in coder templates create & coder templates 
 
 Alternatively, the managed  terraform variables can be specified in the template UI
 
+### Coder session token and Access URL injection
+
+Within the agent resource's `startup_script`:
+
+```hcl
+coder login ${data.coder_workspace.me.access_url} --token ${data.coder_workspace.me.owner_session_token}
+```
 ### Authentication
 
 This template will use ~/.kube/config or if the control plane's service account token to authenticate to a Kubernetes cluster
