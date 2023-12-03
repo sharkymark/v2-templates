@@ -190,6 +190,10 @@ resource "coder_agent" "dev" {
   startup_script = <<EOF
   #!/bin/sh  
 
+    # install lsof
+    sudo apt-get install -y lsof
+    kill $(lsof -i :3002 -t)
+
     # Configure and run JetBrains IDEs in a web browser
     # https://www.jetbrains.com/pycharm/download/other.html
     # Using JetBrains projector; please migrate to Gateway
