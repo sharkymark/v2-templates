@@ -9,6 +9,8 @@ terraform {
   }
 }
 
+# 2023-12-03 added amazon codewhisperer extension to go image and install to code-server in startup_script
+
 locals {
   folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
   repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "") 
@@ -332,6 +334,9 @@ fi
 # install github copilot and chat extensions from container image
 /tmp/code-server/bin/code-server --install-extension /coder/vsix/GitHub.copilot.vsix
 /tmp/code-server/bin/code-server --install-extension /coder/vsix/${data.coder_parameter.copilot-chat.value}
+
+# install aws toolkit for vs code (for amazon codewhisperer) from container image
+/tmp/code-server/bin/code-server --install-extension /coder/vsix/AmazonWebServices.aws-toolkit-vscode-2.1.0.vsix
 
 # install extension from external open-vsix marketplace
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension golang.Go >/dev/null 2>&1 &

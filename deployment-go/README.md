@@ -1,10 +1,10 @@
 ---
-name: Develop in a container in a Kubernetes deployment with GitHub Copilot 
-description: The goal is to enable code-server and a Kubernetes deployment with GitHub Copilot 
+name: Develop in a container in a Kubernetes deployment with GitHub Copilot and Amazon CodeWhisperer
+description: The goal is to enable code-server and a Kubernetes deployment with GitHub Copilot and Amazon CodeWhisperer 
 tags: [cloud, kubernetes]
 ---
 
-# with GitHub Copilot & code-server (VS Code) template for a workspace in a Kubernetes deployment
+# GitHub Copilot, and Amazon CodeWhisperer & code-server (VS Code) template for a workspace in a Kubernetes deployment
 
 ### Apps included
 1. A web-based terminal
@@ -25,6 +25,12 @@ tags: [cloud, kubernetes]
 [Copilot Chat VS Code extension](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat)
 
 This template lets the user choose a Copilot chat VS Code extension release
+
+### Amazon CodeWhisperer
+
+The [AWS Toolkit for VS Code extension](https://marketplace.visualstudio.com/items?itemName=AmazonWebServices.aws-toolkit-vscode) is required to run [Amazon CodeWhisperer](https://aws.amazon.com/codewhisperer/)
+
+You also need a free Build ID or your organization's AWS Start page
 
 #### Installation error
 
