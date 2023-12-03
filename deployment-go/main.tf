@@ -111,7 +111,7 @@ data "coder_parameter" "image" {
   icon        = "/icon/go.svg"
 
   option {
-    name = "Latest 1.21.4 with GitHub Copilot & Chat"
+    name = "Latest 1.21.4 with GitHub Copilot, Amazon CodeWhisperer"
     value = "marktmilligan/go:1.21.4"
     icon = "/icon/github.svg"
   }
