@@ -178,7 +178,7 @@ resource "coder_agent" "dev" {
     vscode = false
     vscode_insiders = false
     ssh_helper = false
-    port_forwarding_helper = false
+    port_forwarding_helper = true
     web_terminal = true
   }
 
@@ -192,7 +192,7 @@ resource "coder_agent" "dev" {
 
     # install lsof
     sudo apt-get install -y lsof
-    kill $(lsof -i :3002 -t)
+    kill $(lsof -i :3002 -t) >/tmp/pid.log 2>&1 &
 
     # Configure and run JetBrains IDEs in a web browser
     # https://www.jetbrains.com/pycharm/download/other.html
@@ -216,6 +216,9 @@ resource "coder_agent" "dev" {
         /opt/rubymine/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
     fi  
 
+    # install VS Code extension into code-server
+    SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension rebornix.Ruby
+
     # Ruby on Rails app - employee survey
     
     # bundle Ruby gems
@@ -235,7 +238,7 @@ resource "coder_script" "shutdown" {
   icon          = "/emojis/1f6d1.png"
   script        = <<EOF
   #!/bin/sh 
-    kill $(lsof -i :3002 -t)
+    kill $(lsof -i :3002 -t) >/tmp/pid.log 2>&1 &
   EOF
 }
 
