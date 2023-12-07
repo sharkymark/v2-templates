@@ -401,6 +401,37 @@ Again, these are example templates with no SLAs on them.  It's your responsibili
 
 </details>
 
+<details>
+    <summary>I want to run Docker for my workspaces but not install Docker Desktop</summary>
+<br/>
+
+[Colima](https://github.com/abiosoft/colima) is a Docker Desktop alternative. 
+
+My example is meant for a Macbook where a user wants to try out Coder and see how it works.
+
+1. Install colima and docker
+
+```sh
+brew install colima
+brew install docker
+```
+
+2. Start colima
+
+`colima start`
+
+If want to specify compute options
+
+`colima start --cpu 4 --memory 8`
+
+starting colima on a m3 macbook pro 
+
+`colima start --arch x86_64  --cpu 4 --memory 8 --disk 10`
+
+colima will show the path to the docker socket so I have a [Coder template](./docker-code-server/main.tf) that prompts the Coder admin to enter the docker socket as a Terraform variable.
+
+</details>
+
 
 <details>
     <summary>Can I?</summary>
