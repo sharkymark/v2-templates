@@ -16,7 +16,7 @@ locals {
   memory-request = "1" 
   home-volume = "10Gi"
   #repo = "iluwatar/java-design-patterns.git"
-  repo = "git@github.com:sharkymark/java_helloworld.git" 
+  repo = "https://github.com/sharkymark/java_helloworld.git" 
   repo-name = "java_helloworld" 
   repo-owner = "docker.io/codercom"
   image = "enterprise-java:ubuntu" 
@@ -126,7 +126,7 @@ resource "coder_agent" "coder" {
 
   env                     = {  }    
   startup_script = <<EOT
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -137,12 +137,14 @@ fi
 
 # clone java repo
 
-# clone repo
-if [ ! -d "${local.repo-name}" ]; then
-mkdir -p ~/.ssh
-ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
-git clone ${local.repo} >/dev/null 2>&1 &
-fi 
+# clone repo selected by user
+if [ ! -d "${local.repo-name}" ] 
+then
+  echo "Cloning git repo..."
+  git clone ${local.repo}
+else
+  echo "Repo ${local.repo-name} already exists. Will not reclone"
+fi
 
   EOT  
 }
