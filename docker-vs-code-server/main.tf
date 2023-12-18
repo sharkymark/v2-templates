@@ -17,13 +17,13 @@ locals {
 # dotfiles repo
 module "dotfiles" {
     source    = "https://registry.coder.com/modules/dotfiles"
-    agent_id  = coder_agent.c.id
+    agent_id  = coder_agent.dev.id
 }
 
 # microsoft visual studio code server (browser)
 module "vscode-web" {
     source         = "https://registry.coder.com/modules/vscode-web"
-    agent_id       = coder_agent.c.id
+    agent_id       = coder_agent.dev.id
     accept_license = true
     folder         = "/home/coder"
 }
@@ -31,7 +31,7 @@ module "vscode-web" {
 # clone a repo
 module "git-clone" {
     source   = "https://registry.coder.com/modules/git-clone"
-    agent_id = coder_agent.c.id
+    agent_id = coder_agent.dev.id
     url      = data.coder_parameter.repo.value
 }
 
@@ -67,19 +67,14 @@ data "coder_parameter" "image" {
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
 
   option {
-    name = "Node React"
+    name = "Node.JS"
     value = "codercom/enterprise-node:ubuntu"
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
-    name = "Golang"
+    name = "Go"
     value = "codercom/enterprise-golang:ubuntu"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
-  } 
-  option {
-    name = "Java"
-    value = "codercom/enterprise-java:ubuntu"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   } 
   option {
     name = "Base including Python"
@@ -110,75 +105,40 @@ data "coder_parameter" "repo" {
     name = "Coder code-server project"
     value = "https://github.com/coder/code-server"
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
-  }
-  option {
-    name = "Golang command line app"
-    value = "https://github.com/sharkymark/commissions"
-    icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
-  }
-  option {
-    name = "Java Hello, World! command line app"
-    value = "https://github.com/sharkymark/java_helloworld"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   }  
   option {
     name = "Python command line app"
     value = "https://github.com/sharkymark/python_commissions"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }
-  option {
-    name = "Shark's rust sample apps"
-    value = "https://github.com/sharkymark/rust-hw"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }     
+    icon = "/icon/python.svg"
+  }    
 }
 
 data "coder_parameter" "extension" {
   name        = "VS Code extension"
   type        = "string"
-  description = "Which VS Code extension do you want?"
+  description = "Which language's VS Code extensions do you want?"
   mutable     = true
-  default     = "eg2.vscode-npm-script"
+  default     = "node"
   icon        = "/icon/code.svg"
 
   option {
-    name = "npm"
-    value = "eg2.vscode-npm-script"
+    name = "Node.JS"
+    value = "node"
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
-    name = "Golang"
-    value = "golang.go"
+    name = "Go"
+    value = "go"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
-  } 
-  option {
-    name = "rust-lang"
-    value = "rust-lang.rust"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  } 
-  option {
-    name = "rust analyzer"
-    value = "matklad.rust-analyzer"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }
+  }  
   option {
     name = "Python"
-    value = "ms-python.python"
+    value = "python"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  } 
-  option {
-    name = "Jupyter"
-    value = "ms-toolsai.jupyter"
-    icon = "/icon/jupyter.svg"
-  } 
-  option {
-    name = "Java"
-    value = "redhat.java"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  }            
+  }             
 }
 
-resource "coder_agent" "c" {
+resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"
 
@@ -212,19 +172,40 @@ resource "coder_agent" "c" {
     timeout      = 1
   }
 
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = true
+    web_terminal = true
+  }
+
   startup_script_behavior = "blocking"
   startup_script_timeout = 300  
   startup_script  = <<EOT
 #!/bin/bash
 
-# if rust is the desired programming language, install
-if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
+# install VS Code extension into vs code server from microsoft's marketplace
+
+# ensure code-server is installed
+sleep 10
+
+if [[ ${data.coder_parameter.extension.value} = "python" ]]; then
+  /home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension ms-python.python --force
+  /home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension ms-python.vscode-pylance --force
+  /home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension ms-python.vscode-pylance octref.vetur --force
+elif [[ ${data.coder_parameter.extension.value} = "go" ]]; then
+  /home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension golang.go --force
+elif [[ ${data.coder_parameter.extension.value} = "node" ]]; then
+  /home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension christian-kohler.npm-intellisense --force
+  /home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension xabikos.JavaScriptSnippets --force
 fi
 
-# install VS Code extension into vs code server from microsoft's marketplace
-sleep 5
-/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension ${data.coder_parameter.extension.value} &
+# extensions for any language
+/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension dbaeumer.vscode-eslint --force
+/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension esbenp.prettier-vscode --force
+/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension aaron-bond.better-comments --force
+/home/coder/.vscode/cli/serve-web/*/bin/code-server --install-extension redhat.vscode-yaml --force
 
   EOT  
 }
@@ -245,12 +226,12 @@ resource "docker_container" "workspace" {
     "sh", "-c",
     <<EOT
     trap '[ $? -ne 0 ] && echo === Agent script exited with non-zero code. Sleeping infinitely to preserve logs... && sleep infinity' EXIT
-    ${replace(coder_agent.c.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}
+    ${replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}
     EOT
   ]
 
 
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.c.token}"]
+  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
