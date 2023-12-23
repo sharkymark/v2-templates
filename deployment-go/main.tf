@@ -14,6 +14,7 @@ terraform {
 locals {
   folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
   repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "") 
+
 }
 
 variable "use_kubeconfig" {
@@ -107,16 +108,22 @@ data "coder_parameter" "image" {
   type        = "string"
   description = "The Go container image"
   mutable     = true
-  default     = "marktmilligan/go:1.21.4"
+  default     = "marktmilligan/go:1.21.5"
   icon        = "/icon/go.svg"
 
   option {
-    name = "Latest 1.21.4 with GitHub Copilot, Amazon CodeWhisperer"
+    name = "Latest 1.21.5"
+    value = "marktmilligan/go:1.21.5"
+    icon = "/icon/github.svg"
+  }
+
+  option {
+    name = "1.21.4"
     value = "marktmilligan/go:1.21.4"
     icon = "/icon/github.svg"
   }
   option {
-    name = "1.21.0 with GitHub Copilot & Chat"
+    name = "1.21.0"
     value = "marktmilligan/go:1.21.0"
     icon = "/icon/github.svg"
   }
@@ -135,24 +142,29 @@ data "coder_parameter" "image" {
   order       = 4      
 }
 
-data "coder_parameter" "copilot-chat" {
-  name        = "CGitHub Copilot Chat extension release"
+data "coder_parameter" "genai" {
+  name        = "GenAI VS Code extension"
   type        = "string"
-  description = "Choose from the last known working chat extension or the recent one modified to support VS Code ^1.84.0"
+  description = "Choose a Generative AI VS Code Extension"
   mutable     = true
-  default     = "GitHub.copilot-chat.vsix"
+  default     = "copilot"
   icon        = "/icon/github.svg"
   order       = 5  
   option {
-    name = "0.11.2023112201 with tweaked package.json"
-    value = "GitHub.copilot-chat.vsix"
-    icon = "/emojis/1f525.png"
+    name = "GitHub Copilot"
+    value = "copilot"
+    icon = "/icon/github.svg"
   }
   option {
-    name = "0.10.2 with last known working release and code-server"
-    value = "GitHub.copilot-chat-0.10.2.vsix"
-    icon = "/emojis/1f9ba.png"
+    name = "AWS Code Whisperer"
+    value = "aws"
+    icon = "/icon/aws.png"
   }  
+  option {
+    name = "Tabnine"
+    value = "tabnine"
+    icon = "https://aeiljuispo.cloudimg.io/v7/https://cdn-uploads.huggingface.co/production/uploads/1667479339476-60e31139c1d1c861782ce7f3.png"
+  }   
 }
 
 data "coder_parameter" "repo" {
@@ -234,12 +246,7 @@ data "coder_parameter" "weather" {
     name = "Sydney, Australia"
     value = "Sydney"
     icon = "/emojis/1f1e6-1f1fa.png"
-  }  
-  option {
-    name = "Melbourne, Australia"
-    value = "Melbourne"
-    icon = "https://static.wikia.nocookie.net/logopedia/images/4/4b/Logo_Melbourne_%28Avant_2008%29.svg/revision/latest?cb=20181004122236"
-  }   
+  }     
   option {
     name = "Helsinki, Finland"
     value = "Helsinki"
@@ -306,6 +313,14 @@ resource "coder_agent" "coder" {
     timeout = 10
   }
     
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = false
+  }
+
   dir = "/home/coder"
   startup_script_behavior = "blocking"
   startup_script_timeout = 300  
@@ -331,12 +346,18 @@ else
   cd ${local.folder_name}
 fi
 
-# install github copilot and chat extensions from container image
-/tmp/code-server/bin/code-server --install-extension /coder/vsix/GitHub.copilot.vsix
-/tmp/code-server/bin/code-server --install-extension /coder/vsix/${data.coder_parameter.copilot-chat.value}
+# gopls language server
+go install -v golang.org/x/tools/gopls@latest
 
-# install aws toolkit for vs code (for amazon codewhisperer) from container image
-/tmp/code-server/bin/code-server --install-extension /coder/vsix/AmazonWebServices.aws-toolkit-vscode-2.1.0.vsix
+# install genai extensions from container image
+if [[ ${data.coder_parameter.genai.value == "copilot"} ]]; then
+  /tmp/code-server/bin/code-server --install-extension /coder/vsix/GitHub.copilot.vsix
+  /tmp/code-server/bin/code-server --install-extension /coder/vsix/GitHub.copilot-chat.vsix
+elif [[ ${data.coder_parameter.genai.value == "aws"} ]]; then
+  /tmp/code-server/bin/code-server --install-extension /coder/vsix/AmazonWebServices.aws-toolkit-vscode.vsix
+elif [[ ${data.coder_parameter.genai.value == "tabnine"} ]]; then
+  /tmp/code-server/bin/code-server --install-extension /coder/vsix/TabNine.tabnine-vscode.vsix
+fi
 
 # install extension from external open-vsix marketplace
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension golang.Go >/dev/null 2>&1 &
