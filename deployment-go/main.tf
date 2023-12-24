@@ -114,18 +114,14 @@ data "coder_parameter" "image" {
   option {
     name = "Latest 1.21.5"
     value = "marktmilligan/go:1.21.5"
-    icon = "/icon/github.svg"
   }
-
   option {
     name = "1.21.4"
     value = "marktmilligan/go:1.21.4"
-    icon = "/icon/github.svg"
   }
   option {
     name = "1.21.0"
     value = "marktmilligan/go:1.21.0"
-    icon = "/icon/github.svg"
   }
   option {
     name = "1.20.4"
@@ -257,6 +253,11 @@ data "coder_parameter" "weather" {
     value = "Provo"
     icon = "/emojis/1f3d4.png"
   } 
+  option {
+    name = "Munich, Germany"
+    value = "munich"
+    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/1200px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png"
+  }   
 }
 
 data "coder_parameter" "dotfiles_url" {

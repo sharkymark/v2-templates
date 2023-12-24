@@ -1,10 +1,10 @@
 ---
-name: Develop in a container in a Kubernetes deployment with GitHub Copilot and Amazon CodeWhisperer
-description: The goal is to enable code-server and a Kubernetes deployment with GitHub Copilot and Amazon CodeWhisperer 
+name: Develop in a container in a Kubernetes deployment with GenAI extensions
+description: The goal is to enable code-server and a Kubernetes deployment with GenAI extensions
 tags: [cloud, kubernetes]
 ---
 
-# GitHub Copilot, and Amazon CodeWhisperer & code-server (VS Code) template for a workspace in a Kubernetes deployment
+# GenAI extensions like Copilot & code-server (VS Code) template for a workspace in a Kubernetes deployment
 
 ### Apps included
 1. A web-based terminal
@@ -32,7 +32,11 @@ The [AWS Toolkit for VS Code extension](https://marketplace.visualstudio.com/ite
 
 You also need a free Build ID or your organization's AWS Start page
 
-#### Installation error
+### Tabnine
+
+[Tabnine VS Code extension](https://marketplace.visualstudio.com/items?itemName=TabNine.tabnine-vscode)
+
+### Known Copilot Installation error
 
 In the latest releases of Copilot chat, the extension throw an error when installing it in `code-server`:
 
@@ -72,14 +76,6 @@ zip -r GitHub.copilot-chat.vsix .
 ```sh
 code-server --install-extension /coder/vsix/GitHub.copilot-chat.vsix
 ```
-
-### Images/languages to choose from
-1. NodeJS
-1. Golang
-1. Java
-1. Base (for Rust and Python)
-
-> Note that Rust is installed during the startup script for `~/` configuration
 
 ### IDE use
 1. While the purpose of this template is to show `code-server` and VS Code in a browser, you can also use the `VS Code Desktop` to download Coder's VS Code extension and the Coder CLI to remotely connect to your Coder workspace from your local installation of VS Code.

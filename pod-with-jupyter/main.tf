@@ -152,7 +152,7 @@ resource "coder_agent" "coder" {
     vscode_insiders = false
     ssh_helper = false
     port_forwarding_helper = false
-    web_terminal = true
+    web_terminal = false
   }
 
   dir = "/home/coder"
