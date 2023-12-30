@@ -9,26 +9,30 @@ terraform {
   }
 }
 
+  # 2023-12-30 switch from deprecated coder java image to custom image
+  #   1. with jdk 11 and build tools maven 3.9.6, gradle 8.5
+  #   2. ide, build number change - former values: ideaIU-2023.2.5 | 232.10203.10
+  #   3. Added coder_parameter to adjust disk size; jetbrains ides can fill up space
+  # 2023-11-23 ide, build number change - former values: ideaIU-2023.2 | 232.9921.47
+
 locals {
   cpu-limit = "4"
   memory-limit = "8G"
   cpu-request = "500m"
   memory-request = "1" 
-  home-volume = "10Gi"
+  home-volume = "30Gi"
   #repo = "iluwatar/java-design-patterns.git"
   repo = "https://github.com/sharkymark/java_helloworld.git" 
   repo-name = "java_helloworld" 
-  repo-owner = "docker.io/codercom"
-  image = "enterprise-java:ubuntu" 
-
-  # 2023-11-23 ide, build number change - former values: ideaIU-2023.2 | 232.9921.47
+  repo-owner = "docker.io/marktmilligan"
+  image = "java:jdk-11" 
 
   # jetbrains product codes https://plugins.jetbrains.com/docs/marketplace/product-codes.html
   ide_product_code = "IU"
   # jetbrains builds https://www.jetbrains.com/idea/download/other.html   
-  ide_build_number = "232.10203.10"   
+  ide_build_number = "233.13135.103"   
   # IDE release downloads https://data.services.jetbrains.com/products/releases?code=IU
-  ide = "ideaIU-2023.2.5"
+  ide = "ideaIU-2023.3.2"
   ide_download_link = "https://download.jetbrains.com/idea/${local.ide}.tar.gz"  
 } 
 
@@ -65,14 +69,29 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
+data "coder_parameter" "disk_size" {
+  name        = "PVC storage size"
+  type        = "number"
+  description = "Number of GB of storage for /home/coder and this will persist even when the workspace's Kubernetes pod and container are shutdown and deleted"
+  icon        = "/emojis/1f4be.png"
+  validation {
+    min       = 10
+    max       = 100
+    monotonic = "increasing"
+  }
+  mutable     = true
+  default     = 30
+  order       = 1  
+}
+
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL (optional)"
   description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 1
+  icon        = "/icon/dotfiles.svg"
+  order       = 2
 }
 
 data "coder_provisioner" "me" {

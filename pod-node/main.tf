@@ -12,7 +12,7 @@ terraform {
 locals {
   cpu-request = "500m"
   memory-request = "500m" 
-  image = "codercom/enterprise-node:ubuntu"
+  image = "marktmilligan/node:20.10.0"
   folder_name = try(element(split("/", data.coder_parameter.git_repo_url.value), length(split("/", data.coder_parameter.git_repo_url.value)) - 1), "")  
 }
 
@@ -54,20 +54,6 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
-data "coder_parameter" "disk_size" {
-  name        = "PVC (your $HOME directory) storage size"
-  type        = "number"
-  description = "Number of GB of storage"
-  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
-  validation {
-    min       = 1
-    max       = 50
-    monotonic = "increasing"
-  }
-  mutable     = true
-  default     = 10
-}
-
 data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
@@ -78,7 +64,8 @@ data "coder_parameter" "cpu" {
     max       = 4
   }
   mutable     = true
-  default     = 2
+  default     = 4
+  order       = 1
 }
 
 data "coder_parameter" "memory" {
@@ -92,29 +79,45 @@ data "coder_parameter" "memory" {
   }
   mutable     = true
   default     = 4
+  order       = 2
+}
+
+data "coder_parameter" "disk_size" {
+  name        = "PVC (your $HOME directory) storage size"
+  type        = "number"
+  description = "Number of GB of storage"
+  icon        = "https://www.pngall.com/wp-content/uploads/5/Database-Storage-PNG-Clipart.png"
+  validation {
+    min       = 1
+    max       = 50
+    monotonic = "increasing"
+  }
+  mutable     = true
+  default     = 10
+  order       = 3
 }
 
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 2
+  order       = 4
 }
 
 data "coder_parameter" "git_repo_url" {
   name        = "Git Repo URL"
-  description = "The `https` URL to your git repo - using your GitHub OAuth token"
+  description = "The `https` URL to your git repo - using your GitHub OAuth token e.g., https://github.com/sharkymark/coder-react"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 1  
+  order       = 5  
 }
 
-data "coder_git_auth" "github" {
+data "coder_external_auth" "github" {
   # Matches the ID of the git auth provider in Coder.
   id = "primary-github"
 }
@@ -153,24 +156,32 @@ resource "coder_agent" "coder" {
   }
 
 
-  dir                     = "/home/coder"
+  dir = "/home/coder"
 
   env = {
-    GITHUB_TOKEN : data.coder_git_auth.github.access_token
+    GITHUB_TOKEN : data.coder_external_auth.github.access_token
+  }
+
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = true
+    web_terminal = true
   }
 
   startup_script_behavior = "blocking"
   startup_script_timeout = 200
 
   startup_script = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 # install and start the latest code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
 # use coder CLI to clone and install dotfiles
-if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 

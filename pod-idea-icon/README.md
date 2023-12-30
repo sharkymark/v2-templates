@@ -4,15 +4,38 @@ description: The goal is to enable a dashboard icon to an IntelliJ IDEA Ultimate
 tags: [cloud, kubernetes]
 ---
 
-# IntelliJ IDEA Ultimate & JetBrains Gateway template for a workspace in a Kubernetes pod - from a dashboard icon
+# Launch an IntelliJ IDEA Ultimate IDE from a dashboard icon
 
-### Special Use Case
-1. The templates [establish costs](https://coder.com/docs/v2/latest/admin/quotas#establishing-costs)for compute resources of a workspace. A group [esablish budgets](https://coder.com/docs/v2/latest/admin/quotas#establishing-budgets) to restrict how many compute resources a developer can use.
+IntelliJ is launched from a locally-installed JetBrains Gateway client connected to a Coder Cloud Development Environment operating as Kubernetes-managed container with a mounted persistent disk to store personal settings and cloned code repositories. 
+
+### Cloud Cost Control Use Case
+1. The templates [establish costs](https://coder.com/docs/v2/latest/admin/quotas#establishing-costs) for compute resources of a workspace. e.g., Kubernetes pod = `20` points and a persistent disk = `10` points. 
+2. A group [establishes a budget](https://coder.com/docs/v2/latest/admin/quotas#establishing-budgets) to restrict how many compute resources a developer can use. e.g., `60` points which would allow 2 running workspaces. If the user attempts to create a 3rd, the build will fail and the user notified.
+3. This is an Enterprise feature that requires a paid license [Contact Sales](https://coder.com/contact) for more information.
+
+### User inputs
+
+1. The size of the persistent disk `/home/coder` - default 30GB. Range 10-100GB. The disk size cannot be reduced.
 
 ### Apps included
 1. A web-based terminal
 1. JetBrains IDE launched from a dashboard icon (accessible with SSH and JetBrains Gateway)
 
+### IntelliJ IDEA version
+
+Last updated at: 2023-12-30
+
+ide_product_code = `IU` 
+ide_build_number = `233.13135.65`   
+ide = `ideaIU-2023.3.2`
+
+#### Reference
+
+[jetbrains product codes](https://plugins.jetbrains.com/docs/marketplace/product-codes.html)
+
+[ide build numbers](https://www.jetbrains.com/idea/download/other.html)
+
+[ide release downloads](https://data.services.jetbrains.com/products/releases?code=IU)
 
 ### Launching JetBrains Gateway and IntelliJ from a workspace dashboard icon
 
@@ -35,9 +58,16 @@ resource "coder_app" "gateway" {
 
 
 ### JetBrains IDE images to choose from
-1. [IntelliJ IDEA Ultimate](https://www.jetbrains.com/idea/download/)
-1. [codercom/enterprise-java:ubuntu Dockerfile](https://github.com/coder/enterprise-images/tree/main/images/java)
-1. [codercom/enterprise-java:ubuntu container image](https://hub.docker.com/r/codercom/enterprise-java/tags)
+
+Last updated at: 2023-12-30
+
+Switched from Coder deprecated image to custom image
+
+[IntelliJ IDEA Ultimate](https://www.jetbrains.com/idea/download/)
+
+[marktmilligan/java:jdk-11 Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/java/Dockerfile)
+
+[marktmilligan/java container image](https://hub.docker.com/repository/docker/marktmilligan/java/tags)
 
 ### Additional bash scripting
 1. Prompt user and clone/install a dotfiles repository (for personalization settings)
@@ -55,7 +85,7 @@ Be sure to enter a valid workspaces_namespace at workspace creation to point to 
 ### Resources
 [JetBrains Gateway](https://www.jetbrains.com/remote-development/gateway/)
 
-[Code Gateway docs](https://coder.com/docs/v2/latest/ides/gateway)
+[Coder Gateway docs](https://coder.com/docs/v2/latest/ides/gateway)
 
 [Gateway docs](https://www.jetbrains.com/help/idea/remote-development-a.html#gateway)
 
@@ -68,7 +98,3 @@ Be sure to enter a valid workspaces_namespace at workspace creation to point to 
 [JetBrains IDE versions and builds](https://www.jetbrains.com/idea/download/other.html)
 
 [JetBrains IDE download links](https://data.services.jetbrains.com/products/releases?code=IU)
-
-[codercom/enterprise-java:ubuntu container image](https://hub.docker.com/r/codercom/enterprise-java/tags)
-
-[codercom/enterprise-java:ubuntu Dockerfile](https://github.com/coder/enterprise-images/tree/main/images/java)

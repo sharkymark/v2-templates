@@ -1,19 +1,32 @@
 ---
-name: Open in Coder button
-description: The goal is to show an Open in Coder button works in your repo to build a Coder Kubernetes workspace
+name: Node.js container and Open in Coder button
+description: The goal is to show an Open in Coder button works in your repo to build a Kubernetes-managed container
 tags: [kubernetes]
 ---
 
-# Build a Kubernetes container workspace with an Open in Coder button
+# Build a Kubernetes-managed Node.js container with an Open in Coder button
 
 ### Apps included
 
 1. A web-based terminal
-1. code-server IDE (VS Code Web)
+1. code-server IDE (VS Code in a browser)
+1. VS Code Desktop icon
 
 ### Additional bash scripting
 
 1. `git clone` the repo where Open in Coder button is clicked
+
+### Node.JS version
+
+Last updated at: 2023-12-30
+
+Node.js `20.10.0`
+npm `10.2.3`
+yarn `1.22.19`
+
+[Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/node/nodesource-method/Dockerfile)
+[Container image](https://hub.docker.com/repository/docker/marktmilligan/node/tags)
+
 
 ### GitHub OAuth Admin Setup
 
@@ -23,26 +36,26 @@ tags: [kubernetes]
 
 ```sh
 # enable OAuth git authentication for git actions
-    - name: CODER_GITAUTH_0_ID
+    - name: CODER_EXTERNAL_AUTH_0_ID
       value: "primary-github"
 
-    - name: CODER_GITAUTH_0_TYPE
+    - name: CODER_EXTERNAL_AUTH_0_TYPE
       value: "github"
 
-    - name: CODER_GITAUTH_0_CLIENT_ID
+    - name: CODER_EXTERNAL_AUTH_0_CLIENT_ID
       value: "ed21c3********3bec7f"
 
-    - name: CODER_GITAUTH_0_CLIENT_SECRET
+    - name: CODER_EXTERNAL_AUTH_0_CLIENT_SECRET
       value: "299417626a5d48*******ba6dea0868c356e"
 ```
 
 3. `systemd` example
 
 ```sh
-CODER_GITAUTH_0_ID="primary-github"
-CODER_GITAUTH_0_TYPE=github
-CODER_GITAUTH_0_CLIENT_ID=b9684*********a7d03
-CODER_GITAUTH_0_CLIENT_SECRET=4b00110dda08f8************c0385df092faec6b4
+CODER_EXTERNAL_AUTH_0_ID="primary-github"
+CODER_EXTERNAL_AUTH_0_TYPE=github
+CODER_EXTERNAL_AUTH_0_CLIENT_ID=b9684*********a7d03
+CODER_EXTERNAL_AUTH_0_CLIENT_SECRET=4b00110dda08f8************c0385df092faec6b4
 ```
 
 ### GitHub OAuth Template Sections
@@ -54,7 +67,7 @@ data "coder_parameter" "git_repo_url" {
   name        = "Git report URL"
   description = "The `https` URL to your git repo - using your GitHub OAuth token"
   type        = "string"
-  default     = "https://github.com/sharkymark/coder-react.git"
+  default     = "https://github.com/sharkymark/coder-react"
   mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
 }
@@ -65,7 +78,7 @@ data "coder_parameter" "git_repo_url" {
 > `id` was configured in the Coder Admin setup
 
 ```hcl
-data "coder_git_auth" "github" {
+data "coder_external_auth" "github" {
   # Matches the ID of the git auth provider in Coder.
   id = "primary-github"
 }
@@ -77,11 +90,11 @@ data "coder_git_auth" "github" {
 resource "coder_agent" "dev" {...
 
   env = {
-    GITHUB_TOKEN : data.coder_git_auth.github.access_token
+    GITHUB_TOKEN : data.coder_external_auth.github.access_token
   }
 
   startup_script  = <<EOT
-#!/bin/bash
+#!/bin/sh
 
 # clone repo
 if test -z "${data.coder_parameter.git_repo_url.value}" 
@@ -111,7 +124,7 @@ Create markdown with your Coder Access URL (your deployment) and any parameters 
 
 [Coder docs on Open in Coder](https://coder.com/docs/v2/latest/templates/open-in-coder)
 
-[Coder docs to configure Git Auth](https://coder.com/docs/v2/latest/admin/git-providers)
+[Coder docs to configure Git Auth](https://coder.com/docs/v2/latest/admin/external-auth)
 
 [GitHub docs for creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
 
