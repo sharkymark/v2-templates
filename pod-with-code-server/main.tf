@@ -101,12 +101,12 @@ data "coder_parameter" "image" {
   type        = "string"
   description = "What container image and language do you want?"
   mutable     = true
-  default     = "codercom/enterprise-node:ubuntu"
+  default     = "marktmilligan/node:20.10.0"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
 
   option {
     name = "Node React"
-    value = "codercom/enterprise-node:ubuntu"
+    value = "marktmilligan/node:20.10.0"
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
