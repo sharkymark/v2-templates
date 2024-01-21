@@ -32,24 +32,63 @@ provider "docker" {
 }
 
 provider "coder" {
-  feature_use_managed_variables = "true"
+
 }
 
 data "coder_workspace" "me" {
 }
 
 data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL"
-  description = "Personalize your workspace"
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 1
 }
 
 resource "coder_agent" "dev" {
   os                      = "linux"
   arch                    = "amd64"
+
+
+  metadata {
+    display_name = "CPU Usage"
+    key          = "0_cpu_usage"
+    script       = "coder stat cpu"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "RAM Usage"
+    key          = "1_ram_usage"
+    script       = "coder stat mem"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = false
+    port_forwarding_helper = false
+    web_terminal = true
+  }
+
+  startup_script_behavior = "non-blocking"
+  startup_script_timeout = 300 
+
+
   dir                     = "/home/${local.user}"
   startup_script = <<EOT
 
