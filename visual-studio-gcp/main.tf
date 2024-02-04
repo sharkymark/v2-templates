@@ -146,7 +146,7 @@ resource "google_compute_disk" "root" {
   #image = "projects/windows-cloud/global/images/windows-server-2022-dc-v20221109"  
   #image = "projects/windows-cloud/global/images/windows-server-2019-dc-v20221014"
   lifecycle {
-    ignore_changes = [image]
+    ignore_changes = [name,image]
   }
 }
 
