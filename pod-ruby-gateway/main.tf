@@ -122,6 +122,10 @@ module "code-server" {
     source    = "https://registry.coder.com/modules/code-server"
     agent_id  = coder_agent.dev.id
     folder    = "/home/coder"
+    install_version  = "4.20.1"
+    extensions = [
+      "rebornix.Ruby"
+    ]    
 }
 
 # clone a repo
@@ -158,6 +162,7 @@ module "jetbrains_gateway" {
 resource "coder_agent" "dev" {
   os             = "linux"
   arch           = "amd64"
+  connection_timeout = 300  
 
   # The following metadata blocks are optional. They are used to display
   # information about your workspace in the dashboard. You can remove them
@@ -199,26 +204,24 @@ resource "coder_agent" "dev" {
   dir = "/home/coder"
   env = { 
     }
-  startup_script_behavior = "blocking"
-  startup_script_timeout = 300   
+  startup_script_behavior = "blocking" 
   startup_script = <<EOF
   #!/bin/sh  
 
     # install lsof
-    sudo apt-get install -y lsof
-    kill $(lsof -i :3002 -t) >/tmp/pid.log 2>&1 &
+    sudo apt-get update
+    sudo apt-get install -y lsof &
+
+    # adding iproute2 so soysoys' UUID ruby gem command works
+    sudo apt install -y iproute2 &
 
     # symlink to jetbrains rubymine
     if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_rubymine" ]; then
         /opt/rubymine/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
     fi  
 
-    # install VS Code extension into code-server
-    SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension rebornix.Ruby
-
-    # Ruby on Rails app - employee survey
+    # bookmarking and employee survey apps
     
-    # bundle Ruby gems
     # bundle Ruby gems
     cd ~/soysoys
     bundle config set --local path './bundled-gems'

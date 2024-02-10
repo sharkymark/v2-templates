@@ -122,6 +122,9 @@ module "code-server" {
     source    = "https://registry.coder.com/modules/code-server"
     agent_id  = coder_agent.dev.id
     folder    = "/home/coder"
+    extensions = [
+      "rebornix.Ruby"
+    ]
 }
 
 # clone a repo
@@ -215,9 +218,6 @@ resource "coder_agent" "dev" {
     if [ ! -L "$HOME/.cache/JetBrains/RemoteDev/userProvidedDist/_opt_rubymine" ]; then
         /opt/rubymine/bin/remote-dev-server.sh registerBackendLocationForGateway >/dev/null 2>&1 &
     fi  
-
-    # install VS Code extension into code-server
-    SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension rebornix.Ruby
 
     # Ruby on Rails app - employee survey
     
