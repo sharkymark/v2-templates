@@ -152,7 +152,7 @@ resource "coder_agent" "coder" {
     vscode_insiders = false
     ssh_helper = false
     port_forwarding_helper = false
-    web_terminal = false
+    web_terminal = true
   }
 
   dir = "/home/coder"
@@ -177,9 +177,9 @@ if [ ! -d "pandas_automl" ]; then
   git clone --progress https://github.com/sharkymark/pandas_automl.git &
 fi
 
-# install and code-server, VS Code in a browser 
+# install and start the latest code-server
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 &
+code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
 # install VS Code extensions into code-server
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 

@@ -193,6 +193,8 @@ resource "coder_agent" "main" {
     port_forwarding_helper  = false
   }
  
+  connection_timeout = 600
+
   startup_script = <<EOF
 
 # Set admin password and enable admin user (must be in this order)
