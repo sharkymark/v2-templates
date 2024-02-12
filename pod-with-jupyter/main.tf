@@ -117,6 +117,8 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "coder" {
   os   = "linux"
   arch = "amd64"
+  connection_timeout = 300   
+  troubleshooting_url = true
 
 # The following metadata blocks are optional. They are used to display
   # information about your workspace in the dashboard. You can remove them
@@ -159,8 +161,7 @@ resource "coder_agent" "coder" {
   env = { 
 
     }
-  startup_script_behavior = "blocking"
-  startup_script_timeout = 300  
+  startup_script_behavior = "blocking" 
   startup_script = <<EOF
 #!/bin/sh
 
