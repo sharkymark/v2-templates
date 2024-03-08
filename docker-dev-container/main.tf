@@ -144,7 +144,7 @@ resource "coder_agent" "main" {
   }
 
   startup_script_behavior = "blocking"
-  startup_script_timeout = 600  
+  connection_timeout = 600  
   startup_script  = <<EOT
 #!/bin/bash
 
