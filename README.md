@@ -1,5 +1,7 @@
 # Coder v2 OSS and v2 Enterprise help
 
+> This repo is no longer actively supported. Use [template examples in the OSS repo](https://github.com/coder/coder/tree/main/examples/templates) and the [registry](https://registry.coder.com)
+
 This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Enterprise (paid). If you're looking for an v2 enterprise trial key, fill out this [form](https://coder.com/trial) for a 30-day trial  or you can sign up when creating your admin user after deploying Coder.
 
 > These templates are examples and are not supported. They are meant to show how Coder templates work and there is no service level agreement or support on them.
