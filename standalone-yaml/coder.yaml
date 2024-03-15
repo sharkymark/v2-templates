@@ -1,4 +1,4 @@
-experiments: ["*"]
+experiments: ["shared-ports"]
 enableSwagger: true
 introspection:
   logging:
@@ -22,6 +22,7 @@ networking:
   #  a peer to peer connection, Coder uses a distributed relay network backed by
   #  Tailscale and WireGuard.
   derp:
+    blockDirect: true
     # Path to read a DERP mapping from. See:
     # https://tailscale.com/kb/1118/custom-derp-servers/.
     # (default: <unset>, type: string)
