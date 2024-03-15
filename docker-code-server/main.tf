@@ -54,7 +54,7 @@ data "coder_parameter" "image" {
   }
   option {
     name = "Golang"
-    value = "codercom/enterprise-golang:ubuntu"
+    value = "marktmilligan/go:1.22.1"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
   } 
   option {
