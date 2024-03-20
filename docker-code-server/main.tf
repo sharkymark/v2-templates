@@ -219,22 +219,17 @@ resource "coder_agent" "dev" {
   startup_script  = <<EOT
 #!/bin/bash
 
-# install and start coder technologies' code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 &
+# install and code-server, VS Code in a browser 
+curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+/tmp/code-server/bin/code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
-# if rust is the desired programming languge, install
-if [[ ${data.coder_parameter.repo.value} = "sharkymark/rust-hw.git" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &
-fi
-
 # install VS Code extension into coder technologies' code-server from openvsx's marketplace
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
+SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
 
 # clone repo
 
@@ -262,7 +257,7 @@ resource "coder_app" "coder-code-server" {
   agent_id = coder_agent.dev.id
   slug          = "coder"  
   display_name  = "code-server"
-  url      = "http://localhost:13337/?folder=/home/coder"
+  url      = "http://localhost:13337"
   icon     = "/icon/code.svg"
   subdomain = false
   share     = "owner"

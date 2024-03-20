@@ -17,16 +17,14 @@ locals {
   # https://github.com/coder/envbuilder/tags  
 }
 
-# dotfiles repo
-module "dotfiles" {
-    source    = "https://registry.coder.com/modules/dotfiles"
-    agent_id  = coder_agent.main.id
-}
-
-module "code-server" {
-    source = "https://registry.coder.com/modules/code-server"
-    agent_id = coder_agent.main.id
-    folder = "/workspaces"
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 7
 }
 
 data "coder_parameter" "repo" {
@@ -148,7 +146,33 @@ resource "coder_agent" "main" {
   startup_script  = <<EOT
 #!/bin/bash
 
+  # install and code-server, VS Code in a browser 
+  curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+  /tmp/code-server/bin/code-server --auth none --port 13337 >/dev/null 2>&1 &
+
+  # use coder CLI to clone and install dotfiles
+  if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
+    coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+  fi
+
   EOT  
+}
+
+# code-server
+resource "coder_app" "code-server" {
+  agent_id      = coder_agent.main.id
+  slug          = "code-server"  
+  display_name  = "code-server"
+  icon          = "/icon/code.svg"
+  url           = "http://localhost:13337"
+  subdomain = false
+  share     = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 3
+    threshold = 10
+  }  
 }
 
 resource "docker_container" "workspace" {
