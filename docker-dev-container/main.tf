@@ -203,9 +203,23 @@ resource "docker_container" "workspace" {
     read_only      = false
   }
 
+  volumes {
+    container_path = "/root"
+    volume_name    = docker_volume.root.name
+    read_only      = false
+  }  
+
 }
 
 resource "docker_volume" "workspaces" {
+  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+  # Protect the volume from being deleted due to changes in attributes.
+  lifecycle {
+    ignore_changes = all
+  }  
+}
+
+resource "docker_volume" "root" {
   name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
   # Protect the volume from being deleted due to changes in attributes.
   lifecycle {
