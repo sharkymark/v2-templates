@@ -81,7 +81,7 @@ resource "coder_agent" "coder" {
   }
 
   startup_script_behavior = "non-blocking"
-  startup_script_timeout = 300 
+  connection_timeout = 300 
 
 
   dir = "/home/coder"
@@ -144,7 +144,7 @@ resource "docker_container" "workspace" {
   command = ["sh", "-c", coder_agent.coder.init_script]
   env = [
     "CODER_AGENT_TOKEN=${coder_agent.coder.token}",
-    "DOCKER_HOST=${docker_container.dind[0].name}:2375"
+    "DOCKER_HOST=${docker_container.dind[0].name}:2375"    
   ]
   volumes {
     container_path = "/home/coder/"
@@ -162,15 +162,7 @@ resource "docker_volume" "coder_volume" {
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = docker_container.workspace[0].id
-  item {
-    key   = "Docker host name"
-    value = docker_container.dind[0].name
-  }     
-  item {
-    key   = "Docker network name"
-    value = docker_network.private_network.name
-  }   
+  resource_id = docker_container.workspace[0].id   
   item {
     key   = "image"
     value = "docker.io/codercom/enterprise-base:ubuntu"
