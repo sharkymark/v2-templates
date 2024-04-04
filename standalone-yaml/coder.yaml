@@ -22,7 +22,7 @@ networking:
   #  a peer to peer connection, Coder uses a distributed relay network backed by
   #  Tailscale and WireGuard.
   derp:
-    blockDirect: true
+    blockDirect: false
     # Path to read a DERP mapping from. See:
     # https://tailscale.com/kb/1118/custom-derp-servers/.
     # (default: <unset>, type: string)
@@ -50,8 +50,8 @@ networking:
     # Addresses for STUN servers to establish P2P connections. Use special value
     # 'disable' to turn off STUN.
     # (default: stun.l.google.com:19302, type: string-array)
-    stunAddresses:
-      - disable
+#    stunAddresses:
+#      - disable
   http:
     # Disable password authentication. This is recommended for security purposes in
     # production deployments that rely on an identity provider. Any user with the

@@ -20,6 +20,14 @@ Download it here
 curl -fsSL https://coder.com/install.sh | sh
 ```
 
+To specify a version and dry run before actually installing
+
+```sh
+ curl -L https://coder.com/install.sh | sh -s -- --dry-run --version 2.10.0
+```
+
+Using fsS along with L, causes `curl` to fail silently on server errors, preventing showing the progress meter, and still show an error if it fails.
+
 If you're on macOS and not a fan of `brew` like me, make sure you run this command instead:
 
 ```sh
