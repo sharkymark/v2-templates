@@ -97,6 +97,8 @@ provider "docker" {
 provider "coder" {
 }
 
+data "coder_workspace_owner" "me" {
+}
 
 resource "coder_agent" "main" {
   arch           = "amd64"
@@ -181,7 +183,7 @@ resource "docker_container" "workspace" {
   # https://github.com/coder/envbuilder/tags
   image = local.image
   # Uses lower() to avoid Docker restriction on container names.
-  name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+  name = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   # Hostname makes the shell more user friendly: coder@my-workspace:~$
   hostname = data.coder_workspace.me.name
 
@@ -212,7 +214,7 @@ resource "docker_container" "workspace" {
 }
 
 resource "docker_volume" "workspaces" {
-  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+  name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
   # Protect the volume from being deleted due to changes in attributes.
   lifecycle {
     ignore_changes = all
@@ -220,7 +222,7 @@ resource "docker_volume" "workspaces" {
 }
 
 resource "docker_volume" "root" {
-  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+  name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
   # Protect the volume from being deleted due to changes in attributes.
   lifecycle {
     ignore_changes = all

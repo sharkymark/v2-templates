@@ -19,6 +19,9 @@ locals {
 data "coder_workspace" "me" {
 }
 
+data "coder_workspace_owner" "me" {
+}
+
 variable "socket" {
   type        = string
   description = <<-EOF
@@ -273,7 +276,7 @@ resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
   image = "${data.coder_parameter.image.value}"
   # Uses lower() to avoid Docker restriction on container names.
-  name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+  name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"] 
 
@@ -303,7 +306,7 @@ resource "docker_container" "workspace" {
 }
 
 resource "docker_volume" "coder_volume" {
-  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+  name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
 }
 
 resource "coder_metadata" "workspace_info" {
