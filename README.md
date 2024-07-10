@@ -1,12 +1,10 @@
 # Coder v2 OSS and v2 Enterprise help
 
-> This repo is no longer actively supported. Use [template examples in the OSS repo](https://github.com/coder/coder/tree/main/examples/templates) and the [registry](https://registry.coder.com)
-
 This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Enterprise (paid). If you're looking for an v2 enterprise trial key, fill out this [form](https://coder.com/trial) for a 30-day trial  or you can sign up when creating your admin user after deploying Coder.
 
-> These templates are examples and are not supported. They are meant to show how Coder templates work and there is no service level agreement or support on them.
+Here is a new repo [coder-hw](https://github.com/sharkymark/coder-hw) as of 2024-07-04 with a Python-based CLI using the Coder API.
 
-> *2023-02-03* Any templates in the deprecated directory either do not work or may not work. e.g., [JetBrains no longer supports `projector`](https://lp.jetbrains.com/projector/) their project to run IDEs in a browser. Many of the deprecated templates use `projector` and should be ignored. JetBrains users should use [JetBrains Gateway]() and [our docs explain this in more depth](https://coder.com/docs/v2/latest/ides/gateway).
+> This repo is not actively supported since I left Coder in 2024-04-01. Use [template examples in the OSS repo](https://github.com/coder/coder/tree/main/examples/templates) and the [registry](https://registry.coder.com)
 
 The [official v2 docs](https://github.com/coder/coder/tree/main/docs) and [template examples](https://github.com/coder/coder/tree/main/examples/templates) are great resources too. Also my colleague [bpmct](https://github.com/bpmct/coder-templates) authors some amazing templates too.
 
