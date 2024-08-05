@@ -30,9 +30,9 @@ locals {
   # jetbrains product codes https://plugins.jetbrains.com/docs/marketplace/product-codes.html
   ide_product_code = "IU"
   # jetbrains builds https://www.jetbrains.com/idea/download/other.html   
-  ide_build_number = "233.13135.103"   
+  ide_build_number = "241.17890.1"   
   # IDE release downloads https://data.services.jetbrains.com/products/releases?code=IU
-  ide = "ideaIU-2023.3.2"
+  ide = "ideaIU-2024.1.4"
   ide_download_link = "https://download.jetbrains.com/idea/${local.ide}.tar.gz"  
 } 
 
@@ -54,7 +54,7 @@ variable "use_kubeconfig" {
   default = false
 }
 
-variable "workspaces_namespace" {
+variable "namespace" {
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -68,6 +68,8 @@ provider "kubernetes" {
 }
 
 data "coder_workspace" "me" {}
+
+data "coder_workspace_owner" "me" {}
 
 data "coder_parameter" "disk_size" {
   name        = "PVC storage size"
@@ -173,7 +175,7 @@ resource "coder_app" "gateway" {
   agent_id     = coder_agent.coder.id
   display_name = "IntelliJ Ultimate"
   slug         = "gateway"
-  url          = "jetbrains-gateway://connect#type=coder&workspace=${data.coder_workspace.me.name}&agent=coder&folder=/home/coder/&url=${data.coder_workspace.me.access_url}&token=${data.coder_workspace.me.owner_session_token}&ide_product_code=${local.ide_product_code}&ide_build_number=${local.ide_build_number}&ide_download_link=${local.ide_download_link}"
+  url          = "jetbrains-gateway://connect#type=coder&workspace=${data.coder_workspace.me.name}&agent=coder&folder=/home/coder/&url=${data.coder_workspace.me.access_url}&token=${data.coder_workspace_owner.me.session_token}&ide_product_code=${local.ide_product_code}&ide_build_number=${local.ide_build_number}&ide_download_link=${local.ide_download_link}"
   icon         = "/icon/intellij.svg"
   external     = true
 }
@@ -184,8 +186,8 @@ resource "kubernetes_pod" "main" {
     kubernetes_persistent_volume_claim.home-directory
   ]  
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = var.workspaces_namespace
+    name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
+    namespace = var.namespace
   }
   spec {
     security_context {
@@ -234,8 +236,8 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = var.workspaces_namespace
+    name      = "home-coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
+    namespace = var.namespace
   }
   wait_until_bound = false
   spec {

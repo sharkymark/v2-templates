@@ -6,6 +6,11 @@ tags: [cloud, kubernetes]
 
 # IntelliJ IDEA Ultimate & JetBrains Gateway template for a workspace in a Kubernetes pod
 
+### Changes 2024-08-05
+
+1. Notice use of `data.coder_workspace_owner.me`, a new 2024 Coder change in their Terraform provider that replaced `data.coder_workspace.me.owner`
+1. Changed container image to build with IntelliJ IDEA Ultimate `2024.1.4`
+
 ### Special Use Case
 1. The templates [establish costs](https://coder.com/docs/v2/latest/admin/quotas#establishing-costs)for compute resources of a workspace. A group [esablish budgets](https://coder.com/docs/v2/latest/admin/quotas#establishing-budgets) to restrict how many compute resources a developer can use.
 

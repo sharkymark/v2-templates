@@ -18,12 +18,8 @@ locals {
   #repo = "iluwatar/java-design-patterns.git"
   repo = "https://github.com/sharkymark/java_helloworld.git" 
   repo-name = "java_helloworld" 
-  repo-owner = "docker.io/marktmilligan"
-  #image = "intellij-idea-ultimate:2022.3.2"
-  #image = "intellij-idea-ultimate:2022.1.4"
-  #image = "intellij-idea-ultimate:2023.1"
-  #image = "intellij-idea-ultimate:2023.1.1"  
-  image = "intellij-idea-ultimate:2023.2"        
+  repo-owner = "docker.io/marktmilligan"  
+  image = "intellij-idea-ultimate:2024.1.4"        
 }
 
 provider "coder" {
@@ -44,7 +40,7 @@ variable "use_kubeconfig" {
   default = false
 }
 
-variable "workspaces_namespace" {
+variable "namespace" {
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
 
@@ -70,6 +66,9 @@ data "coder_parameter" "dotfiles_url" {
 }
 
 data "coder_provisioner" "me" {
+}
+
+data "coder_workspace_owner" "me" {
 }
 
 resource "coder_agent" "coder" {
@@ -108,14 +107,13 @@ resource "coder_agent" "coder" {
   display_apps {
     vscode = false
     vscode_insiders = false
-    ssh_helper = false
+    ssh_helper = true
     port_forwarding_helper = false
     web_terminal = true
   }
 
   dir                     = "/home/coder"
   startup_script_behavior = "blocking"
-  startup_script_timeout = 200 
   env                     = { }    
   startup_script = <<EOT
 
@@ -170,8 +168,8 @@ resource "kubernetes_pod" "main" {
     kubernetes_persistent_volume_claim.home-directory
   ]  
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = var.workspaces_namespace
+    name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
+    namespace = var.namespace
   }
   spec {
     security_context {
@@ -220,8 +218,8 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = var.workspaces_namespace
+    name      = "home-coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
+    namespace = var.namespace
   }
   wait_until_bound = false
   spec {

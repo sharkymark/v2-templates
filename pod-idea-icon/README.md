@@ -6,6 +6,11 @@ tags: [cloud, kubernetes]
 
 # Launch an IntelliJ IDEA Ultimate IDE from a dashboard icon
 
+### Changes 2024-08-05
+
+1. Notice use of `data.coder_workspace_owner.me`, a new 2024 Coder change in their Terraform provider that replaced `data.coder_workspace.me.owner`
+1. Changed container image to build with IntelliJ IDEA Ultimate `2024.1.4`
+
 IntelliJ is launched from a locally-installed JetBrains Gateway client connected to a Coder Cloud Development Environment operating as Kubernetes-managed container with a mounted persistent disk to store personal settings and cloned code repositories. 
 
 ### Cloud Cost Control Use Case

@@ -10,6 +10,8 @@ tags: [cloud, kubernetes]
 
 1. Notice use of `data.coder_workspace_owner.me`, a new 2024 Coder change in their Terraform provider that replaced `data.coder_workspace.me.owner`
 
+### Overview
+
 A Development Container (or Dev Container for short) allows you to use a container as a full-featured development environment. A development container is a running Docker container with a well-defined tool/runtime stack and its prerequisites. It allows you to use a container as a full-featured development environment which can be used to run an application, to separate tools, libraries, or runtimes needed for working with a codebase, and to aid in continuous integration and testing.
 
 Dev Containers are located in a `.devcontainer` directory at the root level of a code repository and contain a `devcontainer.json` which tells `envbuilder` and `Kaniko` how to access (or create) a development container with a well-defined tool and runtime stack.

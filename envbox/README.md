@@ -6,6 +6,14 @@ tags: [cloud, kubernetes]
 
 # Kubernetes pod with a privileged container running dockerd
 
+### Changes 2024-08-05
+
+1. Notice use of `data.coder_workspace_owner.me`, a new 2024 Coder change in their Terraform provider that replaced `data.coder_workspace.me.owner`
+
+### Overview
+
+Give a Kubernetes-managed container the ability to run a docker host and containers for development needs.
+
 ### Apps included
 1. A web-based terminal
 1. VS Code Web (powered by code-server)

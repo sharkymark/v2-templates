@@ -17,7 +17,7 @@ locals {
   home-volume = "10Gi"
   repo = "git@github.com:sharkymark/java_helloworld.git"
   repo-name = "java_helloworld" 
-  image = "intellij-idea-community-vnc"
+  image = "intellij-idea-community-vnc:latest"
 
 }
 
@@ -36,7 +36,7 @@ variable "use_kubeconfig" {
   default = false  
 }
 
-variable "workspaces_namespace" {
+variable "namespace" {
   sensitive   = false
   description = <<-EOF
   Kubernetes namespace to deploy the workspace into
@@ -51,6 +51,8 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
+data "coder_workspace_owner" "me" {}
+
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL (optional)"
   description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
@@ -59,28 +61,6 @@ data "coder_parameter" "dotfiles_url" {
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
   order       = 2
-}
-
-data "coder_parameter" "intellij-idea-version" {
-  name        = "IntelliJ IDEA Community Edition Version"
-  type        = "string"
-  description = "What version of IntelliJ IDEA Community Edition do you want?"
-  mutable     = true
-  default     = "2023.2.2"
-  icon        = "https://resources.jetbrains.com/storage/products/company/brand/logos/IntelliJ_IDEA_icon.svg"
-  order       = 1
-  option {
-    name = "2023.2.2"
-    value = "2023.2.2"
-  }
-  option {
-    name = "2023.2.1"
-    value = "2023.2.1"
-  }
-  option {
-    name = "2022.3.2"
-    value = "2022.3.2"
-  }  
 }
 
 resource "coder_agent" "coder" {
@@ -126,7 +106,6 @@ resource "coder_agent" "coder" {
 
   dir                     = "/home/coder"
   startup_script_behavior = "blocking"
-  startup_script_timeout = 200 
 
   startup_script = <<EOT
 
@@ -187,8 +166,8 @@ resource "kubernetes_pod" "main" {
     kubernetes_persistent_volume_claim.home-directory
   ]  
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = var.workspaces_namespace
+    name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
+    namespace = var.namespace
   }
   spec {
     security_context {
@@ -197,7 +176,7 @@ resource "kubernetes_pod" "main" {
     }    
     container {
       name    = "coder-container"
-      image   = "docker.io/marktmilligan/${local.image}:${data.coder_parameter.intellij-idea-version.value}"
+      image   = "docker.io/marktmilligan/${local.image}"
       image_pull_policy = "Always"
       command = ["sh", "-c", coder_agent.coder.init_script]
       security_context {
@@ -233,8 +212,8 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
-    namespace = var.workspaces_namespace
+    name      = "home-coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
+    namespace = var.namespace
   }
   wait_until_bound = false  
   spec {
@@ -257,9 +236,5 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "repo"
     value = local.repo-name
-  } 
-  item {
-    key   = "IntelliJ Community Version"
-    value = data.coder_parameter.intellij-idea-version.value
-  }     
+  }    
 }
