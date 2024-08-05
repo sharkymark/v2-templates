@@ -15,7 +15,7 @@ locals {
   cpu-request = "500m"
   memory-request = "500Mi" 
   home-volume = "10Gi"
-  image = "codercom/enterprise-jupyter:ubuntu"
+  image = "marktmilligan/jupyter:latest"
   repo = "docker.io/sharkymark/pandas_automl.git"
 }
 
@@ -112,6 +112,7 @@ provider "kubernetes" {
 }
 
 data "coder_workspace" "me" {}
+data "coder_workspace_owner" "me" {}
 
 resource "coder_agent" "coder" {
   os   = "linux"
@@ -158,8 +159,7 @@ resource "coder_agent" "coder" {
   env = { 
 
     }
-  startup_script_behavior = "blocking"
-  startup_script_timeout = 300  
+  startup_script_behavior = "blocking" 
 
   startup_script = <<EOT
 #!/bin/sh
@@ -171,10 +171,7 @@ curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
 
 # start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
-
-# add some Python libraries
-pip3 install --user pandas &
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace_owner.me.name}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
 
 # clone repo
 if [ ! -d "pandas_automl" ]; then
@@ -219,7 +216,7 @@ resource "coder_app" "jupyter" {
   slug          = "j"  
   display_name  = "jupyter ${data.coder_parameter.jupyter.value}"
   icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j"
+  url           = "http://localhost:8888/@${data.coder_workspace_owner.me.name}/${lower(data.coder_workspace.me.name)}/apps/j"
   share         = "${data.coder_parameter.appshare.value}"
   subdomain     = false  
 
@@ -233,7 +230,7 @@ resource "coder_app" "jupyter" {
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+    name = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {
@@ -279,7 +276,7 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+    name      = "home-coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   wait_until_bound = false  

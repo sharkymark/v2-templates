@@ -6,6 +6,11 @@ tags: [cloud, kubernetes]
 
 # Jupyter Lab on a path & Notebook and code-server (VS Code) template for a workspace in a Kubernetes pod
 
+### Changes 2024-08-05
+
+1. Notice use of `data.coder_workspace_owner.me`, a new 2024 Coder change in their Terraform provider that replaced `data.coder_workspace.me.owner`
+1. Coder deprecated its Ubuntu Jupter image so I built one based on Coder's base image and put on DockerHub
+
 ### Apps included
 1. A web-based terminal
 1. code-server IDE (VS Code-in-a-browser)
@@ -58,41 +63,22 @@ data "coder_parameter" "appshare" {
 }
 ```
 
+### Requirements
+With the `coder_app` `subdomain=false`, the workspace owner and workspace name must be added to the Jupyter `baseURL` in the `startup_script` and the `url` part of the `coder_app`
+
+```sh
+# start jupyter 
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace_owner.me.name}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
+```
+
 ```hcl
 resource "coder_app" "jupyter" {
   agent_id      = coder_agent.coder.id
   slug          = "j"  
   display_name  = "jupyter ${data.coder_parameter.jupyter.value}"
   icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/"
+  url           = "http://localhost:8888/@${data.coder_workspace_owner.me.name}/${lower(data.coder_workspace.me.name)}/apps/j"
   share         = "${data.coder_parameter.appshare.value}"
-  subdomain     = true  
-
-  healthcheck {
-    url       = "http://localhost:8888/healthz/"
-    interval  = 10
-    threshold = 20
-  }  
-}
-```
-
-### Requirements
-1. With the `coder_app` `subdomain=false`, the workspace owner and workspace name must be added to the Jupyter `baseURL` in the `startup_script` and the `url` part of the `coder_app`
-
-```sh
-# start jupyter 
-jupyter ${var.jupyter} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j &
-```
-
-
-```hcl
-resource "coder_app" "jupyter" {
-  agent_id      = coder_agent.coder.id
-  slug          = "j"  
-  display_name  = "jupyter-${var.jupyter}"
-  icon          = "/icon/jupyter.svg"
-  url           = "http://localhost:8888/@${data.coder_workspace.me.owner}/${lower(data.coder_workspace.me.name)}/apps/j"
-  share         = "owner"
   subdomain     = false  
 
   healthcheck {

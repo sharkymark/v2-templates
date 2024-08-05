@@ -15,7 +15,7 @@ locals {
   cpu-request = "250m"
   memory-request = "500Mi" 
   home-volume = "10Gi"
-  image = "codercom/enterprise-jupyter:ubuntu"
+  image = "marktmilligan/jupyter:latest"
   repo = "docker.io/sharkymark/pandas_automl.git"
 }
 
@@ -102,6 +102,10 @@ data "coder_parameter" "appshare" {
   order       = 2      
 }
 
+data "coder_workspace" "me" {}
+
+data "coder_workspace_owner" "me" {}
+
 locals {
   jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
 }
@@ -111,8 +115,6 @@ provider "kubernetes" {
   # Authenticate via ~/.kube/config or a Coder-specific ServiceAccount, depending on admin preferences
   config_path = var.use_kubeconfig == true ? "~/.kube/config" : null
 }
-
-data "coder_workspace" "me" {}
 
 resource "coder_agent" "coder" {
   os   = "linux"
@@ -165,10 +167,9 @@ resource "coder_agent" "coder" {
   startup_script = <<EOF
 #!/bin/sh
 
-set -e
+# set -e
 
-# start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token="" --ip="*" >/dev/null 2>&1 &
+# --${local.jupyter-type-arg} >/dev/null 2>&1
 
 # add some Python libraries
 pip3 install --user pandas &
@@ -185,6 +186,9 @@ code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 # install VS Code extensions into code-server
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
 SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
+
+# start jupyter 
+jupyter ${data.coder_parameter.jupyter.value} NotebookApp.token="" --ip="*"  
 
 # use coder CLI to clone and install dotfiles
 if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
@@ -230,7 +234,7 @@ resource "coder_app" "jupyter" {
 resource "kubernetes_pod" "main" {
   count = data.coder_workspace.me.start_count
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+    name = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   spec {
@@ -276,7 +280,7 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+    name      = "home-coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
     namespace = var.workspaces_namespace
   }
   wait_until_bound = false  

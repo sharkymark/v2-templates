@@ -6,6 +6,11 @@ tags: [cloud, kubernetes]
 
 # Jupyter Lab & Notebook and code-server (VS Code) template for a workspace in a Kubernetes pod
 
+### Changes 2024-08-05
+
+1. Notice use of `data.coder_workspace_owner.me`, a new 2024 Coder change in their Terraform provider that replaced `data.coder_workspace.me.owner`
+1. Coder deprecated its Ubuntu Jupter image so I built one based on Coder's base image and put on DockerHub
+
 ### Apps included
 1. A web-based terminal
 1. code-server IDE (VS Code-in-a-browser)
