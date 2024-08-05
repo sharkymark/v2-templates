@@ -9,7 +9,7 @@ tags: [cloud, kubernetes]
 ### Changes 2024-08-05
 
 1. Notice use of `data.coder_workspace_owner.me`, a new 2024 Coder change in their Terraform provider that replaced `data.coder_workspace.me.owner`
-1. Coder deprecated its Ubuntu Jupter image so I built one based on Coder's base image and put on DockerHub
+1. Coder deprecated its Ubuntu Jupyter image so I built one based on Coder's base image and put on DockerHub
 
 ### Apps included
 1. A web-based terminal

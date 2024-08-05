@@ -59,11 +59,6 @@ variable "cache_repo" {
   default = ""
 }
 
-data "coder_external_auth" "github" {
-  # Matches the ID of the git auth provider in Coder.
-  id = "primary-github"
-}
-
 data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
@@ -170,8 +165,9 @@ provider "kubernetes" {
 }
 
 
-data "coder_workspace" "me" {
-}
+data "coder_workspace" "me" {}
+
+data "coder_workspace_owner" "me" {}
 
 resource "coder_agent" "main" {
   arch                   = data.coder_provisioner.me.arch
@@ -232,10 +228,10 @@ resource "coder_agent" "main" {
   # dotfiles. (see docs/dotfiles.md)
   env = {
     "DOTFILES_URI" = data.coder_parameter.dotfiles_url.value != "" ? data.coder_parameter.dotfiles_url.value : null
-    GIT_AUTHOR_NAME     = "${data.coder_workspace.me.owner}"
-    GIT_COMMITTER_NAME  = "${data.coder_workspace.me.owner}"
-    GIT_AUTHOR_EMAIL    = "${data.coder_workspace.me.owner_email}"
-    GIT_COMMITTER_EMAIL = "${data.coder_workspace.me.owner_email}"
+    GIT_AUTHOR_NAME     = "${data.coder_workspace_owner.me.name}"
+    GIT_COMMITTER_NAME  = "${data.coder_workspace_owner.me.name}"
+    GIT_AUTHOR_EMAIL    = "${data.coder_workspace_owner.me.email}"
+    GIT_COMMITTER_EMAIL = "${data.coder_workspace_owner.me.email}"
   }
 
 }
@@ -261,8 +257,8 @@ resource "kubernetes_persistent_volume_claim" "workspaces" {
     name      = "coder-${data.coder_workspace.me.id}"
     namespace = var.namespace
     labels = {
-      "coder.owner"                      = data.coder_workspace.me.owner
-      "coder.owner_id"                   = data.coder_workspace.me.owner_id
+      "coder.owner"                      = data.coder_workspace_owner.me.name
+      "coder.owner_id"                   = data.coder_workspace_owner.me.id
       "coder.workspace_id"               = data.coder_workspace.me.id
       "coder.workspace_name_at_creation" = data.coder_workspace.me.name
     }
@@ -284,11 +280,11 @@ resource "kubernetes_persistent_volume_claim" "workspaces" {
 resource "kubernetes_deployment" "workspace" {
   count = data.coder_workspace.me.start_count  
   metadata {
-    name      = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+    name      = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
     namespace = var.namespace
     labels = {
-      "coder.owner"          = data.coder_workspace.me.owner
-      "coder.owner_id"       = data.coder_workspace.me.owner_id
+      "coder.owner"          = data.coder_workspace_owner.me.name
+      "coder.owner_id"       = data.coder_workspace_owner.me.id
       "coder.workspace_id"   = data.coder_workspace.me.id
       "coder.workspace_name" = data.coder_workspace.me.name
     }
@@ -309,7 +305,7 @@ resource "kubernetes_deployment" "workspace" {
       spec {
         automount_service_account_token = false  
         container {
-          name  = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+          name  = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
           image = local.image
           env {
             name  = "CODER_AGENT_TOKEN"
@@ -322,11 +318,7 @@ resource "kubernetes_deployment" "workspace" {
           env {
             name  = "GIT_URL"
             value = data.coder_parameter.repo.value == "custom" ? data.coder_parameter.custom_repo_url.value : data.coder_parameter.repo.value
-          }
-          env {
-            name = "GITHUB_TOKEN"
-            value = data.coder_external_auth.github.access_token
-          }           
+          }          
           env {
             name  = "INIT_SCRIPT"
             value = replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
