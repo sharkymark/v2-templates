@@ -12,7 +12,7 @@ Once the deployment is restarted, the Swagger docs are available at `<your Coder
 
 You can also `grep` or control/command-F the [Go chi routes in the OSS repo](https://github.com/coder/coder/blob/main/coderd/coderd.go) to figure out API endpoints.
 
-![Firefox inspect with the Workspaces UI](./images/firefox-inspect.png)
+![Firefox inspect with the Workspaces UI](./docs/images/firefox-inspect.png)
 
 <details>
     <summary>Set environment variables to access url, apikey, etc.</summary>

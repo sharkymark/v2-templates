@@ -6,7 +6,7 @@ source of truth for installing, configuring and using Coder.
 But I come across commonly asked questions or tricky scenarios where these tips
 may get you unstuck and help you out. Good luck! 🥳
 
-![Rust CLion Workspace UI](./images/rust-clion-workspace.png)
+![Rust CLion Workspace UI](./docs/images/rust-clion-workspace.png)
 
 <details>
     <summary>How to add an enterprise license</summary>
