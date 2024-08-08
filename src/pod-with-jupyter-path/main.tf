@@ -44,16 +44,6 @@ variable "workspaces_namespace" {
   default = ""
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 3
-}
-
 data "coder_parameter" "jupyter" {
   name        = "Jupyter IDE type"
   type        = "string"
@@ -99,6 +89,37 @@ data "coder_parameter" "appshare" {
     icon = "/emojis/1f510.png"
   } 
   order       = 2      
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 3
+}
+
+data "coder_parameter" "marketplace" {
+  name        = "VS Code Extension Marketplace"
+  type        = "string"
+  description = "What extension marketplace do you want to use with code-server?"
+  mutable     = true
+  default     = "ovsx"
+  icon        = "/icon/code.svg"
+
+  option {
+    name = "Microsoft"
+    value = "ms"
+    icon = "/icon/microsoft.svg"
+  }
+  option {
+    name = "Open VSX"
+    value = "ovsx"
+    icon = "https://files.mastodon.social/accounts/avatars/110/249/536/652/270/515/original/bde7b7fef9cef005.png"
+  }  
+  order       = 4      
 }
 
 locals {
@@ -164,8 +185,6 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/sh
 
-set -e
-
 # install code-server
 curl -fsSL https://code-server.dev/install.sh | sh
 code-server --auth none --port 13337 >/dev/null 2>&1 &
@@ -180,12 +199,16 @@ fi
 
 # install and code-server, VS Code in a browser 
 curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 &
+code-server --auth none --port 13337 >/dev/null 2>&1
 
-# install VS Code extensions into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
-
+# marketplace
+if [ "${data.coder_parameter.marketplace.value}" = "ms" ]; then
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items code-server --install-extension ms-toolsai.jupyter 
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items code-server --install-extension ms-python.python 
+else
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
+fi
 # use coder CLI to clone and install dotfiles
 if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
