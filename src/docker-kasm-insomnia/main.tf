@@ -38,6 +38,10 @@ provider "coder" {
 data "coder_workspace" "me" {
 }
 
+data  "coder_workspace_owner" "me" {
+
+}
+
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL (optional)"
   description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
@@ -86,17 +90,11 @@ resource "coder_agent" "dev" {
   }
 
   startup_script_behavior = "non-blocking"
-  startup_script_timeout = 300 
 
-
-  dir                     = "/home/${local.user}"
+  dir = "/home/${local.user}"
   startup_script = <<EOT
 
 #!/bin/sh
-
-# start Insomnia
-# Not recommending --no-sandbox; just using for testing
-insomnia --no-sandbox > /dev/null 2>&1 &
 
 # start Kasm
 /dockerstartup/kasm_default_profile.sh
@@ -109,6 +107,11 @@ fi
 
 # change shell
 sudo chsh -s $(which bash) $(whoami)
+
+# start Insomnia
+# > /dev/null 2>&1
+# Not recommending --no-sandbox; just using for testing
+insomnia &
 
   EOT  
 }
@@ -133,7 +136,7 @@ resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
   image = local.image
   # Uses lower() to avoid Docker restriction on container names.
-  name     = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
+  name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
 
@@ -152,7 +155,7 @@ resource "docker_container" "workspace" {
 }
 
 resource "docker_volume" "coder_volume" {
-  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+  name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
 }
 
 resource "coder_metadata" "workspace_info" {
