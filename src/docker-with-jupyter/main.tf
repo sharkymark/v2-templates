@@ -125,8 +125,24 @@ data "coder_parameter" "marketplace" {
   order       = 4      
 }
 
+data "coder_parameter" "api_key" {
+  name        = "API Key (optional)"
+  description = "Pass an API key to the workspace as an environment variable"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "/emojis/1f511.png"
+  order       = 5
+}
+
 locals {
   jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
+}
+
+resource "coder_env" "api_key" {
+  agent_id = coder_agent.dev.id
+  name     = "API_KEY"
+  value    = "${data.coder_parameter.api_key.value}"
 }
 
 resource "coder_agent" "dev" {
@@ -172,8 +188,9 @@ resource "coder_agent" "dev" {
   }
 
   env = { 
+    
     }
-  startup_script_behavior = "blocking"
+  startup_script_behavior = "non-blocking"
   startup_script  = <<EOT
 #!/bin/sh
 
@@ -186,26 +203,24 @@ jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.tok
 
 # clone repo
 if [ ! -d "pandas_automl" ]; then
-  git clone --progress https://github.com/sharkymark/pandas_automl.git &
-fi
-
-# install and code-server, VS Code in a browser 
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 
-
-# marketplace
-if [ "${data.coder_parameter.marketplace.value}" = "ms" ]; then
-  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items code-server --install-extension ms-toolsai.jupyter 
-  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items code-server --install-extension ms-python.python 
-else
-  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
-  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
+  git clone --progress git@github.com:sharkymark/pandas_automl &
 fi
 
 
 # use coder CLI to clone and install dotfiles
 if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
+
+sleep 5
+
+# marketplace
+if [ "${data.coder_parameter.marketplace.value}" = "ms" ]; then
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items code-server --install-extension ms-toolsai.jupyter 
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items code-server --install-extension ms-python.python 
+else
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python
 fi
 
 EOT
@@ -246,23 +261,17 @@ resource "coder_app" "jupyter" {
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = "marktmilligan/jupyter:latest"
+  image = "${local.image}"
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
   # Use the docker gateway if the access URL is 127.0.0.1
-  #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
+  entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
 
-  command = [
-    "sh", "-c",
-    <<EOT
-    trap '[ $? -ne 0 ] && echo === Agent script exited with non-zero code. Sleeping infinitely to preserve logs... && sleep infinity' EXIT
-    ${replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}
-    EOT
+  env        = [
+    "CODER_AGENT_TOKEN=${coder_agent.dev.token}"
   ]
-
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
@@ -284,7 +293,20 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id   
   item {
     key   = "image"
-    value = "codercom/enterprise-base:ubuntu"
+    value = local.image
   }
-   
+  item {
+    key   = "repo cloned"
+    value = local.repo
+  } 
+  item {
+    key   = "api_key"
+    value = data.coder_parameter.api_key.value
+    sensitive = true
+  } 
+  item {
+    key   = "jupyter"
+    value = "${data.coder_parameter.jupyter.value}"
+  }
+
 }

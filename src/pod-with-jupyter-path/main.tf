@@ -122,6 +122,22 @@ data "coder_parameter" "marketplace" {
   order       = 4      
 }
 
+data "coder_parameter" "api_key" {
+  name        = "API Key (optional)"
+  description = "Pass an API key to the workspace as an environment variable"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "/emojis/1f511.png"
+  order       = 5
+}
+
+resource "coder_env" "api_key" {
+  agent_id = coder_agent.coder.id
+  name     = "API_KEY"
+  value    = "${data.coder_parameter.api_key.value}"
+}
+
 locals {
   jupyter-type-arg = "${data.coder_parameter.jupyter.value == "notebook" ? "Notebook" : "Server"}"
 }
@@ -180,7 +196,7 @@ resource "coder_agent" "coder" {
   env = { 
 
     }
-  startup_script_behavior = "blocking" 
+  startup_script_behavior = "non-blocking" 
 
   startup_script = <<EOT
 #!/bin/sh
@@ -197,9 +213,12 @@ if [ ! -d "pandas_automl" ]; then
   git clone --progress https://github.com/sharkymark/pandas_automl.git &
 fi
 
-# install and code-server, VS Code in a browser 
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1
+# use coder CLI to clone and install dotfiles
+if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
+
+sleep 5
 
 # marketplace
 if [ "${data.coder_parameter.marketplace.value}" = "ms" ]; then
@@ -208,10 +227,6 @@ if [ "${data.coder_parameter.marketplace.value}" = "ms" ]; then
 else
   SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
   SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
-fi
-# use coder CLI to clone and install dotfiles
-if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
 EOT
@@ -323,7 +338,11 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "repo cloned"
     value = local.repo
-  }  
+  } 
+  item {
+    key   = "api_key"
+    value = data.coder_parameter.api_key.value
+  } 
   item {
     key   = "jupyter"
     value = "${data.coder_parameter.jupyter.value}"
