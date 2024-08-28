@@ -201,9 +201,14 @@ resource "coder_agent" "coder" {
   startup_script = <<EOT
 #!/bin/sh
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 &
+set -e
+
+# commented out install the latest code-server since it is already installed in the image
+# Append "--version x.x.x" to install a specific version of code-server.
+# curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+
+# start code-server in the background.
+/tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
 # start jupyter 
 jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace_owner.me.name}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
@@ -222,11 +227,11 @@ sleep 5
 
 # marketplace
 if [ "${data.coder_parameter.marketplace.value}" = "ms" ]; then
-  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items code-server --install-extension ms-toolsai.jupyter 
-  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items code-server --install-extension ms-python.python 
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter 
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items /tmp/code-server/bin/code-server --install-extension ms-python.python 
 else
-  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
-  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-python.python
 fi
 
 EOT
@@ -342,6 +347,7 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "api_key"
     value = data.coder_parameter.api_key.value
+    sensitive = true
   } 
   item {
     key   = "jupyter"
