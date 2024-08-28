@@ -47,12 +47,12 @@ data "coder_parameter" "image" {
   type        = "string"
   description = "What container image and language do you want?"
   mutable     = true
-  default     = "marktmilligan/node:20.10.0"
+  default     = "marktmilligan/node:22.7.0"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
 
   option {
     name = "Node React"
-    value = "marktmilligan/node:20.10.0"
+    value = "marktmilligan/node:22.7.0"
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
@@ -222,9 +222,14 @@ resource "coder_agent" "dev" {
   startup_script  = <<EOT
 #!/bin/bash
 
-# install and code-server, VS Code in a browser 
-curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
-/tmp/code-server/bin/code-server --auth none --port 13337 >/dev/null 2>&1 &
+set -e
+
+# commented out install the latest code-server since it is already installed in the image
+# Append "--version x.x.x" to install a specific version of code-server.
+# curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+
+# start code-server in the background.
+/tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
 
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
