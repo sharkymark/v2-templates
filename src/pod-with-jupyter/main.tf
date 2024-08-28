@@ -45,16 +45,6 @@ variable "workspaces_namespace" {
   default = ""
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 3
-}
-
 data "coder_parameter" "jupyter" {
   name        = "Jupyter IDE type"
   type        = "string"
@@ -100,6 +90,53 @@ data "coder_parameter" "appshare" {
     icon = "/emojis/1f510.png"
   } 
   order       = 2      
+}
+
+data "coder_parameter" "dotfiles_url" {
+  name        = "Dotfiles URL (optional)"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  order       = 3
+}
+
+data "coder_parameter" "marketplace" {
+  name        = "VS Code Extension Marketplace"
+  type        = "string"
+  description = "What extension marketplace do you want to use with code-server?"
+  mutable     = true
+  default     = "ovsx"
+  icon        = "/icon/code.svg"
+
+  option {
+    name = "Microsoft"
+    value = "ms"
+    icon = "/icon/microsoft.svg"
+  }
+  option {
+    name = "Open VSX"
+    value = "ovsx"
+    icon = "https://files.mastodon.social/accounts/avatars/110/249/536/652/270/515/original/bde7b7fef9cef005.png"
+  }  
+  order       = 4      
+}
+
+data "coder_parameter" "api_key" {
+  name        = "API Key (optional)"
+  description = "Pass an API key to the workspace as an environment variable"
+  type        = "string"
+  default     = ""
+  mutable     = true 
+  icon        = "/emojis/1f511.png"
+  order       = 5
+}
+
+resource "coder_env" "api_key" {
+  agent_id = coder_agent.coder.id
+  name     = "API_KEY"
+  value    = "${data.coder_parameter.api_key.value}"
 }
 
 data "coder_workspace" "me" {}
@@ -152,7 +189,7 @@ resource "coder_agent" "coder" {
   }
 
   display_apps {
-    vscode = false
+    vscode = true
     vscode_insiders = false
     ssh_helper = false
     port_forwarding_helper = false
@@ -163,32 +200,37 @@ resource "coder_agent" "coder" {
   env = { 
 
     }
-  startup_script_behavior = "blocking" 
+  startup_script_behavior = "non-blocking" 
   startup_script = <<EOF
 #!/bin/sh
 
-# set -e
+set -e
 
-# --${local.jupyter-type-arg} >/dev/null 2>&1
+# commented out install the latest code-server since it is already installed in the image
+# Append "--version x.x.x" to install a specific version of code-server.
+# curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
 
-# add some Python libraries
-pip3 install --user pandas &
+# start code-server in the background.
+/tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
+
+# start jupyter 
+jupyter ${data.coder_parameter.jupyter.value} --${local.jupyter-type-arg}App.token='' --ip='*' --${local.jupyter-type-arg}App.base_url=/@${data.coder_workspace_owner.me.name}/${lower(data.coder_workspace.me.name)}/apps/j >/dev/null 2>&1 &
 
 # clone repo
 if [ ! -d "pandas_automl" ]; then
   git clone --progress https://github.com/sharkymark/pandas_automl.git &
 fi
 
-# install and start the latest code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
+sleep 5
 
-# install VS Code extensions into code-server
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-toolsai.jupyter 
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item code-server --install-extension ms-python.python 
-
-# start jupyter 
-jupyter ${data.coder_parameter.jupyter.value} NotebookApp.token="" --ip="*"  
+# marketplace
+if [ "${data.coder_parameter.marketplace.value}" = "ms" ]; then
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter 
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items /tmp/code-server/bin/code-server --install-extension ms-python.python 
+else
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-python.python
+fi
 
 # use coder CLI to clone and install dotfiles
 if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
