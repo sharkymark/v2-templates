@@ -59,6 +59,8 @@ provider "kubernetes" {
 
 data "coder_workspace" "me" {}
 
+data "coder_workspace_owner" "me" {}
+
 data "coder_parameter" "cpu" {
   name        = "CPU cores"
   type        = "number"
@@ -107,23 +109,23 @@ data "coder_parameter" "image" {
   type        = "string"
   description = "What container image and language do you want?"
   mutable     = true
-  default     = "codercom/enterprise-node:ubuntu"
+  default     = "marktmilligan/node:22.7.0"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
   order       = 4
 
   option {
     name = "Node React"
-    value = "codercom/enterprise-node:ubuntu"
+    value = "marktmilligan/node:22.7.0"
     icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
   }
   option {
-    name = "Golang"
-    value = "codercom/enterprise-golang:ubuntu"
+    name = "Go"
+    value = "marktmilligan/go:1.23.0"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
   } 
   option {
     name = "Java"
-    value = "codercom/enterprise-java:ubuntu"
+    value = "marktmilligan/java:jdk-11"
     icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
   } 
   option {
@@ -158,7 +160,7 @@ data "coder_parameter" "repo" {
     icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
   }
   option {
-    name = "Golang command line app"
+    name = "Go command line app"
     value = "https://github.com/sharkymark/commissions"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
   }
@@ -171,12 +173,7 @@ data "coder_parameter" "repo" {
     name = "Python command line app"
     value = "https://github.com/sharkymark/python_commissions"
     icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }
-  option {
-    name = "Shark's rust sample apps"
-    value = "https://github.com/sharkymark/rust-hw"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }     
+  }   
 }
 
 data "coder_parameter" "extension" {
@@ -184,30 +181,15 @@ data "coder_parameter" "extension" {
   type        = "string"
   description = "Which VS Code extension do you want?"
   mutable     = true
-  default     = "leizongmin.node-module-intellisense"
+  default     = ""
   icon        = "/icon/code.svg"
   order       = 6
 
   option {
-    name = "Node.js Modules Intellisense"
-    value = "leizongmin.node-module-intellisense"
-    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
-  }
-  option {
-    name = "Golang"
+    name = "Go"
     value = "golang.go"
     icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
   } 
-  option {
-    name = "rust-lang"
-    value = "rust-lang.rust"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  } 
-  option {
-    name = "rust analyzer"
-    value = "matklad.rust-analyzer"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }
   option {
     name = "Python"
     value = "ms-python.python"
@@ -227,7 +209,7 @@ data "coder_parameter" "extension" {
 
 data "coder_parameter" "dotfiles_url" {
   name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., git@github.com:sharkymark/dotfiles.git"
+  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles"
   type        = "string"
   default     = ""
   mutable     = true 
@@ -269,16 +251,15 @@ resource "coder_agent" "coder" {
   }
 
   display_apps {
-    vscode = false
+    vscode = true
     vscode_insiders = false
-    ssh_helper = false
+    ssh_helper = true
     port_forwarding_helper = true
     web_terminal = true
   }
 
   dir                     = "/home/coder"
-  startup_script_behavior = "blocking"
-  startup_script_timeout = 200  
+  startup_script_behavior = "non-blocking" 
   startup_script = <<EOT
 #!/bin/sh
 
@@ -317,11 +298,6 @@ else
   cd ${local.folder_name}
 fi
 
-# if rust is the desired programming languge, install
-if [[ ${data.coder_parameter.repo.value} = "https://github.com/sharkymark/rust-hw" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1 &
-fi
-
 # use coder CLI to clone and install dotfiles
 if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
@@ -338,10 +314,10 @@ $VSCS_DIR/bin/code-server --install-extension github.copilot > ${local.vscs_ext_
 # microsoft vs code server
 resource "coder_app" "code-server" {
   agent_id      = coder_agent.coder.id
-  slug          = "code-server"  
+  slug          = "cs"  
   display_name  = "Microsoft VS Code Server"
   icon          = "/icon/code.svg"
-  url           = "http://localhost:13338?folder=/home/coder"
+  url           = "http://localhost:13338"
   subdomain = true
   share     = "owner"
 
@@ -358,7 +334,7 @@ resource "kubernetes_pod" "main" {
     kubernetes_persistent_volume_claim.home-directory
   ]  
   metadata {
-    name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
   spec {
@@ -404,7 +380,7 @@ resource "kubernetes_pod" "main" {
 
 resource "kubernetes_persistent_volume_claim" "home-directory" {
   metadata {
-    name      = "home-coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+    name      = "home-coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
     namespace = var.workspaces_namespace
   }
   wait_until_bound = false    
