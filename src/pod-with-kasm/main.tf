@@ -135,7 +135,7 @@ insomnia >/dev/null 2>&1 &
 # change shell
 sudo chsh -s $(which bash) $(whoami) >/dev/null 2>&1 &
 
-  EOT  
+  EOT 
 }
 
 resource "coder_app" "kasm" {
