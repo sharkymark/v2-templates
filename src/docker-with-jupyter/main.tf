@@ -179,6 +179,14 @@ resource "coder_agent" "dev" {
     timeout      = 1
   }
 
+  metadata {
+    display_name = "wush private key"
+    key          = "4_wush_key"
+    script       = "cat /tmp/wush_key.txt"
+    interval     = 10
+    timeout      = 1
+  }
+
   display_apps {
     vscode = false
     vscode_insiders = false
@@ -195,6 +203,8 @@ resource "coder_agent" "dev" {
 #!/bin/sh
 
 set -e
+
+touch /tmp/wush_key.txt
 
 # commented out install the latest code-server since it is already installed in the image
 # Append "--version x.x.x" to install a specific version of code-server.
@@ -227,6 +237,30 @@ else
   SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter
   SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-python.python
 fi
+
+# install wush for wireguard file transfer
+# https://github.com/coder/wush
+# install.sh installs incorrect version of wush
+# curl -fsSL https://wush.dev/install.sh | sh
+
+# get latest release from github
+LATEST_RELEASE_URL=$(curl -fsSL \
+  "https://api.github.com/repos/coder/wush/releases/latest" \
+      | grep "browser_download_url" \
+      | grep "linux_amd64.tar.gz" \
+      | cut -d '"' -f 4 | head -n 1)
+
+wget -qO- $LATEST_RELEASE_URL | tar -xz -C /tmp
+sudo mv /tmp/wush /usr/local/bin
+
+# start wush server
+wush serve >/tmp/wush.log 2>&1 &
+
+# wait for wush server to start
+sleep 10
+
+# put wush private key into file to show in dashboard
+grep -m 2 -oP '^[^ ]+' /tmp/wush.log | tail -n 1 > /tmp/wush_key.txt &
 
 EOT
 }
