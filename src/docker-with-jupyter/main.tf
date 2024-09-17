@@ -109,7 +109,7 @@ data "coder_parameter" "marketplace" {
   type        = "string"
   description = "What extension marketplace do you want to use with code-server?"
   mutable     = true
-  default     = "ovsx"
+  default     = "ms"
   icon        = "/icon/code.svg"
 
   option {
@@ -231,11 +231,11 @@ sleep 5
 
 # marketplace
 if [ "${data.coder_parameter.marketplace.value}" = "ms" ]; then
-  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter 
-  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items /tmp/code-server/bin/code-server --install-extension ms-python.python 
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter --force
+  SERVICE_URL=https://marketplace.visualstudio.com/_apis/public/gallery ITEM_URL=https://marketplace.visualstudio.com/items /tmp/code-server/bin/code-server --install-extension ms-python.python --force
 else
-  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter
-  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-python.python
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-toolsai.jupyter --force
+  SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ms-python.python --force
 fi
 
 # install wush for wireguard file transfer
