@@ -258,7 +258,7 @@ wget -qO- $LATEST_RELEASE_URL | tar -xz -C /tmp
 sudo mv /tmp/wush /usr/local/bin
 
 # start wush server
-wush serve >/tmp/wush.log 2>&1 &
+wush serve -v >/tmp/wush.log 2>&1 &
 
 EOT
 }
