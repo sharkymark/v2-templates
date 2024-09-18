@@ -182,7 +182,13 @@ resource "coder_agent" "dev" {
   metadata {
     display_name = "wush private key"
     key          = "4_wush_key"
-    script       = "cat /tmp/wush_key.txt"
+    script       = <<EOT
+    if [[ -f /tmp/wush.log ]]; then
+      awk 'NR==2 {print}' /tmp/wush.log
+    else
+      echo 'wush not started yet'
+    fi
+    EOT
     interval     = 10
     timeout      = 1
   }
@@ -203,8 +209,6 @@ resource "coder_agent" "dev" {
 #!/bin/sh
 
 set -e
-
-touch /tmp/wush_key.txt
 
 # commented out install the latest code-server since it is already installed in the image
 # Append "--version x.x.x" to install a specific version of code-server.
@@ -255,12 +259,6 @@ sudo mv /tmp/wush /usr/local/bin
 
 # start wush server
 wush serve >/tmp/wush.log 2>&1 &
-
-# wait for wush server to start
-sleep 10
-
-# put wush private key into file to show in dashboard
-grep -m 2 -oP '^[^ ]+' /tmp/wush.log | tail -n 1 > /tmp/wush_key.txt &
 
 EOT
 }
