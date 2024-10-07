@@ -22,6 +22,9 @@ data "coder_workspace" "me" {
 data "coder_workspace_owner" "me" {
 }
 
+data "coder_provisioner" "me" {
+}
+
 variable "socket" {
   type        = string
   description = <<-EOF
@@ -53,22 +56,17 @@ data "coder_parameter" "image" {
   option {
     name = "Node React"
     value = "marktmilligan/node:22.7.0"
-    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
+    icon = "/icon/node.svg"
   }
   option {
-    name = "Golang"
+    name = "Go"
     value = "marktmilligan/go:1.22.1"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Go_Logo_Blue.svg/1200px-Go_Logo_Blue.svg.png"
-  } 
-  option {
-    name = "Java"
-    value = "codercom/enterprise-java:ubuntu"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
+    icon = "/icon/go.svg"
   } 
   option {
     name = "Base including Python"
     value = "codercom/enterprise-base:ubuntu"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
+    icon = "/icon/python.svg"
   }
   order       = 1        
 }
@@ -78,91 +76,29 @@ data "coder_parameter" "repo" {
   type        = "string"
   description = "What source code repository do you want to clone?"
   mutable     = true
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  default     = "https://github.com/sharkymark/coder-react"
-
+  icon        = "/icon/git.svg"
+  default     = ""
   option {
-    name = "coder-react"
+    name = "Do not clone a repository"
+    value = ""
+    icon = "/emojis/274c.png"
+  }
+  option {
+    name = "Node React Hello, World"
     value = "https://github.com/sharkymark/coder-react"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/2300px-React-icon.svg.png"
+    icon = "/icon/node.svg"
   }
   option {
-    name = "Coder v2 OSS project"
+    name = "Coder CDE OSS Go project"
     value = "https://github.com/coder/coder"
-    icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
+    icon = "/icon/coder.svg"
   }  
   option {
-    name = "Coder code-server project"
-    value = "https://github.com/coder/code-server"
-    icon = "https://avatars.githubusercontent.com/u/95932066?s=200&v=4"
-  }
-  option {
-    name = "Golang command line app"
-    value = "https://github.com/sharkymark/commissions"
-    icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
-  }
-  option {
-    name = "Java Hello, World! command line app"
-    value = "https://github.com/sharkymark/java_helloworld"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  }  
-  option {
-    name = "Python command line app"
+    name = "Python CLI app for calculating sales commissions"
     value = "https://github.com/sharkymark/python_commissions"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  }
-  option {
-    name = "Shark's rust sample apps"
-    value = "https://github.com/sharkymark/rust-hw"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
+    icon = "/icon/python.svg"
   }
   order       = 2       
-}
-
-data "coder_parameter" "extension" {
-  name        = "VS Code extension"
-  type        = "string"
-  description = "Which VS Code extension do you want?"
-  mutable     = true
-  default     = "eg2.vscode-npm-script"
-  icon        = "/icon/code.svg"
-
-  option {
-    name = "npm"
-    value = "eg2.vscode-npm-script"
-    icon = "https://cdn.freebiesupply.com/logos/large/2x/nodejs-icon-logo-png-transparent.png"
-  }
-  option {
-    name = "Golang"
-    value = "golang.go"
-    icon = "https://cdn.worldvectorlogo.com/logos/golang-gopher.svg"
-  } 
-  option {
-    name = "rust-lang"
-    value = "rust-lang.rust"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  } 
-  option {
-    name = "rust analyzer"
-    value = "matklad.rust-analyzer"
-    icon = "https://rustacean.net/assets/cuddlyferris.svg"
-  }
-  option {
-    name = "Python"
-    value = "ms-python.python"
-    icon = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png"
-  } 
-  option {
-    name = "Jupyter"
-    value = "ms-toolsai.jupyter"
-    icon = "/icon/jupyter.svg"
-  } 
-  option {
-    name = "Java"
-    value = "redhat.java"
-    icon = "https://assets.stickpng.com/images/58480979cef1014c0b5e4901.png"
-  } 
-  order       = 3             
 }
 
 data "coder_parameter" "dotfiles_url" {
@@ -172,11 +108,34 @@ data "coder_parameter" "dotfiles_url" {
   default     = ""
   mutable     = true 
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 4
+  order       = 3
+}
+
+data "coder_parameter" "ide" {
+  name        = "VS Code IDE"
+  description = "Select a local or browser-based IDE"
+  type        = "string"
+  default     = "code"
+  mutable     = true 
+  icon        = "/icon/code.svg"
+  order       = 5
+
+  option {
+    name = "VS Code Desktop"
+    value = "code"
+    icon = "/icon/code.svg"
+  }
+  option {
+    name = "code-server (browser IDE)"
+    value = "code-server"
+    icon = "/icon/coder.svg"
+  }
+
+
 }
 
 resource "coder_agent" "dev" {
-  arch           = "amd64"
+  arch           = data.coder_provisioner.me.arch
   os             = "linux"
 
   # The following metadata blocks are optional. They are used to display
@@ -210,34 +169,35 @@ resource "coder_agent" "dev" {
   }
 
   display_apps {
-    vscode = true
+    vscode = data.coder_parameter.ide.value == "code"
     vscode_insiders = false
     ssh_helper = false
     port_forwarding_helper = true
     web_terminal = true
   }
 
-  startup_script_behavior = "blocking"
+  startup_script_behavior = "non-blocking"
   connection_timeout = 300  
   startup_script  = <<EOT
-#!/bin/bash
+#!/bin/sh
 
-set -e
+# set -e
 
-# commented out install the latest code-server since it is already installed in the image
-# Append "--version x.x.x" to install a specific version of code-server.
-# curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+if [ "${data.coder_parameter.ide.value}" = "code-server" ]; then
+  # start code-coder
+  # Append "--version x.x.x" to install a specific version of code-server
 
-# start code-server in the background.
-/tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
+    curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
 
-# use coder CLI to clone and install dotfiles
-if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+    # Start code-server in the background.
+    /tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
+
 fi
 
-# install VS Code extension into coder technologies' code-server from openvsx's marketplace
-SERVICE_URL=https://open-vsx.org/vscode/gallery ITEM_URL=https://open-vsx.org/vscode/item /tmp/code-server/bin/code-server --install-extension ${data.coder_parameter.extension.value} >/dev/null 2>&1 &
+# use coder CLI to clone and install dotfiles
+if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
+  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+fi
 
 # clone repo
 
@@ -262,6 +222,7 @@ fi
 
 # coder technologies' code-server
 resource "coder_app" "coder-code-server" {
+  count = data.coder_parameter.ide.value == "code-server" ? 1 : 0
   agent_id = coder_agent.dev.id
   slug          = "coder"  
   display_name  = "code-server"
