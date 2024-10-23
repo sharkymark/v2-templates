@@ -60,7 +60,7 @@ data "coder_parameter" "image" {
   }
   option {
     name = "Go"
-    value = "marktmilligan/go:1.22.1"
+    value = "marktmilligan/go:1.23.0"
     icon = "/icon/go.svg"
   } 
   option {
