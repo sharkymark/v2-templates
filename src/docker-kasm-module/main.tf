@@ -10,26 +10,16 @@ terraform {
 }
 
 locals {
-  repo_name = "https://github.com/sharkymark/java_helloworld.git"
-  folder_name = try(element(split("/", local.repo_name), length(split("/", local.repo_name)) - 1), "") 
-  folder_no_git_name = try(element(split(".", local.folder_name), length(split(".", local.folder_name)) - 2), "")  
-  repo_owner_name = try(element(split("/", local.repo_name), length(split("/", local.repo_name)) - 2), "")    
-  image = "docker.io/marktmilligan/eclipse-vnc:coder-v2"
-}
-
-
-provider "docker" {
-  host = var.socket
-}
-
-provider "coder" {
+  image = "codercom/enterprise-desktop:latest"
 }
 
 data "coder_workspace" "me" {
 }
 
-data  "coder_workspace_owner" "me" {
+data "coder_workspace_owner" "me" {
+}
 
+data "coder_provisioner" "me" {
 }
 
 variable "socket" {
@@ -45,19 +35,53 @@ variable "socket" {
   default = "unix:///var/run/docker.sock"
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
+provider "docker" {
+  host = var.socket
+}
+
+provider "coder" {
+}
+
+module "kasmvnc" {
+  count               = data.coder_workspace.me.start_count
+  source              = "registry.coder.com/modules/kasmvnc/coder"
+  version             = "1.0.23"
+  agent_id            = coder_agent.dev.id
+  desktop_environment = "xfce"
+}
+
+data "coder_parameter" "ide" {
+  name        = "VS Code IDE"
+  description = "Select a local or browser-based IDE"
   type        = "string"
-  default     = ""
+  default     = "code"
   mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
+  icon        = "/icon/code.svg"
   order       = 1
+
+  option {
+    name = "VS Code Desktop"
+    value = "code"
+    icon = "/icon/code.svg"
+  }
+  option {
+    name = "code-server (browser IDE)"
+    value = "code-server"
+    icon = "/icon/coder.svg"
+  }
+
+
 }
 
 resource "coder_agent" "dev" {
-  arch           = "amd64"
+  arch           = data.coder_provisioner.me.arch
   os             = "linux"
+
+  # The following metadata blocks are optional. They are used to display
+  # information about your workspace in the dashboard. You can remove them
+  # if you don't want to display any information.
+  # For basic resources, you can use the `coder stat` command.
+  # If you need more control, you can write your own script.
 
   metadata {
     display_name = "CPU Usage"
@@ -84,60 +108,41 @@ resource "coder_agent" "dev" {
   }
 
   display_apps {
-    vscode = false
+    vscode = data.coder_parameter.ide.value == "code"
     vscode_insiders = false
     ssh_helper = false
-    port_forwarding_helper = false
+    port_forwarding_helper = true
     web_terminal = true
   }
 
   startup_script_behavior = "non-blocking"
+  connection_timeout = 300  
   startup_script  = <<EOT
 #!/bin/sh
 
-# start VNC
-echo "Creating desktop..."
-mkdir -p "$XFCE_DEST_DIR"
-cp -rT "$XFCE_BASE_DIR" "$XFCE_DEST_DIR"
-# Skip default shell config prompt.
-cp /etc/zsh/newuser.zshrc.recommended $HOME/.zshrc
-echo "Initializing Supervisor..."
-nohup supervisord >/dev/null 2>&1 &
+# set -e
 
-# install code-server
-curl -fsSL https://code-server.dev/install.sh | sh
-code-server --auth none --port 13337 >/dev/null 2>&1 &
+if [ "${data.coder_parameter.ide.value}" = "code-server" ]; then
+  # start code-coder
+  # Append "--version x.x.x" to install a specific version of code-server
 
-# use coder CLI to clone and install dotfiles
-if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
+    curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
+
+    # Start code-server in the background.
+    /tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
+
 fi
-
-# clone repo
-
-echo "git repo owner name: ${local.repo_owner_name}"
-echo "git repo folder name: ${local.folder_no_git_name}"
-
-if [ ! -d "${local.folder_no_git_name}" ] 
-then
-  echo "Cloning git repo..."
-  git clone ${local.repo_name}
-else
-  echo "Repo ${local.repo_name} already exists. Will not reclone"
-fi
-
-# eclipse - delay to make sure VNC is running
-sleep 5
-DISPLAY=:90 /opt/eclipse/eclipse -data /home/coder sh >/dev/null 2>&1 &
 
   EOT  
 }
 
-resource "coder_app" "code-server" {
+# coder technologies' code-server
+resource "coder_app" "coder-code-server" {
+  count = data.coder_parameter.ide.value == "code-server" ? 1 : 0
   agent_id = coder_agent.dev.id
-  slug          = "cs"  
+  slug          = "coder"  
   display_name  = "code-server"
-  url      = "http://localhost:13337/?folder=/home/coder"
+  url      = "http://localhost:13337"
   icon     = "/icon/code.svg"
   subdomain = false
   share     = "owner"
@@ -149,30 +154,18 @@ resource "coder_app" "code-server" {
   }  
 }
 
-resource "coder_app" "eclipse" {
-  agent_id      = coder_agent.dev.id
-  slug          = "e"  
-  display_name  = "Eclipse"  
-  icon          = "https://upload.wikimedia.org/wikipedia/commons/c/cf/Eclipse-SVG.svg"
-  url           = "http://localhost:6081"
-  subdomain = false
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:6081/healthz"
-    interval  = 6
-    threshold = 20
-  } 
-}
-
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = local.image
+  image = "${local.image}"
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
-  dns      = ["1.1.1.1"]
+  dns      = ["1.1.1.1"] 
 
+  # Use the docker gateway if the access URL is 127.0.0.1
+  #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
+
+  # Use the docker gateway if the access URL is 127.0.0.1
   command = [
     "sh", "-c",
     <<EOT
@@ -180,6 +173,7 @@ resource "docker_container" "workspace" {
     ${replace(coder_agent.dev.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}
     EOT
   ]
+
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {
@@ -201,11 +195,7 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = docker_container.workspace[0].id   
   item {
-    key   = "git repo owner"
-    value = local.repo_owner_name
-  }   
-  item {
-    key   = "repo"
-    value = local.folder_no_git_name
-  }     
+    key   = "image"
+    value = "${local.image}"
+  }
 }

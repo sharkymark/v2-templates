@@ -108,11 +108,6 @@ fi
 # change shell
 sudo chsh -s $(which bash) $(whoami)
 
-# start Insomnia
-# > /dev/null 2>&1
-# Not recommending --no-sandbox; just using for testing
-insomnia &
-
   EOT  
 }
 

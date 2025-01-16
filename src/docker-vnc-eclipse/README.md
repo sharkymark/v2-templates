@@ -29,5 +29,3 @@ tags: [local, docker]
 
 [Image Resource](https://registry.terraform.io/providers/kreuzwerker/docker/latest/docs/resources/image)
 
-[Ben Potter's VNC repo](https://github.com/bpmct/coder-templates/tree/main/desktop-container)
-

@@ -1,12 +1,22 @@
 # Coder OSS help
 
-This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Enterprise (paid). If you're looking for an v2 enterprise trial key, fill out this [form](https://coder.com/trial) for a 30-day trial  or you can sign up when creating your admin user after deploying Coder.
+> I am [no longer with Coder](https://markmilligan.io/experience) so only maintain a handful of Docker-based templates for my own development needs. All the best with your Coder journey!
+
+This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Premium (paid). If you're looking for an v2 enterprise trial key, fill out this [form](https://coder.com/trial) for a 30-day trial  or you can sign up when creating your admin user after deploying Coder.
 
 Here is an additional repo [coder-hw](https://github.com/sharkymark/coder-hw) with a Python-based CLI using the Coder API.
 
 The [official v2 docs](https://github.com/coder/coder/tree/main/docs) and [template examples](https://github.com/coder/coder/tree/main/examples/templates) are great resources too. Also my colleague [bpmct](https://github.com/bpmct/coder-templates) authors some amazing templates too.
 
 ![Main menu screenshot](./docs/images/docker-template.png)
+
+# Coder-maintained templates and modules
+
+I recommend using Coder-maintained templates and modules in the [Coder Registry](https://registry.coder.com/).
+
+# Deprecated templates
+
+Within the `src` directory, you'll find the handful of Docker-based templates that I use personally. Any other templates in the `1-notmaintained` directory are no longer maintained but you'll welcome to use them as a reference.
 
 # API examples
 
