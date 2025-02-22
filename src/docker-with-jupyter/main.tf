@@ -194,7 +194,7 @@ resource "coder_agent" "dev" {
   }
 
   display_apps {
-    vscode = false
+    vscode = true
     vscode_insiders = false
     ssh_helper = false
     port_forwarding_helper = false
