@@ -10,8 +10,8 @@ terraform {
 }
 
 locals {
-  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
-  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")    
+  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")
+  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")
 }
 
 
@@ -62,13 +62,13 @@ data "coder_parameter" "image" {
     name = "Go"
     value = "marktmilligan/go:latest"
     icon = "/icon/go.svg"
-  } 
+  }
   option {
     name = "Base including Python"
     value = "codercom/enterprise-base:ubuntu"
     icon = "/icon/python.svg"
   }
-  order       = 1        
+  order       = 1
 }
 
 data "coder_parameter" "repo" {
@@ -92,13 +92,13 @@ data "coder_parameter" "repo" {
     name = "Coder CDE OSS Go project"
     value = "https://github.com/coder/coder"
     icon = "/icon/coder.svg"
-  }  
+  }
   option {
     name = "Python CLI app for calculating sales commissions"
     value = "https://github.com/sharkymark/python_commissions"
     icon = "/icon/python.svg"
   }
-  order       = 2       
+  order       = 2
 }
 
 data "coder_parameter" "dotfiles_url" {
@@ -106,7 +106,7 @@ data "coder_parameter" "dotfiles_url" {
   description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
   type        = "string"
   default     = ""
-  mutable     = true 
+  mutable     = true
   icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
   order       = 3
 }
@@ -116,7 +116,7 @@ data "coder_parameter" "ide" {
   description = "Select a local or browser-based IDE"
   type        = "string"
   default     = "code"
-  mutable     = true 
+  mutable     = true
   icon        = "/icon/code.svg"
   order       = 5
 
@@ -130,7 +130,11 @@ data "coder_parameter" "ide" {
     value = "code-server"
     icon = "/icon/coder.svg"
   }
-
+  option {
+    name = "Zed (desktop IDE)"
+    value = "zed"
+    icon = "/icon/zed.svg"
+  }
 
 }
 
@@ -177,7 +181,7 @@ resource "coder_agent" "dev" {
   }
 
   startup_script_behavior = "non-blocking"
-  connection_timeout = 300  
+  connection_timeout = 300
   startup_script  = <<EOT
 #!/bin/sh
 
@@ -204,12 +208,12 @@ fi
 echo "folder_name: ${local.folder_name}"
 echo "repo_name: ${local.repo_owner_name}"
 
-if test -z "${data.coder_parameter.repo.value}" 
+if test -z "${data.coder_parameter.repo.value}"
 then
   echo "No git repo specified, skipping"
 else
-  if [ ! -d "${local.folder_name}" ] 
-  then  
+  if [ ! -d "${local.folder_name}" ]
+  then
     echo "Cloning git repo..."
     git clone ${data.coder_parameter.repo.value}
   else
@@ -217,14 +221,14 @@ else
   fi
 fi
 
-  EOT  
+  EOT
 }
 
 # coder technologies' code-server
 resource "coder_app" "coder-code-server" {
   count = data.coder_parameter.ide.value == "code-server" ? 1 : 0
   agent_id = coder_agent.dev.id
-  slug          = "coder"  
+  slug          = "coder"
   display_name  = "code-server"
   url      = "http://localhost:13337"
   icon     = "/icon/code.svg"
@@ -235,7 +239,18 @@ resource "coder_app" "coder-code-server" {
     url       = "http://localhost:13337/healthz"
     interval  = 5
     threshold = 15
-  }  
+  }
+}
+
+# zed ide
+resource "coder_app" "zed" {
+  count = data.coder_parameter.ide.value == "zed" ? 1 : 0
+  agent_id = coder_agent.dev.id
+  slug          = "slug"
+  display_name  = "Zed"
+  external = true
+  url      = "zed://ssh/coder.${data.coder_workspace.me.name}"
+  icon     = "/icon/zed.svg"
 }
 
 resource "docker_container" "workspace" {
@@ -244,7 +259,7 @@ resource "docker_container" "workspace" {
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
-  dns      = ["1.1.1.1"] 
+  dns      = ["1.1.1.1"]
 
   # Use the docker gateway if the access URL is 127.0.0.1
   #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
@@ -264,7 +279,7 @@ resource "docker_container" "workspace" {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
     read_only      = false
-  }  
+  }
   host {
     host = "host.docker.internal"
     ip   = "host-gateway"
@@ -277,7 +292,7 @@ resource "docker_volume" "coder_volume" {
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = docker_container.workspace[0].id   
+  resource_id = docker_container.workspace[0].id
   item {
     key   = "image"
     value = "${data.coder_parameter.image.value}"
@@ -285,5 +300,5 @@ resource "coder_metadata" "workspace_info" {
   item {
     key   = "repo cloned"
     value = "${local.repo_owner_name}/${local.folder_name}"
-  }  
+  }
 }
