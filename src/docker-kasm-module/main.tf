@@ -45,8 +45,9 @@ provider "coder" {
 module "kasmvnc" {
   count               = data.coder_workspace.me.start_count
   source              = "registry.coder.com/modules/kasmvnc/coder"
-  version             = "1.0.23"
   agent_id            = coder_agent.dev.id
+  # https://github.com/kasmtech/KasmVNC/releases
+  kasm_version        = "1.3.3"
   desktop_environment = "xfce"
 }
 
@@ -55,7 +56,7 @@ data "coder_parameter" "ide" {
   description = "Select a local or browser-based IDE"
   type        = "string"
   default     = "code"
-  mutable     = true 
+  mutable     = true
   icon        = "/icon/code.svg"
   order       = 1
 
@@ -70,8 +71,9 @@ data "coder_parameter" "ide" {
     icon = "/icon/coder.svg"
   }
 
-
 }
+
+
 
 resource "coder_agent" "dev" {
   arch           = data.coder_provisioner.me.arch
@@ -116,7 +118,7 @@ resource "coder_agent" "dev" {
   }
 
   startup_script_behavior = "non-blocking"
-  connection_timeout = 300  
+  connection_timeout = 300
   startup_script  = <<EOT
 #!/bin/sh
 
@@ -133,14 +135,14 @@ if [ "${data.coder_parameter.ide.value}" = "code-server" ]; then
 
 fi
 
-  EOT  
+  EOT
 }
 
 # coder technologies' code-server
 resource "coder_app" "coder-code-server" {
   count = data.coder_parameter.ide.value == "code-server" ? 1 : 0
   agent_id = coder_agent.dev.id
-  slug          = "coder"  
+  slug          = "coder"
   display_name  = "code-server"
   url      = "http://localhost:13337"
   icon     = "/icon/code.svg"
@@ -151,7 +153,7 @@ resource "coder_app" "coder-code-server" {
     url       = "http://localhost:13337/healthz"
     interval  = 5
     threshold = 15
-  }  
+  }
 }
 
 resource "docker_container" "workspace" {
@@ -160,7 +162,7 @@ resource "docker_container" "workspace" {
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
-  dns      = ["1.1.1.1"] 
+  dns      = ["1.1.1.1"]
 
   # Use the docker gateway if the access URL is 127.0.0.1
   #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
@@ -180,7 +182,7 @@ resource "docker_container" "workspace" {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
     read_only      = false
-  }  
+  }
   host {
     host = "host.docker.internal"
     ip   = "host-gateway"
@@ -193,7 +195,7 @@ resource "docker_volume" "coder_volume" {
 
 resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
-  resource_id = docker_container.workspace[0].id   
+  resource_id = docker_container.workspace[0].id
   item {
     key   = "image"
     value = "${local.image}"
