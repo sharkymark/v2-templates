@@ -10,6 +10,9 @@ description: The goal is to try the experimental ai agent integration with Goose
 1. Includes Node.sj and npm required to install Goose
 1. Includes Screen package to render Goose logs in Coder workspace UI
 
+[Image on DockerHub](https://hub.docker.com/repository/docker/marktmilligan/python/general)
+[Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/python/Dockerfile)
+
 ### Apps included
 1. A web-based terminal
 1. choice of Coder code-server IDE, VS Code Desktop or Zed IDE (if either are installed locally)
