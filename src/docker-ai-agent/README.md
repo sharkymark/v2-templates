@@ -19,7 +19,7 @@ description: The goal is to try the experimental ai agent integration with Goose
 1. A Goose app to open the Goose AI agent
 
 ### AI agent
-1. The AI agent is a goose ai agent
+1. The AI agent is a [goose ai agent](https://block.github.io/goose/)
 1. The Coder module installs and configures goose ai
 1. The user is prompted to enter an OpenRouter API key which Goose will use
 1. The user enters a prompt to tell the agent what to do
@@ -31,4 +31,5 @@ description: The goal is to try the experimental ai agent integration with Goose
 ### Resources
 
 [Docker Terraform provider](https://registry.terraform.io/providers/kreuzwerker/docker/latest/docs)
+
 [Coder Terraform provider](https://registry.terraform.io/providers/coder/coder/latest/docs)
