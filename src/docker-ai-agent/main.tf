@@ -13,7 +13,12 @@ locals {
 
 }
 
+provider "docker" {
+  host = var.socket
+}
 
+provider "coder" {
+}
 
 data "coder_workspace" "me" {
 }
@@ -37,11 +42,10 @@ variable "socket" {
   default = "unix:///var/run/docker.sock"
 }
 
-provider "docker" {
-  host = var.socket
-}
-
-provider "coder" {
+variable "openrouter_api_key" {
+  type        = string
+  description = "The OpenRouter API key"
+  sensitive   = true
 }
 
 module "goose" {
@@ -49,12 +53,11 @@ module "goose" {
   agent_id      = coder_agent.dev.id
   folder        = "/home/coder"
   install_goose = true
-  goose_version = "v1.0.17"
   experiment_report_tasks = true
   experiment_auto_configure = true
   experiment_use_screen = true
   experiment_goose_provider = "openrouter"
-  experiment_goose_model = "google/gemini-2.0-flash-exp:free"  
+  experiment_goose_model = "${data.coder_parameter.providermodel.value}"  
 }
 
 module "coder-login" {
@@ -116,15 +119,27 @@ data "coder_parameter" "ide" {
 
 }
 
-
-data "coder_parameter" "openrouter_api_key" {
-  name        = "OpenRouter API Key"
-  description = "For making calls to OpenRouter API Gateway"
+data "coder_parameter" "providermodel" {
+  name        = "AI provider and model"
+  description = "Select a provider and model for OpenRouter"
   type        = "string"
-  default     = ""
+  default     = "google/gemini-2.0-flash-exp:free"
   mutable     = true
   icon        = "/emojis/2728.png"
-  order       = 5
+  order       = 6
+
+  option {
+    name = "google/gemini-2.0-flash-exp:free"
+    value = "google/gemini-2.0-flash-exp:free"
+  }
+  option {
+    name = "anthropic/claude-3.7-sonnet"
+    value = "anthropic/claude-3.7-sonnet"
+  }
+  option {
+    name = "openai/gpt-4.1"
+    value = "openai/gpt-4.1"
+  }
 }
 
 data "coder_parameter" "ai_prompt" {
@@ -134,8 +149,10 @@ data "coder_parameter" "ai_prompt" {
   description = "Write a prompt for Goose"
   mutable     = true
   icon        = "/emojis/2728.png"
-  order       = 6  
+  order       = 7  
 }
+
+
 
 resource "coder_agent" "dev" {
   arch           = data.coder_provisioner.me.arch
@@ -195,7 +212,7 @@ resource "coder_agent" "dev" {
     GOOSE_TASK_PROMPT   = data.coder_parameter.ai_prompt.value
     # An API key is required for experiment_auto_configure
     # See https://block.github.io/goose/docs/getting-started/providers
-    OPENROUTER_API_KEY = data.coder_parameter.openrouter_api_key.value
+    OPENROUTER_API_KEY = var.openrouter_api_key
   }
 
   startup_script  = <<EOT
