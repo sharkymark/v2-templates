@@ -1,11 +1,15 @@
 # Coder OSS help
 
+## Changelog
+See the [CHANGELOG.md](CHANGELOG.md) file for the latest updates and changes to this project.
+
+## Summary
+
 > I am [no longer with Coder](https://markmilligan.io/experience) so only maintain a handful of Docker-based templates for my own development needs. All the best with your Coder journey!
 
 This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Premium (paid). If you're looking for an v2 enterprise trial key, fill out this [form](https://coder.com/trial) for a 30-day trial  or you can sign up when creating your admin user after deploying Coder.
 
-## Changelog
-See the [CHANGELOG.md](CHANGELOG.md) file for the latest updates and changes to this project.
+
 
 Here is an additional repo [coder-hw](https://github.com/sharkymark/coder-hw) with a Python-based CLI using the Coder API.
 
@@ -13,27 +17,27 @@ The [official v2 docs](https://github.com/coder/coder/tree/main/docs) and [templ
 
 ![Main menu screenshot](./docs/images/docker-template.png)
 
-# Coder-maintained templates and modules
+## Coder-maintained templates and modules
 
 I recommend using Coder-maintained templates and modules in the [Coder Registry](https://registry.coder.com/).
 
-# Deprecated templates
+## Deprecated templates
 
 Within the `src` directory, you'll find the handful of Docker-based templates that I use personally. Any other templates in the `1-notmaintained` directory are no longer maintained but you'll welcome to use them as a reference.
 
-# API examples
+## API examples
 
 You can find API endpoints from inspecting the UI in your browser tools. [Here are examples](api.md) to get you going. This new repo [coder-hw](https://github.com/sharkymark/coder-hw) heavily uses the Coder API with a Python-based CLI app.
 
-# Template Emoji URLs
+## Template Emoji URLs
 
 Here are several [Emoji URLs](emoji-urls.md) to IDE, programming language, and infrastructure emojis to make your templates pop in the Coder UI.
 
-# Frequently Asked Questions (FAQ)
+## Frequently Asked Questions (FAQ)
 
 [Coder's docs](https://github.com/coder/coder/tree/main/docs) are the first place to answers but I compile things that I find are important or recurring. [Here is the FAQ](faq.md).
 
-# Easiest way to getting started
+## Easiest way to getting started
 
 The easiest and fastest way to run Coder is from the command line with the `coder` binary.
 
@@ -65,13 +69,13 @@ You can pass parameters/flags after `coder server` but I have a nice [`coder.yam
 coder server --config coder.yaml
 ```
 
-# Templates
+## Templates
 
 The example templates that ship with v2 are [here](https://github.com/coder/coder/tree/main/examples/templates) and [bpmct](https://github.com/bpmct/coder-templates) has some sweet templates too like podman and nifty AWS VM template that only persists the home volume.
 
 ![Main menu screenshot](./docs/images/templates-ui.png)
 
-# Videos
+## Videos
 
 Here are [some short videos](videos.md) installing, configuring and using Coder v2. As new features arrive, I add new videos.
 
