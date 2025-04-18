@@ -123,33 +123,86 @@ data "coder_parameter" "providermodel" {
   name        = "AI provider and model"
   description = "Select a provider and model for OpenRouter"
   type        = "string"
-  default     = "google/gemini-2.0-flash-exp:free"
+  default     = "openai/gpt-4o-mini"
   mutable     = true
   icon        = "/emojis/2728.png"
   order       = 6
 
   option {
-    name = "google/gemini-2.0-flash-exp:free"
-    value = "google/gemini-2.0-flash-exp:free"
+    name = "google/gemini-2.0-flash-001"
+    value = "google/gemini-2.0-flash-001"
+  }
+    option {
+    name = "google/gemini-2.5-flash-preview"
+    value = "google/gemini-2.5-flash-preview"
   }
   option {
     name = "anthropic/claude-3.7-sonnet"
     value = "anthropic/claude-3.7-sonnet"
   }
+   option {
+    name = "anthropic/claude-3.5-sonnet"
+    value = "anthropic/claude-3.5-sonnet"
+  } 
   option {
     name = "openai/gpt-4.1"
     value = "openai/gpt-4.1"
   }
+  option {
+    name = "openai/gpt-4o-mini"
+    value = "openai/gpt-4o-mini"
+  }  
 }
 
 data "coder_parameter" "ai_prompt" {
   type        = "string"
   name        = "AI Prompt"
-  default     = "Write a Python script in a new directory, with a virtual environment, for a number guessing game. The program should generate a random number between 1 and 100, prompt the user to guess it, and provide hints if the guess is too high or too low."
   description = "Write a prompt for Goose"
+  default      = ""
   mutable     = true
   icon        = "/emojis/2728.png"
   order       = 7  
+}
+
+data "coder_parameter" "git_username" {
+  type        = "string"
+  name        = "GitHub User Name"
+  description = "Used to run: git config --global user.name"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 8 
+}
+
+data "coder_parameter" "git_useremail" {
+  type        = "string"
+  name        = "Git user.email"
+  description = "Used to run: git config --global user.email"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 9  
+}
+
+
+data "coder_parameter" "github_credential_username" {
+  type        = "string"
+  name        = "credential.https://github.com.username"
+  description = "Used to run: git config --global credential...username"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 10  
+}
+
+data "coder_parameter" "github_credential_password" {
+  type        = "string"
+  name        = "github_credential.password"
+  description = "Used to run with git credential-store store"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 11
 }
 
 
@@ -200,6 +253,7 @@ resource "coder_agent" "dev" {
   connection_timeout = 300
 
   env = {
+
     GOOSE_SYSTEM_PROMPT = <<-EOT
       You are a helpful assistant that can help write code.
 
@@ -209,7 +263,8 @@ resource "coder_agent" "dev" {
 
       Notify Coder of the status of the task before and after your steps.
     EOT
-    GOOSE_TASK_PROMPT   = data.coder_parameter.ai_prompt.value
+    # Only set GOOSE_TASK_PROMPT if ai_prompt has a value
+    GOOSE_TASK_PROMPT   = length(data.coder_parameter.ai_prompt.value) > 0 ? data.coder_parameter.ai_prompt.value : null
     # An API key is required for experiment_auto_configure
     # See https://block.github.io/goose/docs/getting-started/providers
     OPENROUTER_API_KEY = var.openrouter_api_key
@@ -236,7 +291,24 @@ if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
   coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
 fi
 
-  EOT
+# configure git username and email for commits
+if [ ! -z "${data.coder_parameter.git_username.value}" ]; then
+  git config --global user.name "${data.coder_parameter.git_username.value}"
+fi
+if [ ! -z "${data.coder_parameter.git_useremail.value}" ]; then
+  git config --global user.email "${data.coder_parameter.git_useremail.value}"
+fi
+# configure git credential helper for github
+if [ ! -z "${data.coder_parameter.github_credential_username.value}" ]; then
+  git config --global credential.https://github.com.username "${data.coder_parameter.github_credential_username.value}"
+fi
+if [ ! -z "${data.coder_parameter.github_credential_password.value}" ]; then
+  git config --global credential.helper store
+  printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "${data.coder_parameter.github_credential_username.value}" "${data.coder_parameter.github_credential_password.value}" | git credential-store store
+fi
+
+EOT
+
 }
 
 # coder technologies' code-server
