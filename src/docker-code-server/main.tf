@@ -50,7 +50,7 @@ data "coder_parameter" "image" {
   type        = "string"
   description = "What container image and language do you want?"
   mutable     = true
-  default     = "marktmilligan/node:22.7.0"
+  default     = "marktmilligan/python-ai-agents:latest"
   icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
 
   option {
@@ -64,8 +64,8 @@ data "coder_parameter" "image" {
     icon = "/icon/go.svg"
   }
   option {
-    name = "Base including Python"
-    value = "codercom/enterprise-base:ubuntu"
+    name = "Python and AI agents Goose and Aider"
+    value = "marktmilligan/python-ai-agents:latest"
     icon = "/icon/python.svg"
   }
   order       = 1
