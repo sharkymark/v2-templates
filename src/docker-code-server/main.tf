@@ -276,7 +276,7 @@ resource "docker_container" "workspace" {
 
   env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {
-    container_path = "/home/coder/"
+    container_path = "/root/"
     volume_name    = docker_volume.coder_volume.name
     read_only      = false
   }
