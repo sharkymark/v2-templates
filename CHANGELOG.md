@@ -1,8 +1,20 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
+## [Template update] - 2025-04-22
+
+### Changed
+
+- Updated the `docker-code-server` template to a new container image `marktmilligan/python-ai-agents:latest` which includes the Goose AI agent and Aider agent
+- AI agent binaries are located in `/home/coder/.local/bin`
+- DockerHub image is available at [https://hub.docker.com/repository/docker/marktmilligan/python-ai-agents](https://hub.docker.com/repository/docker/marktmilligan/python-ai-agents)
+- Dockerfile is available at [https://github.com/sharkymark/dockerfiles/blob/main/python-code-gen/Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/python-code-gen/Dockerfile)
+
 ## [AI-related] - 2025-04-16
+
 ### Added
+
 - created a new template `docker-ai-agent` to run a Goose AI agent in a container
 - purpose is to test the UI integration with Coder workspace and Goose AI agent tasks
 - uses a prompt `coder_parameter` for the user to enter a prompt
@@ -11,10 +23,6 @@ All notable changes to this project will be documented in this file.
 - pushed the image to [DockerHub](https://hub.docker.com/repository/docker/marktmilligan/python/general)
 
 ### Changed
+
 - Updated `docker-code-server` template with a `coder_app` to open the Zed IDE
 - The user selects which IDE at workspace creation time e.g., `VS Code Desktop`, `code-server` or `zed`
-
-### Fixed
-- None
-### Removed
-- None
