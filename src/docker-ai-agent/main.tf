@@ -66,6 +66,21 @@ module "coder-login" {
   agent_id = coder_agent.dev.id
 }
 
+module "dotfiles" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/dotfiles/coder"
+  agent_id = coder_agent.dev.id
+}
+
+module "vscode-web" {
+  count          = data.coder_workspace.me.start_count
+  source         = "registry.coder.com/modules/vscode-web/coder"
+  agent_id       = coder_agent.dev.id
+  extensions     = ["github.copilot"]
+  folder         = "/home/coder"
+  accept_license = true
+}
+
 data "coder_parameter" "image" {
   name        = "Container Image"
   type        = "string"
@@ -80,43 +95,6 @@ data "coder_parameter" "image" {
     icon = "/icon/python.svg"
   }
   order       = 1
-}
-
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
-  type        = "string"
-  default     = ""
-  mutable     = true
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 2
-}
-
-data "coder_parameter" "ide" {
-  name        = "VS Code IDE"
-  description = "Select a local or browser-based IDE"
-  type        = "string"
-  default     = "code"
-  mutable     = true
-  icon        = "/icon/code.svg"
-  order       = 3
-
-  option {
-    name = "VS Code Desktop"
-    value = "code"
-    icon = "/icon/code.svg"
-  }
-  option {
-    name = "code-server (browser IDE)"
-    value = "code-server"
-    icon = "/icon/coder.svg"
-  }
-  option {
-    name = "Zed (desktop IDE)"
-    value = "zed"
-    icon = "/icon/zed.svg"
-  }
-
 }
 
 data "coder_parameter" "providermodel" {
@@ -242,7 +220,7 @@ resource "coder_agent" "dev" {
   }
 
   display_apps {
-    vscode = data.coder_parameter.ide.value == "code"
+    vscode = true
     vscode_insiders = false
     ssh_helper = false
     port_forwarding_helper = true
@@ -273,24 +251,6 @@ resource "coder_agent" "dev" {
   startup_script  = <<EOT
 #!/bin/sh
 
-# set -e
-
-if [ "${data.coder_parameter.ide.value}" = "code-server" ]; then
-  # start code-coder
-  # Append "--version x.x.x" to install a specific version of code-server
-
-    curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
-
-    # Start code-server in the background.
-    /tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
-
-fi
-
-# use coder CLI to clone and install dotfiles
-if [ ! -z "${data.coder_parameter.dotfiles_url.value}" ]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
-fi
-
 # configure git username and email for commits
 if [ ! -z "${data.coder_parameter.git_username.value}" ]; then
   git config --global user.name "${data.coder_parameter.git_username.value}"
@@ -309,35 +269,6 @@ fi
 
 EOT
 
-}
-
-# coder technologies' code-server
-resource "coder_app" "coder-code-server" {
-  count = data.coder_parameter.ide.value == "code-server" ? 1 : 0
-  agent_id = coder_agent.dev.id
-  slug          = "coder"
-  display_name  = "code-server"
-  url      = "http://localhost:13337"
-  icon     = "/icon/code.svg"
-  subdomain = false
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 5
-    threshold = 15
-  }
-}
-
-# zed ide
-resource "coder_app" "zed" {
-  count = data.coder_parameter.ide.value == "zed" ? 1 : 0
-  agent_id = coder_agent.dev.id
-  slug          = "slug"
-  display_name  = "Zed"
-  external = true
-  url      = "zed://ssh/coder.${data.coder_workspace.me.name}"
-  icon     = "/icon/zed.svg"
 }
 
 resource "docker_container" "workspace" {

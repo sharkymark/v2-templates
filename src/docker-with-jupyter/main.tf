@@ -69,6 +69,12 @@ module "git-clone" {
   url      = "https://github.com/sharkymark/pandas_automl"
 }
 
+module "coder-login" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/coder-login/coder"
+  agent_id = coder_agent.dev.id
+}
+
 resource "coder_agent" "dev" {
   arch           = "amd64"
   os             = "linux"

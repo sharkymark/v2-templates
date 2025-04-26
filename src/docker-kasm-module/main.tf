@@ -51,29 +51,25 @@ module "kasmvnc" {
   desktop_environment = "xfce"
 }
 
-data "coder_parameter" "ide" {
-  name        = "VS Code IDE"
-  description = "Select a local or browser-based IDE"
-  type        = "string"
-  default     = "code"
-  mutable     = true
-  icon        = "/icon/code.svg"
-  order       = 1
-
-  option {
-    name = "VS Code Desktop"
-    value = "code"
-    icon = "/icon/code.svg"
-  }
-  option {
-    name = "code-server (browser IDE)"
-    value = "code-server"
-    icon = "/icon/coder.svg"
-  }
-
+module "dotfiles" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/dotfiles/coder"
+  agent_id = coder_agent.dev.id
 }
 
+module "vscode-web" {
+  count          = data.coder_workspace.me.start_count
+  source         = "registry.coder.com/modules/vscode-web/coder"
+  agent_id       = coder_agent.dev.id
+  extensions     = ["github.copilot"]
+  accept_license = true
+}
 
+module "coder-login" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/coder-login/coder"
+  agent_id = coder_agent.dev.id
+}
 
 resource "coder_agent" "dev" {
   arch           = data.coder_provisioner.me.arch
@@ -110,7 +106,7 @@ resource "coder_agent" "dev" {
   }
 
   display_apps {
-    vscode = data.coder_parameter.ide.value == "code"
+    vscode = true
     vscode_insiders = false
     ssh_helper = false
     port_forwarding_helper = true
@@ -120,40 +116,10 @@ resource "coder_agent" "dev" {
   startup_script_behavior = "non-blocking"
   connection_timeout = 300
   startup_script  = <<EOT
-#!/bin/sh
-
-# set -e
-
-if [ "${data.coder_parameter.ide.value}" = "code-server" ]; then
-  # start code-coder
-  # Append "--version x.x.x" to install a specific version of code-server
-
-    curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
-
-    # Start code-server in the background.
-    /tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
-
-fi
+  #!/bin/sh
 
   EOT
-}
 
-# coder technologies' code-server
-resource "coder_app" "coder-code-server" {
-  count = data.coder_parameter.ide.value == "code-server" ? 1 : 0
-  agent_id = coder_agent.dev.id
-  slug          = "coder"
-  display_name  = "code-server"
-  url      = "http://localhost:13337"
-  icon     = "/icon/code.svg"
-  subdomain = false
-  share     = "owner"
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 5
-    threshold = 15
-  }
 }
 
 resource "docker_container" "workspace" {

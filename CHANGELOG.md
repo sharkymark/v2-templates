@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Transition to modules] - 2025-04-26
+
+### Changed
+
+- Updated all templates to use Coder modules
+- e.g., coder login, VS Code Web, git clone, dotfiles
+- Moved several tempaltes to `1-notmaintained` folder
+
 ## [Template update] - 2025-04-22
 
 ### Changed

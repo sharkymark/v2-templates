@@ -1,15 +1,14 @@
 # Coder OSS help
 
 ## Changelog
+
 See the [CHANGELOG.md](CHANGELOG.md) file for the latest updates and changes to this project.
 
 ## Summary
 
 > I am [no longer with Coder](https://markmilligan.io/experience) so only maintain a handful of Docker-based templates for my own development needs. All the best with your Coder journey!
 
-This is an FAQ, tips and tricks, and best practices to get you going with Coder v2 OSS and v2 Premium (paid). If you're looking for an v2 enterprise trial key, fill out this [form](https://coder.com/trial) for a 30-day trial  or you can sign up when creating your admin user after deploying Coder.
-
-
+If you're looking for an v2 trial key, fill out this [form](https://coder.com/trial) for a 30-day trial or you can sign up when creating your admin user after deploying Coder.
 
 Here is an additional repo [coder-hw](https://github.com/sharkymark/coder-hw) with a Python-based CLI using the Coder API.
 
@@ -29,13 +28,9 @@ Within the `src` directory, you'll find the handful of Docker-based templates th
 
 You can find API endpoints from inspecting the UI in your browser tools. [Here are examples](api.md) to get you going. This new repo [coder-hw](https://github.com/sharkymark/coder-hw) heavily uses the Coder API with a Python-based CLI app.
 
-## Template Emoji URLs
-
-Here are several [Emoji URLs](emoji-urls.md) to IDE, programming language, and infrastructure emojis to make your templates pop in the Coder UI.
-
 ## Frequently Asked Questions (FAQ)
 
-[Coder's docs](https://github.com/coder/coder/tree/main/docs) are the first place to answers but I compile things that I find are important or recurring. [Here is the FAQ](faq.md).
+[Coder's docs](https://github.com/coder/coder/tree/main/docs) are the first place to answers.
 
 ## Easiest way to getting started
 
@@ -75,10 +70,6 @@ The example templates that ship with v2 are [here](https://github.com/coder/code
 
 ![Main menu screenshot](./docs/images/templates-ui.png)
 
-## Videos
-
-Here are [some short videos](videos.md) installing, configuring and using Coder v2. As new features arrive, I add new videos.
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE)
@@ -90,12 +81,9 @@ This project is licensed under the [MIT License](LICENSE)
 Please note that this program is not actively maintained or tested. While it may work as intended, it's possible that it will break or behave unexpectedly due to changes in dependencies, environments, or other factors.
 
 Use this program at your own risk, and be aware that:
+
 1. Bugs may not be fixed
 1. Compatibility issues may arise
 1. Security vulnerabilities may exist
 
 If you encounter any issues or have concerns, feel free to open an issue or submit a pull request.
-
-
-
-
