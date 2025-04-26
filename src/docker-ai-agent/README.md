@@ -17,7 +17,7 @@ description: The goal is to try the experimental ai agent integration with Goose
 ### Apps included
 
 1. A web-based terminal
-1. choice of Coder code-server IDE, VS Code Desktop or Zed IDE (if either are installed locally)
+1. VS Code Web IDE
 1. A Goose app to open the Goose AI agent
 
 ### AI agent

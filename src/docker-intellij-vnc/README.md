@@ -7,11 +7,13 @@ tags: [jetbrains, docker]
 # IntelliJ Community thru VNC in a container
 
 ### Apps included
+
 1. A web-based terminal
 1. IntelliJ Community IDE
 1. VNC
 
 ### Resources
+
 [Docker Terraform provider](https://registry.terraform.io/providers/kreuzwerker/docker/latest/docs)
 
 [XFce4 Linux Desktop](https://www.xfce.org/)

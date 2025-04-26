@@ -43,14 +43,24 @@ provider "docker" {
 provider "coder" {
 }
 
-data "coder_parameter" "dotfiles_url" {
-  name        = "Dotfiles URL (optional)"
-  description = "Personalize your workspace e.g., https://github.com/sharkymark/dotfiles.git"
-  type        = "string"
-  default     = ""
-  mutable     = true 
-  icon        = "https://git-scm.com/images/logos/downloads/Git-Icon-1788C.png"
-  order       = 4
+module "dotfiles" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/dotfiles/coder"
+  agent_id = coder_agent.dev.id
+}
+
+module "git-clone" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/git-clone/coder"
+  version  = "1.0.18"
+  agent_id = coder_agent.dev.id
+  url      = "${local.repo}"
+}
+
+module "coder-login" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/coder-login/coder"
+  agent_id = coder_agent.dev.id
 }
 
 resource "coder_agent" "dev" {
@@ -115,16 +125,6 @@ resource "coder_agent" "dev" {
 # Dockerfile:
 # https://github.com/sharkymark/dockerfiles/tree/main/vnc
 /coder/start_vnc >/dev/null 2>&1 
-
-# use coder CLI to clone and install dotfiles
-if [[ ! -z "${data.coder_parameter.dotfiles_url.value}" ]]; then
-  coder dotfiles -y ${data.coder_parameter.dotfiles_url.value}
-fi
-
-# clone repo
-if [ ! -d "${local.repo-name}" ]; then
-  git clone ${local.repo} >/dev/null 2>&1 &
-fi
 
 # start intellij idea community in vnc window
 # https://www.jetbrains.com/help/idea/run-for-the-first-time.html#linux
