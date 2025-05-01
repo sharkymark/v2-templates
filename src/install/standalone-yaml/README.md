@@ -6,7 +6,9 @@ tags: [cloud, yaml]
 
 # Yaml to standardize a standalone Coder deployment
 
-### Start the Coder control plane
+> This feature is experimental. I only use it for simplication and could instead pass parameters to `coder server` directly. I don't use it for production deployments.
+
+## Start the Coder control plane
 
 Running Coder with `coder server` is quick and easy. However it can get unwieldy if you are specifying environment variables.
 
@@ -16,13 +18,13 @@ Start Coder with this Yaml file:
 coder server --config coder.yaml
 ```
 
-### Export your deployment's configuration as STDOUT Yaml
+## Export your deployment's configuration as STDOUT Yaml
 
 ```sh
 coder server --write-config=true
 ```
 
-### Read through the plethora of configuration settings for a Coder deployment
+## Read through the plethora of configuration settings for a Coder deployment
 
 ```sh
 coder server --help

@@ -22,7 +22,7 @@ I recommend using Coder-maintained templates and modules in the [Coder Registry]
 
 ## Deprecated templates
 
-Within the `src` directory, you'll find the handful of Docker-based templates that I use personally. Any other templates in the `1-notmaintained` directory are no longer maintained but you'll welcome to use them as a reference.
+Within the `src\templates` directory, you'll find the handful of Docker-based templates that I use personally. Any other templates in the `notmaintained` directory are no longer maintained but you'll welcome to use them as a reference.
 
 ## API examples
 
