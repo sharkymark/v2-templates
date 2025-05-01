@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Kubernetes] - 2025-05-01
+
+### Added
+
+- 2 Kubernetes templates for `kubernetes-devcontainer` and `kubernetes`
+- Used Coder modules for `coder login`, `dotfiles`
+- No web IDEs, only VS Code Desktop
+
+### Changed
+
+- Resorted templates to `docker` and `kubernetes` folders
+
 ## [Transition to modules] - 2025-04-26
 
 ### Changed
