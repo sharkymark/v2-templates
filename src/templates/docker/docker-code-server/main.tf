@@ -101,6 +101,47 @@ data "coder_parameter" "repo" {
   order       = 2
 }
 
+data "coder_parameter" "git_user_name" {
+  type        = "string"
+  name        = "Git user.name"
+  description = "Used to run: git config --global user.name"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 3 
+}
+
+data "coder_parameter" "git_user_email" {
+  type        = "string"
+  name        = "Git user.email"
+  description = "Used to run: git config --global user.email"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 4  
+}
+
+
+data "coder_parameter" "github_user_name" {
+  type        = "string"
+  name        = "GitHub username"
+  description = "Used to run: git config --global credential...username"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 5  
+}
+
+data "coder_parameter" "github_personal_access_token" {
+  type        = "string"
+  name        = "GitHub personal access token"
+  description = "Used to run with git credential-store store"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 6
+}
+
 module "dotfiles" {
   count    = data.coder_workspace.me.start_count
   source   = "registry.coder.com/modules/dotfiles/coder"
@@ -157,6 +198,22 @@ resource "coder_agent" "dev" {
   }
 
   metadata {
+    display_name = "CPU Usage (Host)"
+    key          = "4_cpu_usage_host"
+    script       = "coder stat cpu --host"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Memory Usage (Host)"
+    key          = "5_mem_usage_host"
+    script       = "coder stat mem --host"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
     display_name = "Home Disk"
     key          = "3_home_disk"
     script       = "coder stat disk --path $${HOME}"
@@ -176,6 +233,23 @@ resource "coder_agent" "dev" {
   connection_timeout = 300
   startup_script  = <<EOT
   #!/bin/sh
+
+  # configure git username and email for commits
+  if [ ! -z "${data.coder_parameter.git_user_name.value}" ]; then
+    git config --global user.name "${data.coder_parameter.git_user_name.value}"
+  fi
+  if [ ! -z "${data.coder_parameter.git_user_email.value}" ]; then
+    git config --global user.email "${data.coder_parameter.git_user_email.value}"
+  fi
+  # configure git credential helper for github
+  if [ ! -z "${data.coder_parameter.github_user_name.value}" ]; then
+    git config --global credential.https://github.com.username "${data.coder_parameter.github_user_name.value}"
+  fi
+
+  if [ ! -z "${data.coder_parameter.github_personal_access_token.value}" ]; then
+    git config --global credential.helper store
+    printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "${data.coder_parameter.github_user_name.value}" "${data.coder_parameter.github_personal_access_token.value}" | git credential-store store
+  fi
 
   EOT
 }

@@ -19,7 +19,7 @@ locals {
 
 data "coder_parameter" "repo" {
   name         = "repo"
-  display_name = "Repository (auto)"
+  display_name = "Repository"
   order        = 1
   description  = "Select a repository to automatically clone and start working with a devcontainer."
   mutable      = true
@@ -64,6 +64,47 @@ data "coder_parameter" "custom_repo_url" {
   mutable      = true
 }
 
+data "coder_parameter" "git_user_name" {
+  type        = "string"
+  name        = "Git user.name"
+  description = "Used to run: git config --global user.name"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 3 
+}
+
+data "coder_parameter" "git_user_email" {
+  type        = "string"
+  name        = "Git user.email"
+  description = "Used to run: git config --global user.email"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 4  
+}
+
+
+data "coder_parameter" "github_user_name" {
+  type        = "string"
+  name        = "GitHub username"
+  description = "Used to run: git config --global credential...username"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 5  
+}
+
+data "coder_parameter" "github_personal_access_token" {
+  type        = "string"
+  name        = "GitHub personal access token"
+  description = "Used to run with git credential-store store"
+  default     = ""
+  mutable     = true
+  icon        = "/emojis/1f511.png"
+  order       = 6
+}
+
 data "coder_workspace" "me" {
 }
 
@@ -102,6 +143,7 @@ module "vscode-web" {
   agent_id       = coder_agent.main.id
   extensions     = ["github.copilot"]
   accept_license = true
+  folder         = "/workspaces/${local.folder_name}"
 }
 
 module "coder-login" {
@@ -145,6 +187,22 @@ resource "coder_agent" "main" {
     timeout      = 1
   }
 
+  metadata {
+    display_name = "CPU Usage (Host)"
+    key          = "4_cpu_usage_host"
+    script       = "coder stat cpu --host"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Memory Usage (Host)"
+    key          = "5_mem_usage_host"
+    script       = "coder stat mem --host"
+    interval     = 10
+    timeout      = 1
+  }
+
   display_apps {
     vscode = true
     vscode_insiders = false
@@ -153,10 +211,27 @@ resource "coder_agent" "main" {
     web_terminal = true
   }
 
-  startup_script_behavior = "blocking"
+  startup_script_behavior = "non-blocking"
   connection_timeout = 600  
   startup_script  = <<EOT
 #!/bin/bash
+
+  # configure git username and email for commits
+  if [ ! -z "${data.coder_parameter.git_user_name.value}" ]; then
+    git config --global user.name "${data.coder_parameter.git_user_name.value}"
+  fi
+  if [ ! -z "${data.coder_parameter.git_user_email.value}" ]; then
+    git config --global user.email "${data.coder_parameter.git_user_email.value}"
+  fi
+  # configure git credential helper for github
+  if [ ! -z "${data.coder_parameter.github_user_name.value}" ]; then
+    git config --global credential.https://github.com.username "${data.coder_parameter.github_user_name.value}"
+  fi
+
+  if [ ! -z "${data.coder_parameter.github_personal_access_token.value}" ]; then
+    git config --global credential.helper store
+    printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "${data.coder_parameter.github_user_name.value}" "${data.coder_parameter.github_personal_access_token.value}" | git credential-store store
+  fi
 
   EOT  
 }
@@ -189,23 +264,9 @@ resource "docker_container" "workspace" {
     read_only      = false
   }
 
-  volumes {
-    container_path = "/root"
-    volume_name    = docker_volume.root.name
-    read_only      = false
-  }  
-
 }
 
 resource "docker_volume" "workspaces" {
-  name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
-  # Protect the volume from being deleted due to changes in attributes.
-  lifecycle {
-    ignore_changes = all
-  }  
-}
-
-resource "docker_volume" "root" {
   name = "coder-${data.coder_workspace_owner.me.name}-${data.coder_workspace.me.name}"
   # Protect the volume from being deleted due to changes in attributes.
   lifecycle {

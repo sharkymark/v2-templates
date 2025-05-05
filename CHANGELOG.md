@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Git credential parameters] - 2025-05-04
+
+### Added
+
+- Added Coder parameters for git credentials
+- Impacted templates:
+  - `docker-code-server`
+  - `docker-ai-agent`
+  - `docker-dev-container`
+
+> Because I have a simple Coder deployment on my M3 MacBook, I cannot configure Coder to use an `CODER_EXTERNAL_AUTH_0_` with OAuth2. Therefore, I have the user enter their git credentials as `CODER_PARAMETER`s including a Personal Access Token (PAT) for GitHub. I also do not want to use the Coder-provided SSH key.
+
+### Changed
+
+- Resorted templates to `docker` and `kubernetes` folders
+
 ## [Kubernetes] - 2025-05-01
 
 ### Added

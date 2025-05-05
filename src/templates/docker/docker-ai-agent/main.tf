@@ -142,9 +142,9 @@ data "coder_parameter" "ai_prompt" {
   order       = 7  
 }
 
-data "coder_parameter" "git_username" {
+data "coder_parameter" "git_user_name" {
   type        = "string"
-  name        = "GitHub User Name"
+  name        = "Git user.name"
   description = "Used to run: git config --global user.name"
   default     = ""
   mutable     = true
@@ -152,7 +152,7 @@ data "coder_parameter" "git_username" {
   order       = 8 
 }
 
-data "coder_parameter" "git_useremail" {
+data "coder_parameter" "git_user_email" {
   type        = "string"
   name        = "Git user.email"
   description = "Used to run: git config --global user.email"
@@ -163,9 +163,9 @@ data "coder_parameter" "git_useremail" {
 }
 
 
-data "coder_parameter" "github_credential_username" {
+data "coder_parameter" "github_user_name" {
   type        = "string"
-  name        = "credential.https://github.com.username"
+  name        = "GitHub username"
   description = "Used to run: git config --global credential...username"
   default     = ""
   mutable     = true
@@ -173,9 +173,9 @@ data "coder_parameter" "github_credential_username" {
   order       = 10  
 }
 
-data "coder_parameter" "github_credential_password" {
+data "coder_parameter" "github_personal_access_token" {
   type        = "string"
-  name        = "github_credential.password"
+  name        = "GitHub personal access token"
   description = "Used to run with git credential-store store"
   default     = ""
   mutable     = true
@@ -219,6 +219,22 @@ resource "coder_agent" "dev" {
     timeout      = 1
   }
 
+  metadata {
+    display_name = "CPU Usage (Host)"
+    key          = "4_cpu_usage_host"
+    script       = "coder stat cpu --host"
+    interval     = 10
+    timeout      = 1
+  }
+
+  metadata {
+    display_name = "Memory Usage (Host)"
+    key          = "5_mem_usage_host"
+    script       = "coder stat mem --host"
+    interval     = 10
+    timeout      = 1
+  }
+
   display_apps {
     vscode = true
     vscode_insiders = false
@@ -251,21 +267,22 @@ resource "coder_agent" "dev" {
   startup_script  = <<EOT
 #!/bin/sh
 
-# configure git username and email for commits
-if [ ! -z "${data.coder_parameter.git_username.value}" ]; then
-  git config --global user.name "${data.coder_parameter.git_username.value}"
-fi
-if [ ! -z "${data.coder_parameter.git_useremail.value}" ]; then
-  git config --global user.email "${data.coder_parameter.git_useremail.value}"
-fi
-# configure git credential helper for github
-if [ ! -z "${data.coder_parameter.github_credential_username.value}" ]; then
-  git config --global credential.https://github.com.username "${data.coder_parameter.github_credential_username.value}"
-fi
-if [ ! -z "${data.coder_parameter.github_credential_password.value}" ]; then
-  git config --global credential.helper store
-  printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "${data.coder_parameter.github_credential_username.value}" "${data.coder_parameter.github_credential_password.value}" | git credential-store store
-fi
+  # configure git username and email for commits
+  if [ ! -z "${data.coder_parameter.git_user_name.value}" ]; then
+    git config --global user.name "${data.coder_parameter.git_user_name.value}"
+  fi
+  if [ ! -z "${data.coder_parameter.git_user_email.value}" ]; then
+    git config --global user.email "${data.coder_parameter.git_user_email.value}"
+  fi
+  # configure git credential helper for github
+  if [ ! -z "${data.coder_parameter.github_user_name.value}" ]; then
+    git config --global credential.https://github.com.username "${data.coder_parameter.github_user_name.value}"
+  fi
+
+  if [ ! -z "${data.coder_parameter.github_personal_access_token.value}" ]; then
+    git config --global credential.helper store
+    printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "${data.coder_parameter.github_user_name.value}" "${data.coder_parameter.github_personal_access_token.value}" | git credential-store store
+  fi
 
 EOT
 
