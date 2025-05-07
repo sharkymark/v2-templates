@@ -10,8 +10,12 @@ terraform {
 }
 
 locals {
-  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")  
-  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")    
+  repo_url = data.coder_parameter.repo.value == "custom" ? data.coder_parameter.custom_repo_url.value : data.coder_parameter.repo.value
+  folder_name = replace(
+    try(element(split("/", local.repo_url), length(split("/", local.repo_url)) - 1), ""),
+    ".git",
+    "")
+  repo_owner_name = try(element(split("/", local.repo_url), length(split("/", local.repo_url)) - 2), "")    
   image = "ghcr.io/coder/envbuilder:latest"
   # Find the latest version here:
   # https://github.com/coder/envbuilder/tags  
@@ -252,7 +256,7 @@ resource "docker_container" "workspace" {
     "CODER_AGENT_URL=${replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}",
     "GIT_URL=${data.coder_parameter.repo.value == "custom" ? data.coder_parameter.custom_repo_url.value : data.coder_parameter.repo.value}",
     "INIT_SCRIPT=${replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}",
-    "FALLBACK_IMAGE=codercom/enterprise-base:ubuntu" # This image runs if builds fail
+    "FALLBACK_IMAGE=ubuntu" # This image runs if builds fail
   ]
   host {
     host = "host.docker.internal"
