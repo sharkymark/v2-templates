@@ -15,7 +15,7 @@ locals {
   cpu-request = "500m"
   memory-request = "500Mi" 
   home-volume = "10Gi"
-  image = "marktmilligan/jupyter:latest"
+  image = "marktmilligan/python-ai-agents:latest"
   repo = "docker.io/sharkymark/pandas_automl.git"
 }
 
@@ -72,6 +72,13 @@ module "git-clone" {
 module "coder-login" {
   count    = data.coder_workspace.me.start_count
   source   = "registry.coder.com/modules/coder-login/coder"
+  agent_id = coder_agent.dev.id
+}
+
+module "jupyterlab" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/jupyterlab/coder"
+  log_path = "/tmp/jupyterlab.log"
   agent_id = coder_agent.dev.id
 }
 
@@ -161,9 +168,15 @@ wush serve -v >/tmp/wush.log 2>&1 &
 EOT
 }
 
+resource "docker_image" "image" {
+  name         = "${local.image}"  # Replace with your image name
+  keep_locally = true                          # Remove local image after container stops (optional)
+  pull_triggers = [timestamp()]
+}
+
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = "${local.image}"
+  image = docker_image.image.image_id
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
