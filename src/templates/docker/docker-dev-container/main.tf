@@ -125,6 +125,19 @@ variable "socket" {
   default = "unix:///var/run/docker.sock"
 }
 
+variable "cache_repo" {
+  default     = ""
+  description = "(Optional) Use a container registry as a cache to speed up builds."
+  type        = string
+}
+
+variable "cache_repo_docker_config_path" {
+  default     = ""
+  description = "(Optional) Path to a docker config.json containing credentials to the provided cache repo, if required."
+  sensitive   = true
+  type        = string
+}
+
 provider "docker" {
   host = var.socket
 }
@@ -256,6 +269,8 @@ resource "docker_container" "workspace" {
     "CODER_AGENT_URL=${replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}",
     "GIT_URL=${data.coder_parameter.repo.value == "custom" ? data.coder_parameter.custom_repo_url.value : data.coder_parameter.repo.value}",
     "INIT_SCRIPT=${replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")}",
+    "ENVBUILDER_DOCKER_CONFIG_BASE64=${var.cache_repo_docker_config_path}",
+    "CACHE_REPO=${var.cache_repo}",
     "FALLBACK_IMAGE=ubuntu" # This image runs if builds fail
   ]
   host {
