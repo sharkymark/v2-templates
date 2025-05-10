@@ -21,6 +21,8 @@ locals {
   # https://github.com/coder/envbuilder/tags  
 }
 
+
+
 data "coder_parameter" "repo" {
   name         = "repo"
   display_name = "Repository"
@@ -66,47 +68,6 @@ data "coder_parameter" "custom_repo_url" {
   default      = ""
   description  = "Optionally enter a custom repository URL, see [awesome-devcontainers](https://github.com/manekinekko/awesome-devcontainers)."
   mutable      = true
-}
-
-data "coder_parameter" "git_user_name" {
-  type        = "string"
-  name        = "Git user.name"
-  description = "Used to run: git config --global user.name"
-  default     = ""
-  mutable     = true
-  icon        = "/emojis/1f511.png"
-  order       = 3 
-}
-
-data "coder_parameter" "git_user_email" {
-  type        = "string"
-  name        = "Git user.email"
-  description = "Used to run: git config --global user.email"
-  default     = ""
-  mutable     = true
-  icon        = "/emojis/1f511.png"
-  order       = 4  
-}
-
-
-data "coder_parameter" "github_user_name" {
-  type        = "string"
-  name        = "GitHub username"
-  description = "Used to run: git config --global credential...username"
-  default     = ""
-  mutable     = true
-  icon        = "/emojis/1f511.png"
-  order       = 5  
-}
-
-data "coder_parameter" "github_personal_access_token" {
-  type        = "string"
-  name        = "GitHub personal access token"
-  description = "Used to run with git credential-store store"
-  default     = ""
-  mutable     = true
-  icon        = "/emojis/1f511.png"
-  order       = 6
 }
 
 data "coder_workspace" "me" {
@@ -166,6 +127,12 @@ module "vscode-web" {
 module "coder-login" {
   count    = data.coder_workspace.me.start_count
   source   = "registry.coder.com/modules/coder-login/coder"
+  agent_id = coder_agent.main.id
+}
+
+module "git-config" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/git-config/coder"
   agent_id = coder_agent.main.id
 }
 
@@ -233,22 +200,13 @@ resource "coder_agent" "main" {
   startup_script  = <<EOT
 #!/bin/bash
 
-  # configure git username and email for commits
-  if [ ! -z "${data.coder_parameter.git_user_name.value}" ]; then
-    git config --global user.name "${data.coder_parameter.git_user_name.value}"
+  if ! command -v aider >/dev/null 2>&1; then
+    curl -LsSf https://aider.chat/install.sh | sh
   fi
-  if [ ! -z "${data.coder_parameter.git_user_email.value}" ]; then
-    git config --global user.email "${data.coder_parameter.git_user_email.value}"
-  fi
-  # configure git credential helper for github
-  if [ ! -z "${data.coder_parameter.github_user_name.value}" ]; then
-    git config --global credential.https://github.com.username "${data.coder_parameter.github_user_name.value}"
+  if ! command -v goose >/dev/null 2>&1; then
+    curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | CONFIGURE=false bash
   fi
 
-  if [ ! -z "${data.coder_parameter.github_personal_access_token.value}" ]; then
-    git config --global credential.helper store
-    printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "${data.coder_parameter.github_user_name.value}" "${data.coder_parameter.github_personal_access_token.value}" | git credential-store store
-  fi
 
   EOT  
 }
