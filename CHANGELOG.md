@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [AI agents] - 2025-05-10
+
+### Changed
+
+- Removed git `coder_parameter`s after configuring external auth
+- Install `aider` and `goose` AI agents in `startup_script`
+- Impacted templates:
+  - `docker-code-server`
+  - `docker-ai-agent`
+  - `docker-dev-container`
+- moved these templates to `notmaintained` folder
+  - `docker-intellij-vnc`
+  - `docker-kasm-module`
+
+> NOte: I got external auth working but moving all my configs out of `coder.yaml` and into my Mac's `zsh` configuration file(s).
+
 ## [Git credential parameters] - 2025-05-04
 
 ### Added

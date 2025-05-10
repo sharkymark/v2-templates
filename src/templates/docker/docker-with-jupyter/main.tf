@@ -15,7 +15,7 @@ locals {
   cpu-request = "500m"
   memory-request = "500Mi" 
   home-volume = "10Gi"
-  image = "marktmilligan/python-ai-agents:latest"
+  image = "marktmilligan/python:latest"
   repo = "docker.io/sharkymark/pandas_automl.git"
 }
 
@@ -79,6 +79,12 @@ module "jupyterlab" {
   count    = data.coder_workspace.me.start_count
   source   = "registry.coder.com/modules/jupyterlab/coder"
   log_path = "/tmp/jupyterlab.log"
+  agent_id = coder_agent.dev.id
+}
+
+module "git-config" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/git-config/coder"
   agent_id = coder_agent.dev.id
 }
 
@@ -147,23 +153,31 @@ resource "coder_agent" "dev" {
 
 set -e
 
-# install wush for wireguard file transfer
-# https://github.com/coder/wush
-# install.sh installs incorrect version of wush
-# curl -fsSL https://wush.dev/install.sh | sh
+  # add ai coding agents
+  if ! command -v aider >/dev/null 2>&1; then
+    curl -LsSf https://aider.chat/install.sh | sh
+  fi
+  if ! command -v goose >/dev/null 2>&1; then
+    curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | CONFIGURE=false bash
+  fi
 
-# get latest release from github
-LATEST_RELEASE_URL=$(curl -fsSL \
-  "https://api.github.com/repos/coder/wush/releases/latest" \
-      | grep "browser_download_url" \
-      | grep "linux_amd64.tar.gz" \
-      | cut -d '"' -f 4 | head -n 1)
+  # install wush for wireguard file transfer
+  # https://github.com/coder/wush
+  # install.sh installs incorrect version of wush
+  # curl -fsSL https://wush.dev/install.sh | sh
 
-wget -qO- $LATEST_RELEASE_URL | tar -xz -C /tmp
-sudo mv /tmp/wush /usr/local/bin
+  # get latest release from github
+  LATEST_RELEASE_URL=$(curl -fsSL \
+    "https://api.github.com/repos/coder/wush/releases/latest" \
+        | grep "browser_download_url" \
+        | grep "linux_amd64.tar.gz" \
+        | cut -d '"' -f 4 | head -n 1)
 
-# start wush server
-wush serve -v >/tmp/wush.log 2>&1 &
+  wget -qO- $LATEST_RELEASE_URL | tar -xz -C /tmp
+  sudo mv /tmp/wush /usr/local/bin
+
+  # start wush server
+  wush serve -v >/tmp/wush.log 2>&1 &
 
 EOT
 }

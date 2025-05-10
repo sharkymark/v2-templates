@@ -81,6 +81,12 @@ module "vscode-web" {
   accept_license = true
 }
 
+module "git-config" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/git-config/coder"
+  agent_id = coder_agent.dev.id
+}
+
 data "coder_parameter" "image" {
   name        = "Container Image"
   type        = "string"
@@ -140,47 +146,6 @@ data "coder_parameter" "ai_prompt" {
   mutable     = true
   icon        = "/emojis/2728.png"
   order       = 7  
-}
-
-data "coder_parameter" "git_user_name" {
-  type        = "string"
-  name        = "Git user.name"
-  description = "Used to run: git config --global user.name"
-  default     = ""
-  mutable     = true
-  icon        = "/emojis/1f511.png"
-  order       = 8 
-}
-
-data "coder_parameter" "git_user_email" {
-  type        = "string"
-  name        = "Git user.email"
-  description = "Used to run: git config --global user.email"
-  default     = ""
-  mutable     = true
-  icon        = "/emojis/1f511.png"
-  order       = 9  
-}
-
-
-data "coder_parameter" "github_user_name" {
-  type        = "string"
-  name        = "GitHub username"
-  description = "Used to run: git config --global credential...username"
-  default     = ""
-  mutable     = true
-  icon        = "/emojis/1f511.png"
-  order       = 10  
-}
-
-data "coder_parameter" "github_personal_access_token" {
-  type        = "string"
-  name        = "GitHub personal access token"
-  description = "Used to run with git credential-store store"
-  default     = ""
-  mutable     = true
-  icon        = "/emojis/1f511.png"
-  order       = 11
 }
 
 
@@ -266,23 +231,6 @@ resource "coder_agent" "dev" {
 
   startup_script  = <<EOT
 #!/bin/sh
-
-  # configure git username and email for commits
-  if [ ! -z "${data.coder_parameter.git_user_name.value}" ]; then
-    git config --global user.name "${data.coder_parameter.git_user_name.value}"
-  fi
-  if [ ! -z "${data.coder_parameter.git_user_email.value}" ]; then
-    git config --global user.email "${data.coder_parameter.git_user_email.value}"
-  fi
-  # configure git credential helper for github
-  if [ ! -z "${data.coder_parameter.github_user_name.value}" ]; then
-    git config --global credential.https://github.com.username "${data.coder_parameter.github_user_name.value}"
-  fi
-
-  if [ ! -z "${data.coder_parameter.github_personal_access_token.value}" ]; then
-    git config --global credential.helper store
-    printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "${data.coder_parameter.github_user_name.value}" "${data.coder_parameter.github_personal_access_token.value}" | git credential-store store
-  fi
 
 EOT
 

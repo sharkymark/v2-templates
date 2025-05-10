@@ -14,7 +14,7 @@ Here is an additional repo [coder-hw](https://github.com/sharkymark/coder-hw) wi
 
 The [official v2 docs](https://github.com/coder/coder/tree/main/docs) and [template examples](https://github.com/coder/coder/tree/main/examples/templates) are great resources too. Also my colleague [bpmct](https://github.com/bpmct/coder-templates) authors some amazing templates too.
 
-![Main menu screenshot](./docs/images/docker-template.png)
+![Main menu screenshot](./docs/images/jupyter.png)
 
 ## Coder-maintained templates and modules
 
@@ -27,6 +27,8 @@ Within the `src\templates` directory, you'll find the handful of Docker-based te
 ## API examples
 
 You can find API endpoints from inspecting the UI in your browser tools. [Here are examples](api.md) to get you going. This new repo [coder-hw](https://github.com/sharkymark/coder-hw) heavily uses the Coder API with a Python-based CLI app.
+
+![Go coder/coder screenshot](./docs/images/go.png)
 
 ## Frequently Asked Questions (FAQ)
 
