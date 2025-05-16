@@ -10,7 +10,7 @@ terraform {
 }
 
 locals {
-
+  image = "marktmilligan/python:latest"
 }
 
 provider "docker" {
@@ -51,7 +51,7 @@ variable "openrouter_api_key" {
 module "goose" {
   source        = "registry.coder.com/modules/goose/coder"
   agent_id      = coder_agent.dev.id
-  folder        = "/home/coder"
+  folder        = "/home/coder/src"
   install_goose = true
   experiment_report_tasks = true
   experiment_auto_configure = true
@@ -87,28 +87,12 @@ module "git-config" {
   agent_id = coder_agent.dev.id
 }
 
-data "coder_parameter" "image" {
-  name        = "Container Image"
-  type        = "string"
-  description = "What container image and language do you want?"
-  mutable     = true
-  default     = "marktmilligan/python:latest"
-  icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
-
-  option {
-    name = "Python"
-    value = "marktmilligan/python:latest"
-    icon = "/icon/python.svg"
-  }
-  order       = 1
-}
-
 data "coder_parameter" "providermodel" {
   name        = "AI provider and model"
   description = "Select a provider and model for OpenRouter"
   type        = "string"
-  default     = "openai/gpt-4o-mini"
   mutable     = true
+  default     = "anthropic/claude-3.5-sonnet"
   icon        = "/emojis/2728.png"
   order       = 6
 
@@ -141,11 +125,13 @@ data "coder_parameter" "providermodel" {
 data "coder_parameter" "ai_prompt" {
   type        = "string"
   name        = "AI Prompt"
-  description = "Write a prompt for Goose"
+  description = "Write a prompt for AI agents to use when generating code."
   default      = ""
+  form_type   = "textarea"
   mutable     = true
+  ephemeral   = true
   icon        = "/emojis/2728.png"
-  order       = 7  
+  order       = 1  
 }
 
 
@@ -238,7 +224,7 @@ EOT
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = "${data.coder_parameter.image.value}"
+  image = local.image
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
@@ -278,6 +264,6 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id
   item {
     key   = "image"
-    value = "${data.coder_parameter.image.value}"
+    value = local.image
   }
 }

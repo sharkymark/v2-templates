@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [AI agent Aider] - 2025-05-16
+
+### Addded
+
+- `docker-aider` template to run the Aider AI agent in a container with coder module
+
 ## [AI agents] - 2025-05-10
 
 ### Changed
