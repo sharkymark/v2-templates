@@ -10,11 +10,15 @@ terraform {
 }
 
 locals {
-  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")
-  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")
+  image = "marktmilligan/python:latest"
 }
 
+provider "docker" {
+  host = var.socket
+}
 
+provider "coder" {
+}
 
 data "coder_workspace" "me" {
 }
@@ -38,67 +42,49 @@ variable "socket" {
   default = "unix:///var/run/docker.sock"
 }
 
-provider "docker" {
-  host = var.socket
+variable "openrouter_api_key" {
+  type        = string
+  description = "The OpenRouter API key"
+  sensitive   = true
 }
 
-provider "coder" {
+module "aider" {
+  count       = data.coder_workspace.me.start_count
+  source      = "registry.coder.com/coder/aider/coder"
+  agent_id    = coder_agent.dev.id
+  use_tmux    = true
+  use_screen  = false
+  experiment_report_tasks = true
+  folder      = "/home/coder/src"
+  ai_provider = "custom"
+  ai_model    = "openrouter/${data.coder_parameter.providermodel.value}"
+  custom_env_var_name = "OPENROUTER_API_KEY"
+  ai_api_key  = var.openrouter_api_key
+  task_prompt = data.coder_parameter.ai_prompt.value
+  system_prompt = <<-EOT
+You are a helpful Coding assistant. Aim to autonomously investigate
+and solve issues the user gives you and test your work, whenever possible.
+Avoid shortcuts like mocking tests. When you get stuck, you can ask the user
+but opt for autonomy.
+YOU MUST REPORT ALL TASKS TO CODER.
+When reporting tasks, you MUST follow these EXACT instructions:
+- IMMEDIATELY report status after receiving ANY user message.
+- Be granular. If you are investigating with multiple steps, report each step to coder.
+Task state MUST be one of the following:
+- Use "state": "working" when actively processing WITHOUT needing additional user input.
+- Use "state": "complete" only when finished with a task.
+- Use "state": "failure" when you need ANY user input, lack sufficient details, or encounter blockers.
+Task summaries MUST:
+- Include specifics about what you're doing.
+- Include clear and actionable steps for the user.
+- Be less than 160 characters in length.
+  EOT  
 }
 
-data "coder_parameter" "image" {
-  name        = "Container Image"
-  type        = "string"
-  description = "What container image and language do you want?"
-  mutable     = true
-  default     = "marktmilligan/python:latest"
-  icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
-
-  option {
-    name = "Node React"
-    value = "marktmilligan/node:22.7.0"
-    icon = "/icon/node.svg"
-  }
-  option {
-    name = "Go"
-    value = "marktmilligan/go:latest"
-    icon = "/icon/go.svg"
-  }
-  option {
-    name = "Python"
-    value = "marktmilligan/python:latest"
-    icon = "/icon/python.svg"
-  }
-  order       = 1
-}
-
-data "coder_parameter" "repo" {
-  name        = "Source Code Repository"
-  type        = "string"
-  description = "What source code repository do you want to clone?"
-  mutable     = true
-  icon        = "/icon/git.svg"
-  default     = "https://github.com/sharkymark/python_commissions"
-  option {
-    name = "Do not clone a repository"
-    value = ""
-    icon = "/emojis/274c.png"
-  }
-  option {
-    name = "Node React Hello, World"
-    value = "https://github.com/sharkymark/coder-react"
-    icon = "/icon/node.svg"
-  }
-  option {
-    name = "Coder CDE OSS Go project"
-    value = "https://github.com/coder/coder"
-    icon = "/icon/coder.svg"
-  }
-  option {
-    name = "Python CLI app for calculating sales commissions"
-    value = "https://github.com/sharkymark/python_commissions"
-    icon = "/icon/python.svg"
-  }
-  order       = 2
+module "coder-login" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/coder-login/coder"
+  agent_id = coder_agent.dev.id
 }
 
 module "dotfiles" {
@@ -116,25 +102,60 @@ module "vscode-web" {
   accept_license = true
 }
 
-module "git-clone" {
-  count    = data.coder_workspace.me.start_count
-  source   = "registry.coder.com/modules/git-clone/coder"
-  version  = "1.0.18"
-  agent_id = coder_agent.dev.id
-  url      = "${data.coder_parameter.repo.value}"
-}
-
-module "coder-login" {
-  count    = data.coder_workspace.me.start_count
-  source   = "registry.coder.com/modules/coder-login/coder"
-  agent_id = coder_agent.dev.id
-}
-
 module "git-config" {
   count    = data.coder_workspace.me.start_count
   source   = "registry.coder.com/modules/git-config/coder"
   agent_id = coder_agent.dev.id
 }
+
+data "coder_parameter" "providermodel" {
+  name        = "AI provider and model"
+  description = "Select a provider and model for OpenRouter"
+  type        = "string"
+  mutable     = true
+  default     = "openai/gpt-4o-mini"
+  icon        = "/emojis/2728.png"
+  order       = 6
+
+  option {
+    name = "google/gemini-2.0-flash-001"
+    value = "google/gemini-2.0-flash-001"
+  }
+    option {
+    name = "google/gemini-2.5-flash-preview"
+    value = "google/gemini-2.5-flash-preview"
+  }
+  option {
+    name = "anthropic/claude-3.7-sonnet"
+    value = "anthropic/claude-3.7-sonnet"
+  }
+   option {
+    name = "anthropic/claude-3.5-sonnet"
+    value = "anthropic/claude-3.5-sonnet"
+  } 
+  option {
+    name = "openai/gpt-4.1"
+    value = "openai/gpt-4.1"
+  }
+  option {
+    name = "openai/gpt-4o-mini"
+    value = "openai/gpt-4o-mini"
+  }  
+}
+
+data "coder_parameter" "ai_prompt" {
+  type        = "string"
+  name        = "AI Prompt"
+  description = "Write a prompt for AI agents to use when generating code."
+  default      = ""
+  form_type   = "textarea"
+  mutable     = true
+  ephemeral  = true
+  icon        = "/emojis/2728.png"
+  order       = 7  
+}
+
+
 
 resource "coder_agent" "dev" {
   arch           = data.coder_provisioner.me.arch
@@ -163,6 +184,14 @@ resource "coder_agent" "dev" {
   }
 
   metadata {
+    display_name = "Home Disk"
+    key          = "3_home_disk"
+    script       = "coder stat disk --path $${HOME}"
+    interval     = 60
+    timeout      = 1
+  }
+
+  metadata {
     display_name = "CPU Usage (Host)"
     key          = "4_cpu_usage_host"
     script       = "coder stat cpu --host"
@@ -178,14 +207,6 @@ resource "coder_agent" "dev" {
     timeout      = 1
   }
 
-  metadata {
-    display_name = "Home Disk"
-    key          = "3_home_disk"
-    script       = "coder stat disk --path $${HOME}"
-    interval     = 60
-    timeout      = 1
-  }
-
   display_apps {
     vscode = true
     vscode_insiders = false
@@ -196,22 +217,21 @@ resource "coder_agent" "dev" {
 
   startup_script_behavior = "non-blocking"
   connection_timeout = 300
+
+  env = {
+
+  }
+
   startup_script  = <<EOT
-  #!/bin/sh
+#!/bin/sh
 
-    if ! command -v aider >/dev/null 2>&1; then
-      curl -LsSf https://aider.chat/install.sh | sh
-    fi
-    if ! command -v goose >/dev/null 2>&1; then
-      curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | CONFIGURE=false bash
-    fi
+EOT
 
-  EOT
 }
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = data.coder_parameter.image.value
+  image = local.image
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
@@ -240,7 +260,6 @@ resource "docker_container" "workspace" {
     host = "host.docker.internal"
     ip   = "host-gateway"
   }
-
 }
 
 resource "docker_volume" "coder_volume" {
@@ -252,10 +271,6 @@ resource "coder_metadata" "workspace_info" {
   resource_id = docker_container.workspace[0].id
   item {
     key   = "image"
-    value = "${data.coder_parameter.image.value}"
-  }
-  item {
-    key   = "repo cloned"
-    value = "${local.repo_owner_name}/${local.folder_name}"
+    value = local.image
   }
 }
