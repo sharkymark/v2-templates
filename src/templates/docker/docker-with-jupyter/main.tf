@@ -16,7 +16,7 @@ locals {
   memory-request = "500Mi" 
   home-volume = "10Gi"
   image = "marktmilligan/python:latest"
-  repo = "docker.io/sharkymark/pandas_automl.git"
+  repo = "https://github.com/sharkymark/py-notebooks"
 }
 
 variable "socket" {
@@ -66,7 +66,7 @@ module "git-clone" {
   source   = "registry.coder.com/modules/git-clone/coder"
   version  = "1.0.18"
   agent_id = coder_agent.dev.id
-  url      = "https://github.com/sharkymark/pandas_automl"
+  url      = local.repo
 }
 
 module "coder-login" {
