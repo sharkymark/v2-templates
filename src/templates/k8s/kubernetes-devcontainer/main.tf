@@ -427,6 +427,15 @@ resource "coder_agent" "main" {
     interval     = 10
     timeout      = 1
   }
+
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = true
+    port_forwarding_helper = true
+    web_terminal = true
+  }
+
 }
 
 
