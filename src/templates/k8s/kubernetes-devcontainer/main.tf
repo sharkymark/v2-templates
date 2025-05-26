@@ -119,19 +119,6 @@ data "coder_parameter" "fallback_image" {
   order        = 6
 }
 
-data "coder_parameter" "devcontainer_builder" {
-  description  = <<-EOF
-Image that will build the devcontainer.
-We highly recommend using a specific release as the `:latest` tag will change.
-Find the latest version of Envbuilder here: https://github.com/coder/envbuilder/pkgs/container/envbuilder
-EOF
-  display_name = "Devcontainer Builder"
-  mutable      = true
-  name         = "devcontainer_builder"
-  default      = "ghcr.io/coder/envbuilder:latest"
-  order        = 7
-}
-
 module "dotfiles" {
   count    = data.coder_workspace.me.start_count
   source   = "registry.coder.com/modules/dotfiles/coder"
@@ -160,43 +147,41 @@ data "kubernetes_secret" "cache_repo_dockerconfig_secret" {
   }
 }
 
+// This variable designates the builder image to use to build the devcontainer.
+variable "builder_image" {
+  type    = string
+  default = "ghcr.io/coder/envbuilder:latest"
+}
+
 locals {
+  repo_url = data.coder_parameter.repo.value
+  workspace_folder = "/workspaces"
+  envbuilder_env = {
+  "ENVBUILDER_VERBOSE" : "true"
+  "ENVBUILDER_INSECURE" : "${var.insecure_cache_repo}"
+  "ENVBUILDER_PUSH_IMAGE" : var.cache_repo == "" ? "" : "true",
+  "ENVBUILDER_CACHE_TTL_DAYS" : "182",
+  "ENVBUILDER_DOCKER_CONFIG_BASE64" : base64encode(try(data.kubernetes_secret.cache_repo_dockerconfig_secret[0].data[".dockerconfigjson"], "")),
+  "ENVBUILDER_FALLBACK_IMAGE" : data.coder_parameter.fallback_image.value,
+  "ENVBUILDER_INIT_SCRIPT" : replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
+  "CODER_AGENT_TOKEN" : coder_agent.main.token,
+  "CODER_AGENT_URL" : replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
+  }
   deployment_name            = "coder-${lower(data.coder_workspace.me.id)}"
-  devcontainer_builder_image = data.coder_parameter.devcontainer_builder.value
   git_author_name            = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
   git_author_email           = data.coder_workspace_owner.me.email
-  repo_url                   = data.coder_parameter.repo.value
-  # The envbuilder provider requires a key-value map of environment variables.
-  envbuilder_env = {
-    # ENVBUILDER_GIT_URL and ENVBUILDER_CACHE_REPO will be overridden by the provider
-    # if the cache repo is enabled.
-    "ENVBUILDER_GIT_URL" : local.repo_url,
-    "ENVBUILDER_CACHE_REPO" : var.cache_repo,
-    "CODER_AGENT_TOKEN" : coder_agent.main.token,
-    # Use the docker gateway if the access URL is 127.0.0.1
-    "CODER_AGENT_URL" : replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal"),
-    # Use the docker gateway if the access URL is 127.0.0.1
-    "ENVBUILDER_INIT_SCRIPT" : replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal"),
-    "ENVBUILDER_FALLBACK_IMAGE" : data.coder_parameter.fallback_image.value,
-    "ENVBUILDER_DOCKER_CONFIG_BASE64" : base64encode(try(data.kubernetes_secret.cache_repo_dockerconfig_secret[0].data[".dockerconfigjson"], "")),
-    "ENVBUILDER_PUSH_IMAGE" : var.cache_repo == "" ? "" : "true",
-    "ENVBUILDER_INSECURE" : "${var.insecure_cache_repo}",
-    # You may need to adjust this if you get an error regarding deleting files when building the workspace.
-    # For example, when testing in KinD, it was necessary to set `/product_name` and `/product_uuid` in
-    # addition to `/var/run`.
-    # "ENVBUILDER_IGNORE_PATHS": "/product_name,/product_uuid,/var/run",
-  }
 }
 
 # Check for the presence of a prebuilt image in the cache repo
 # that we can use instead.
+# https://registry.terraform.io/providers/coder/envbuilder/latest/docs
 resource "envbuilder_cached_image" "cached" {
   count         = var.cache_repo == "" ? 0 : data.coder_workspace.me.start_count
-  builder_image = local.devcontainer_builder_image
+  builder_image = var.builder_image
   git_url       = local.repo_url
   cache_repo    = var.cache_repo
+  workspace_folder = local.workspace_folder
   extra_env     = local.envbuilder_env
-  insecure      = var.insecure_cache_repo
 }
 
 resource "kubernetes_persistent_volume_claim" "workspaces" {
@@ -276,7 +261,7 @@ resource "kubernetes_deployment" "main" {
 
         container {
           name              = "dev"
-          image             = var.cache_repo == "" ? local.devcontainer_builder_image : envbuilder_cached_image.cached.0.image
+          image             = var.cache_repo == "" ? var.builder_image : envbuilder_cached_image.cached.0.image
           image_pull_policy = "Always"
           security_context {}
 
@@ -303,7 +288,7 @@ resource "kubernetes_deployment" "main" {
             }
           }
           volume_mount {
-            mount_path = "/workspaces"
+            mount_path = "${local.workspace_folder}"
             name       = "workspaces"
             read_only  = false
           }
@@ -349,7 +334,7 @@ resource "coder_agent" "main" {
 
     # Add any commands that should be executed at workspace startup (e.g install requirements, start a program, etc) here
   EOT
-  dir            = "/workspaces"
+  dir            = "${local.workspace_folder}"
 
   # These environment variables allow you to make Git commits right away after creating a
   # workspace. Note that they take precedence over configuration defined in ~/.gitconfig!
@@ -386,7 +371,7 @@ resource "coder_agent" "main" {
   metadata {
     display_name = "Workspaces Disk"
     key          = "3_workspaces_disk"
-    script       = "coder stat disk --path /workspaces"
+    script       = "coder stat disk --path ${local.workspace_folder}"
     interval     = 60
     timeout      = 1
   }
@@ -445,7 +430,7 @@ resource "coder_metadata" "container_info" {
   resource_id = coder_agent.main.id
   item {
     key   = "workspace image"
-    value = var.cache_repo == "" ? local.devcontainer_builder_image : envbuilder_cached_image.cached.0.image
+    value = var.cache_repo == "" ? var.builder_image : envbuilder_cached_image.cached.0.image
   }
   item {
     key   = "git url"
