@@ -110,13 +110,15 @@ data "coder_parameter" "repo" {
   type         = "string"
 }
 
-data "coder_parameter" "fallback_image" {
-  default      = "codercom/enterprise-base:ubuntu"
-  description  = "This image runs if the devcontainer fails to build."
-  display_name = "Fallback Image"
-  mutable      = true
-  name         = "fallback_image"
-  order        = 6
+data "coder_parameter" "remote_repo_build_mode" {
+  display_name = "Remote Repository Build Mode"
+  name        = "remote_repo_build_mode"
+  description = "Enable this option if you want to build the devcontainer in a remote repository instead of the workspace. i.e., any devcontainer.json and Dockerfile changes locally will not be applied until the workspace is restarted."
+  default     = true
+  icon        = "/icon/github.svg"
+  mutable     = true
+  order       = 5
+  type        = "bool"
 }
 
 module "dotfiles" {
@@ -153,16 +155,20 @@ variable "builder_image" {
   default = "ghcr.io/coder/envbuilder:latest"
 }
 
+variable "fallback_image" {
+  type    = string
+  default = "codercom/enterprise-base:latest"
+  description = "This image runs if the devcontainer fails to build."
+}
+
 locals {
   repo_url = data.coder_parameter.repo.value
-  devcontainer_builder_image = var.builder_image
+  devcontainer_builder_image = var.builder_image == "" ? "ghcr.io/coder/envbuilder:latest" : var.builder_image
+  remote_repo_build_mode = data.coder_parameter.remote_repo_build_mode.value
   envbuilder_env = {
-  "ENVBUILDER_VERBOSE" : "true"
-  "ENVBUILDER_INSECURE" : "${var.insecure_cache_repo}"
   "ENVBUILDER_PUSH_IMAGE" : var.cache_repo == "" ? "" : "true",
-  "ENVBUILDER_CACHE_TTL_DAYS" : "182",
+  "ENVBUILDER_GET_CACHED_IMAGE" : var.cache_repo == "" ? "" : "false",
   "ENVBUILDER_DOCKER_CONFIG_BASE64" : base64encode(try(data.kubernetes_secret.cache_repo_dockerconfig_secret[0].data[".dockerconfigjson"], "")),
-  "ENVBUILDER_FALLBACK_IMAGE" : data.coder_parameter.fallback_image.value,
   "ENVBUILDER_INIT_SCRIPT" : replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
   "CODER_AGENT_TOKEN" : coder_agent.main.token,
   "CODER_AGENT_URL" : replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
@@ -176,11 +182,16 @@ locals {
 # that we can use instead.
 # https://registry.terraform.io/providers/coder/envbuilder/latest/docs
 resource "envbuilder_cached_image" "cached" {
-  count         = var.cache_repo == "" ? 0 : data.coder_workspace.me.start_count
-  builder_image = local.devcontainer_builder_image
-  git_url       = local.repo_url
-  cache_repo    = var.cache_repo
-  extra_env     = local.envbuilder_env
+  count                   = var.cache_repo == "" ? 0 : data.coder_workspace.me.start_count
+  builder_image           = local.devcontainer_builder_image
+  fallback_image          = var.fallback_image
+  git_url                 = local.repo_url
+  cache_repo              = var.cache_repo
+  cache_ttl_days          = 30
+  extra_env               = local.envbuilder_env
+  insecure                = var.insecure_cache_repo
+  remote_repo_build_mode  = local.remote_repo_build_mode
+  verbose                 = true
 }
 
 resource "kubernetes_persistent_volume_claim" "workspaces" {
@@ -428,8 +439,9 @@ resource "coder_metadata" "container_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = coder_agent.main.id
   item {
-    key   = "workspace image"
-    value = var.cache_repo == "" ? local.devcontainer_builder_image : envbuilder_cached_image.cached.0.image
+    key = "builder image used"
+    # Corrected: Access envbuilder_cached_image.cached as a list using [0]
+    value = var.cache_repo == "" ? "not enabled" : envbuilder_cached_image.cached[0].builder_image
   }
   item {
     key   = "git url"
@@ -438,5 +450,13 @@ resource "coder_metadata" "container_info" {
   item {
     key   = "cache repo"
     value = var.cache_repo == "" ? "not enabled" : var.cache_repo
+  }
+  item {
+    key   = "remote repo build mode"
+    value = var.cache_repo == "" ? "not enabled" : (envbuilder_cached_image.cached[0].remote_repo_build_mode ? "true" : "false")
+  }  
+  item {
+    key = "cached image exists"
+    value = var.cache_repo == "" ? "not enabled" : (envbuilder_cached_image.cached[0].exists ? "true" : "false")
   }
 }
