@@ -155,7 +155,7 @@ variable "builder_image" {
 
 locals {
   repo_url = data.coder_parameter.repo.value
-  workspace_folder = "/workspaces"
+  devcontainer_builder_image = var.builder_image
   envbuilder_env = {
   "ENVBUILDER_VERBOSE" : "true"
   "ENVBUILDER_INSECURE" : "${var.insecure_cache_repo}"
@@ -177,10 +177,9 @@ locals {
 # https://registry.terraform.io/providers/coder/envbuilder/latest/docs
 resource "envbuilder_cached_image" "cached" {
   count         = var.cache_repo == "" ? 0 : data.coder_workspace.me.start_count
-  builder_image = var.builder_image
+  builder_image = local.devcontainer_builder_image
   git_url       = local.repo_url
   cache_repo    = var.cache_repo
-  workspace_folder = local.workspace_folder
   extra_env     = local.envbuilder_env
 }
 
@@ -261,7 +260,7 @@ resource "kubernetes_deployment" "main" {
 
         container {
           name              = "dev"
-          image             = var.cache_repo == "" ? var.builder_image : envbuilder_cached_image.cached.0.image
+          image             = var.cache_repo == "" ? local.devcontainer_builder_image : envbuilder_cached_image.cached.0.image
           image_pull_policy = "Always"
           security_context {}
 
@@ -288,7 +287,7 @@ resource "kubernetes_deployment" "main" {
             }
           }
           volume_mount {
-            mount_path = "${local.workspace_folder}"
+            mount_path = "/workspaces"
             name       = "workspaces"
             read_only  = false
           }
@@ -334,7 +333,7 @@ resource "coder_agent" "main" {
 
     # Add any commands that should be executed at workspace startup (e.g install requirements, start a program, etc) here
   EOT
-  dir            = "${local.workspace_folder}"
+  dir            = "/workspaces"
 
   # These environment variables allow you to make Git commits right away after creating a
   # workspace. Note that they take precedence over configuration defined in ~/.gitconfig!
@@ -371,7 +370,7 @@ resource "coder_agent" "main" {
   metadata {
     display_name = "Workspaces Disk"
     key          = "3_workspaces_disk"
-    script       = "coder stat disk --path ${local.workspace_folder}"
+    script       = "coder stat disk --path /workspaces"
     interval     = 60
     timeout      = 1
   }
@@ -430,7 +429,7 @@ resource "coder_metadata" "container_info" {
   resource_id = coder_agent.main.id
   item {
     key   = "workspace image"
-    value = var.cache_repo == "" ? var.builder_image : envbuilder_cached_image.cached.0.image
+    value = var.cache_repo == "" ? local.devcontainer_builder_image : envbuilder_cached_image.cached.0.image
   }
   item {
     key   = "git url"
