@@ -150,9 +150,10 @@ data "kubernetes_secret" "cache_repo_dockerconfig_secret" {
 }
 
 // This variable designates the builder image to use to build the devcontainer.
+// Find the latest version of Envbuilder here: https://github.com/coder/envbuilder/pkgs/container/envbuilder
 variable "builder_image" {
   type    = string
-  default = "ghcr.io/coder/envbuilder:latest"
+  default = "ghcr.io/coder/envbuilder:1.1.0"
 }
 
 variable "fallback_image" {
@@ -163,11 +164,10 @@ variable "fallback_image" {
 
 locals {
   repo_url = data.coder_parameter.repo.value
-  devcontainer_builder_image = var.builder_image == "" ? "ghcr.io/coder/envbuilder:latest" : var.builder_image
+  devcontainer_builder_image = var.builder_image
   remote_repo_build_mode = data.coder_parameter.remote_repo_build_mode.value
   envbuilder_env = {
-  "ENVBUILDER_PUSH_IMAGE" : var.cache_repo == "" ? "" : "true",
-  "ENVBUILDER_GET_CACHED_IMAGE" : var.cache_repo == "" ? "" : "false",
+  "ENVBUILDER_PUSH_IMAGE" : true,
   "ENVBUILDER_DOCKER_CONFIG_BASE64" : base64encode(try(data.kubernetes_secret.cache_repo_dockerconfig_secret[0].data[".dockerconfigjson"], "")),
   "ENVBUILDER_INIT_SCRIPT" : replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
   "CODER_AGENT_TOKEN" : coder_agent.main.token,
@@ -440,8 +440,7 @@ resource "coder_metadata" "container_info" {
   resource_id = coder_agent.main.id
   item {
     key = "builder image used"
-    # Corrected: Access envbuilder_cached_image.cached as a list using [0]
-    value = var.cache_repo == "" ? "not enabled" : envbuilder_cached_image.cached[0].builder_image
+    value = var.cache_repo == "" ? "not enabled" : envbuilder_cached_image.cached.0.builder_image
   }
   item {
     key   = "git url"
@@ -453,10 +452,10 @@ resource "coder_metadata" "container_info" {
   }
   item {
     key   = "remote repo build mode"
-    value = var.cache_repo == "" ? "not enabled" : (envbuilder_cached_image.cached[0].remote_repo_build_mode ? "true" : "false")
+    value = var.cache_repo == "" ? "not enabled" : (envbuilder_cached_image.cached.0.remote_repo_build_mode ? "true" : "false")
   }  
   item {
-    key = "cached image exists"
-    value = var.cache_repo == "" ? "not enabled" : (envbuilder_cached_image.cached[0].exists ? "true" : "false")
-  }
+    key = "cached image exists?"
+    value = var.cache_repo == "" ? "not enabled" : (envbuilder_cached_image.cached.0.exists ? "true" : "false")
+  } 
 }
