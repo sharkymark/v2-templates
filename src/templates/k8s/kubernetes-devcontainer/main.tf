@@ -232,11 +232,11 @@ resource "kubernetes_deployment" "main" {
   ]
   wait_for_rollout = false
   metadata {
-    name      = local.deployment_name
+    name      = "coder-workspace-${data.coder_workspace.me.name}"
     namespace = var.namespace
     labels = {
       "app.kubernetes.io/name"     = "coder-workspace"
-      "app.kubernetes.io/instance" = local.deployment_name
+      "app.kubernetes.io/instance" = "coder-workspace-${data.coder_workspace.me.id}"
       "app.kubernetes.io/part-of"  = "coder"
       "com.coder.resource"         = "true"
       "com.coder.workspace.id"     = data.coder_workspace.me.id
