@@ -110,28 +110,6 @@ data "coder_parameter" "repo" {
   type         = "string"
 }
 
-data "coder_parameter" "fallback_image" {
-  default      = "codercom/enterprise-base:ubuntu"
-  description  = "This image runs if the devcontainer fails to build."
-  display_name = "Fallback Image"
-  mutable      = true
-  name         = "fallback_image"
-  order        = 5
-}
-
-data "coder_parameter" "devcontainer_builder" {
-  description  = <<-EOF
-Image that will build the devcontainer.
-We highly recommend using a specific release as the `:latest` tag will change.
-Find the latest version of Envbuilder here: https://github.com/coder/envbuilder/pkgs/container/envbuilder
-EOF
-  display_name = "Devcontainer Builder"
-  mutable      = true
-  name         = "devcontainer_builder"
-  default      = "ghcr.io/coder/envbuilder:latest"
-  order        = 6
-}
-
 data "coder_parameter" "remote_repo_build_mode" {
   display_name = "Remote Repository Build Mode"
   name        = "remote_repo_build_mode"
@@ -139,7 +117,7 @@ data "coder_parameter" "remote_repo_build_mode" {
   default     = true
   icon        = "/icon/github.svg"
   mutable     = true
-  order       = 7
+  order       = 5
   type        = "bool"
 }
 
@@ -171,42 +149,49 @@ data "kubernetes_secret" "cache_repo_dockerconfig_secret" {
   }
 }
 
+// This variable designates the builder image to use to build the devcontainer.
+// Find the latest version of Envbuilder here: https://github.com/coder/envbuilder/pkgs/container/envbuilder
+variable "builder_image" {
+  type    = string
+  default = "ghcr.io/coder/envbuilder:1.1.0"
+}
+
+variable "fallback_image" {
+  type    = string
+  default = "codercom/enterprise-base:latest"
+  description = "This image runs if the devcontainer fails to build."
+}
+
 locals {
-  deployment_name            = "coder-workspace-${data.coder_workspace.me.name}"
-  devcontainer_builder_image = data.coder_parameter.devcontainer_builder.value
+  repo_url = data.coder_parameter.repo.value
+  devcontainer_builder_image = var.builder_image
+  remote_repo_build_mode = data.coder_parameter.remote_repo_build_mode.value
+  envbuilder_env = {
+  "ENVBUILDER_PUSH_IMAGE" : true,
+  "ENVBUILDER_DOCKER_CONFIG_BASE64" : base64encode(try(data.kubernetes_secret.cache_repo_dockerconfig_secret[0].data[".dockerconfigjson"], "")),
+  "ENVBUILDER_INIT_SCRIPT" : replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
+  "CODER_AGENT_TOKEN" : coder_agent.main.token,
+  "CODER_AGENT_URL" : replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
+  }
+  deployment_name            = "coder-${lower(data.coder_workspace.me.id)}"
   git_author_name            = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
   git_author_email           = data.coder_workspace_owner.me.email
-  repo_url                   = data.coder_parameter.repo.value
-  # The envbuilder provider requires a key-value map of environment variables.
-  envbuilder_env = {
-    # ENVBUILDER_GIT_URL and ENVBUILDER_CACHE_REPO will be overridden by the provider
-    # if the cache repo is enabled.
-    "CODER_AGENT_TOKEN" : coder_agent.main.token,
-    # Use the docker gateway if the access URL is 127.0.0.1
-    "CODER_AGENT_URL" : replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal"),
-    # Use the docker gateway if the access URL is 127.0.0.1
-    "ENVBUILDER_INIT_SCRIPT" : replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal"),
-    "ENVBUILDER_FALLBACK_IMAGE" : data.coder_parameter.fallback_image.value,
-    "ENVBUILDER_DOCKER_CONFIG_BASE64" : base64encode(try(data.kubernetes_secret.cache_repo_dockerconfig_secret[0].data[".dockerconfigjson"], "")),
-    "ENVBUILDER_PUSH_IMAGE" : var.cache_repo == "" ? "" : "true",
-    "ENVBUILDER_INSECURE" : "${var.insecure_cache_repo}",
-    "ENVBUILDER_REMOTE_REPO_BUILD_MODE" : "${data.coder_parameter.remote_repo_build_mode.value}",
-    "ENBUILDER_VERBOSE" : "true",
-    # You may need to adjust this if you get an error regarding deleting files when building the workspace.
-    # For example, when testing in KinD, it was necessary to set `/product_name` and `/product_uuid` in
-    # addition to `/var/run`.
-    # "ENVBUILDER_IGNORE_PATHS": "/product_name,/product_uuid,/var/run",
-  }
 }
 
 # Check for the presence of a prebuilt image in the cache repo
 # that we can use instead.
+# https://registry.terraform.io/providers/coder/envbuilder/latest/docs
 resource "envbuilder_cached_image" "cached" {
-  count         = var.cache_repo == "" ? 0 : data.coder_workspace.me.start_count
-  builder_image = local.devcontainer_builder_image
-  git_url       = local.repo_url
-  cache_repo    = var.cache_repo
-  extra_env     = local.envbuilder_env
+  count                   = var.cache_repo == "" ? 0 : data.coder_workspace.me.start_count
+  builder_image           = local.devcontainer_builder_image
+  fallback_image          = var.fallback_image
+  git_url                 = local.repo_url
+  cache_repo              = var.cache_repo
+  cache_ttl_days          = 30
+  extra_env               = local.envbuilder_env
+  insecure                = var.insecure_cache_repo
+  remote_repo_build_mode  = local.remote_repo_build_mode
+  verbose                 = true
 }
 
 resource "kubernetes_persistent_volume_claim" "workspaces" {
@@ -247,11 +232,11 @@ resource "kubernetes_deployment" "main" {
   ]
   wait_for_rollout = false
   metadata {
-    name      = local.deployment_name
+    name      = "coder-workspace-${data.coder_workspace.me.name}"
     namespace = var.namespace
     labels = {
       "app.kubernetes.io/name"     = "coder-workspace"
-      "app.kubernetes.io/instance" = local.deployment_name
+      "app.kubernetes.io/instance" = "coder-workspace-${data.coder_workspace.me.id}"
       "app.kubernetes.io/part-of"  = "coder"
       "com.coder.resource"         = "true"
       "com.coder.workspace.id"     = data.coder_workspace.me.id
@@ -284,18 +269,28 @@ resource "kubernetes_deployment" "main" {
       spec {
         security_context {}
 
+# 2025-05-30 backup - will force cache
+#           image             = var.cache_repo == "" ? local.devcontainer_builder_image : envbuilder_cached_image.cached.0.image
+#
+
+
         container {
           name              = "dev"
-          image             = var.cache_repo == "" ? local.devcontainer_builder_image : envbuilder_cached_image.cached.0.image
+          image             = envbuilder_cached_image.cached.0.image
           image_pull_policy = "Always"
           security_context {}
+
+
 
           # Set the environment using cached_image.cached.0.env if the cache repo is enabled.
           # Otherwise, use the local.envbuilder_env.
           # You could alternatively write the environment variables to a ConfigMap or Secret
           # and use that as `env_from`.
+          #
+          #             for_each = nonsensitive(var.cache_repo == "" ? local.envbuilder_env : envbuilder_cached_image.cached.0.env_map)
+          #
           dynamic "env" {
-            for_each = nonsensitive(var.cache_repo == "" ? local.envbuilder_env : envbuilder_cached_image.cached.0.env_map)
+            for_each = nonsensitive(envbuilder_cached_image.cached.0.env_map)
             content {
               name  = env.key
               value = env.value
@@ -437,26 +432,25 @@ resource "coder_agent" "main" {
     interval     = 10
     timeout      = 1
   }
+
+  display_apps {
+    vscode = true
+    vscode_insiders = false
+    ssh_helper = true
+    port_forwarding_helper = true
+    web_terminal = true
+  }
+
 }
 
-# See https://registry.coder.com/modules/code-server
-module "code-server" {
-  count  = data.coder_workspace.me.start_count
-  source = "registry.coder.com/modules/code-server/coder"
 
-  # This ensures that the latest version of the module gets downloaded, you can also pin the module version to prevent breaking changes in production.
-  version = ">= 1.0.0"
-
-  agent_id = coder_agent.main.id
-  order    = 1
-}
 
 resource "coder_metadata" "container_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = coder_agent.main.id
   item {
-    key   = "workspace image"
-    value = var.cache_repo == "" ? local.devcontainer_builder_image : envbuilder_cached_image.cached.0.image
+    key = "builder image used"
+    value = var.cache_repo == "" ? "not enabled" : envbuilder_cached_image.cached.0.builder_image
   }
   item {
     key   = "git url"
@@ -468,10 +462,10 @@ resource "coder_metadata" "container_info" {
   }
   item {
     key   = "remote repo build mode"
-    value = data.coder_parameter.remote_repo_build_mode.value == "" ? "not enabled" : (data.coder_parameter.remote_repo_build_mode.value ? "true" : "false")
+    value = var.cache_repo == "" ? "not enabled" : (envbuilder_cached_image.cached.0.remote_repo_build_mode ? "true" : "false")
   }  
   item {
     key = "cached image exists?"
     value = var.cache_repo == "" ? "not enabled" : (envbuilder_cached_image.cached.0.exists ? "true" : "false")
-  }   
+  } 
 }

@@ -1,36 +1,58 @@
 ---
-name: Develop in a dev container in a Kubernetes deployment
-description: The goal is to enable a dev container in a Kubernetes deployment
-tags: [kubernetes]
+display_name: Kubernetes (Devcontainer)
+description: Provision envbuilder pods as Coder workspaces
+icon: ../../../site/static/icon/k8s.png
+maintainer_github: coder
+verified: true
+tags: [container, kubernetes, devcontainer]
 ---
 
-# VS Code Desktop template for a workspace in a dev container and Kubernetes deployment
+# Remote Development on Kubernetes Pods (with Devcontainers)
 
-### Apps included
+Provision Devcontainers as [Coder workspaces](https://coder.com/docs/workspaces) on Kubernetes with this example template.
 
-1. A web-based terminal
-1. VS Code Desktop (if installed locally)
+## Prerequisites
 
-### How it works
+### Infrastructure
 
-Coder has an image called envbuilder that is used to create a dev container by way of Google's [Kaniko](https://github.com/GoogleContainerTools/kaniko).
+**Cluster**: This template requires an existing Kubernetes cluster.
 
-> Note: Dev container steps such postCreate and postStart will hang since logs are streamed to the Coder UI. Resolution is remove the postCreate and postStart steps from the devcontainer.json file.
+**Container Image**: This template uses the [envbuilder image](https://github.com/coder/envbuilder) to build a Devcontainer from a `devcontainer.json`.
 
-### Additional scripting
+**(Optional) Cache Registry**: Envbuilder can utilize a Docker registry as a cache to speed up workspace builds. The [envbuilder Terraform provider](https://github.com/coder/terraform-provider-envbuilder) will check the contents of the cache to determine if a prebuilt image exists. In the case of some missing layers in the registry (partial cache miss), Envbuilder can still utilize some of the build cache from the registry.
 
-> Coder registry modules are used for repeatability and maintainability
+### Authentication
 
-1. Prompt user and clone/install a dotfiles repository (for personalization settings)
+This template authenticates using a `~/.kube/config`, if present on the server, or via built-in authentication if the Coder provisioner is running on Kubernetes with an authorized ServiceAccount. To use another [authentication method](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs#authentication), edit the template.
 
-### Resources
+## Architecture
 
-[Kuberenetes Terraform provider](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs)
+Coder supports devcontainers with [envbuilder](https://github.com/coder/envbuilder), an open source project. Read more about this in [Coder's documentation](https://coder.com/docs/templates/dev-containers).
 
-[Coder Terraform provider](https://registry.terraform.io/providers/coder/coder/latest/docs)
+This template provisions the following resources:
 
-[Coder registry modules](https://registry.coder.com/modules)
+- Kubernetes deployment (ephemeral)
+- Kubernetes persistent volume claim (persistent on `/workspaces`)
+- Envbuilder cached image (optional, persistent).
 
-[Coder envbuilder project](https://github.com/coder/envbuilder)
+This template will fetch a Git repo containing a `devcontainer.json` specified by the `repo` parameter, and builds it
+with [`envbuilder`](https://github.com/coder/envbuilder).
+The Git repository is cloned inside the `/workspaces` volume if not present.
+Any local changes to the Devcontainer files inside the volume will be applied when you restart the workspace.
+As you might suspect, any tools or files outside of `/workspaces` or not added as part of the Devcontainer specification are not persisted.
+Edit the `devcontainer.json` instead!
 
-[Google Kaniko project](https://github.com/GoogleContainerTools/kaniko)
+> **Note**
+> This template is designed to be a starting point! Edit the Terraform to extend the template to support your use case.
+
+## Caching
+
+To speed up your builds, you can use a container registry as a cache.
+When creating the template, set the parameter `cache_repo`.
+
+See the [Envbuilder Terraform Provider Examples](https://github.com/coder/terraform-provider-envbuilder/blob/main/examples/resources/envbuilder_cached_image/envbuilder_cached_image_resource.tf/) for a more complete example of how the provider works.
+
+> [!NOTE]
+> We recommend using a registry cache with authentication enabled.
+> To allow Envbuilder to authenticate with the registry cache, specify the variable `cache_repo_dockerconfig_secret`
+> with the name of a Kubernetes secret in the same namespace as Coder. The secret must contain the key `.dockerconfigjson`.
