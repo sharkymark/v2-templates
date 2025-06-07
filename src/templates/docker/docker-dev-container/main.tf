@@ -200,14 +200,6 @@ resource "coder_agent" "main" {
   startup_script  = <<EOT
 #!/bin/bash
 
-  if ! command -v aider >/dev/null 2>&1; then
-    curl -LsSf https://aider.chat/install.sh | sh
-  fi
-  if ! command -v goose >/dev/null 2>&1; then
-    curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | CONFIGURE=false bash
-  fi
-
-
   EOT  
 }
 

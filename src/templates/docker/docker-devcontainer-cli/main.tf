@@ -9,12 +9,6 @@ terraform {
   }
 }
 
-locals {
-  folder_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), "")
-  repo_owner_name = try(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 2), "")
-}
-
-
 
 data "coder_workspace" "me" {
 }
@@ -45,60 +39,13 @@ provider "docker" {
 provider "coder" {
 }
 
-data "coder_parameter" "image" {
-  name        = "Container Image"
-  type        = "string"
-  description = "What container image and language do you want?"
-  mutable     = true
-  default     = "marktmilligan/python:latest"
-  icon        = "https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png"
-
-  option {
-    name = "Node React"
-    value = "marktmilligan/node:22.7.0"
-    icon = "/icon/node.svg"
-  }
-  option {
-    name = "Go"
-    value = "marktmilligan/go:latest"
-    icon = "/icon/go.svg"
-  }
-  option {
-    name = "Python"
-    value = "marktmilligan/python:latest"
-    icon = "/icon/python.svg"
-  }
-  order       = 1
-}
-
-data "coder_parameter" "repo" {
-  name        = "Source Code Repository"
-  type        = "string"
-  description = "What source code repository do you want to clone?"
-  mutable     = true
-  icon        = "/icon/git.svg"
-  default     = "https://github.com/sharkymark/python_commissions"
-  option {
-    name = "Do not clone a repository"
-    value = ""
-    icon = "/emojis/274c.png"
-  }
-  option {
-    name = "Node React Hello, World"
-    value = "https://github.com/sharkymark/coder-react"
-    icon = "/icon/node.svg"
-  }
-  option {
-    name = "Coder CDE OSS Go project"
-    value = "https://github.com/coder/coder"
-    icon = "/icon/coder.svg"
-  }
-  option {
-    name = "Python CLI app for calculating sales commissions"
-    value = "https://github.com/sharkymark/python_commissions"
-    icon = "/icon/python.svg"
-  }
-  order       = 2
+data "coder_parameter" "git_repo" {
+  name         = "custom_repo"
+  display_name = "dev container repo URL"
+  order        = 1
+  default      = ""
+  description  = "Enter a dev container repo URL"
+  mutable      = true
 }
 
 module "dotfiles" {
@@ -121,7 +68,7 @@ module "git-clone" {
   source   = "registry.coder.com/modules/git-clone/coder"
   version  = "1.0.18"
   agent_id = coder_agent.dev.id
-  url      = "${data.coder_parameter.repo.value}"
+  url      = data.coder_parameter.git_repo.value
 }
 
 module "coder-login" {
@@ -130,10 +77,10 @@ module "coder-login" {
   agent_id = coder_agent.dev.id
 }
 
-module "git-config" {
-  count    = data.coder_workspace.me.start_count
-  source   = "registry.coder.com/modules/git-config/coder"
-  agent_id = coder_agent.dev.id
+resource "coder_devcontainer" "my-repository" {
+  count            = data.coder_workspace.me.start_count
+  agent_id         = coder_agent.dev.id
+  workspace_folder = "/home/coder/${module.git-clone[0].folder_name}"
 }
 
 resource "coder_agent" "dev" {
@@ -199,12 +146,25 @@ resource "coder_agent" "dev" {
   startup_script  = <<EOT
   #!/bin/sh
 
+    if [ ! -S /var/run/docker.sock ]; then
+      echo "Docker socket not found! Make sure Colima is running and socket is mounted."
+      exit 1
+    fi
+
+    # print Docker info
+    docker version
+
+  EOT
+
+  shutdown_script  = <<EOT
+  #!/bin/sh
+
   EOT
 }
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = data.coder_parameter.image.value
+  image = "marktmilligan/docker:latest"
   # Uses lower() to avoid Docker restriction on container names.
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
@@ -223,11 +183,18 @@ resource "docker_container" "workspace" {
   ]
 
 
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
+  env        = [
+    "CODER_AGENT_TOKEN=${coder_agent.dev.token}",
+    "CODER_AGENT_DEVCONTAINERS_ENABLE=true"
+    ]
   volumes {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
     read_only      = false
+  }
+  volumes {
+    host_path      = "/var/run/docker.sock"
+    container_path = "/var/run/docker.sock"
   }
   host {
     host = "host.docker.internal"
@@ -244,11 +211,7 @@ resource "coder_metadata" "workspace_info" {
   count       = data.coder_workspace.me.start_count
   resource_id = docker_container.workspace[0].id
   item {
-    key   = "image"
-    value = "${data.coder_parameter.image.value}"
-  }
-  item {
     key   = "repo cloned"
-    value = "${local.repo_owner_name}/${local.folder_name}"
+    value = module.git-clone[0].folder_name
   }
 }
