@@ -145,20 +145,22 @@ resource "coder_agent" "dev" {
   connection_timeout = 300
   startup_script  = <<EOT
   #!/bin/sh
+    # Start Docker service
+    sudo service docker start
 
-    if [ ! -S /var/run/docker.sock ]; then
-      echo "Docker socket not found! Make sure Colima is running and socket is mounted."
-      exit 1
-    fi
-
-    # print Docker info
+    # Wait for Docker to be fully running
+    echo "Waiting for Docker to start..."
+    timeout 30 sh -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
+    
+    # Print Docker info
     docker version
 
   EOT
 
   shutdown_script  = <<EOT
   #!/bin/sh
-
+    # Stop Docker service
+    sudo service docker stop
   EOT
 }
 
@@ -169,6 +171,7 @@ resource "docker_container" "workspace" {
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = lower(data.coder_workspace.me.name)
   dns      = ["1.1.1.1"]
+  privileged = true
 
   # Use the docker gateway if the access URL is 127.0.0.1
   #entrypoint = ["sh", "-c", replace(coder_agent.dev.init_script, "127.0.0.1", "host.docker.internal")]
@@ -191,10 +194,6 @@ resource "docker_container" "workspace" {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name
     read_only      = false
-  }
-  volumes {
-    host_path      = "/var/run/docker.sock"
-    container_path = "/var/run/docker.sock"
   }
   host {
     host = "host.docker.internal"
