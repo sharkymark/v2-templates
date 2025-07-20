@@ -54,13 +54,10 @@ module "dotfiles" {
   agent_id = coder_agent.dev.id
 }
 
-module "vscode-web" {
+module "code-server" {
   count          = data.coder_workspace.me.start_count
-  source         = "registry.coder.com/modules/vscode-web/coder"
+  source         = "registry.coder.com/modules/code-server/coder"
   agent_id       = coder_agent.dev.id
-  extensions     = ["github.copilot"]
-  folder         = "/home/coder"
-  accept_license = true
 }
 
 module "git-clone" {

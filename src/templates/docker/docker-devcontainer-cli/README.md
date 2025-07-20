@@ -9,7 +9,7 @@ tags: [local, docker]
 ### Apps included
 
 1. A web-based terminal
-1. VS Code Web IDE
+1. Coder's code-server Web IDE
 1. VS Code Desktop (if installed locally)
 
 ### Additional scripting
