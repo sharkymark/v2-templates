@@ -10,6 +10,8 @@ See the [CHANGELOG.md](CHANGELOG.md) file for the latest updates and changes to 
 
 If you're looking for an v2 trial key, fill out this [form](https://coder.com/trial) for a 30-day trial or you can sign up when creating your admin user after deploying Coder.
 
+If you want to install and manage Coder deployments with [Nuon](https://nuon.co), check out the blog post [here](https://nuon.co/blog/installing-coder-with-nuon/).
+
 Here is an additional repo [coder-hw](https://github.com/sharkymark/coder-hw) with a Python-based CLI using the Coder API.
 
 The [official v2 docs](https://github.com/coder/coder/tree/main/docs) and [template examples](https://github.com/coder/coder/tree/main/examples/templates) are great resources too. Also my colleague [bpmct](https://github.com/bpmct/coder-templates) authors some amazing templates too.
