@@ -1,10 +1,10 @@
 terraform {
   required_providers {
     coder = {
-      source  = "coder/coder"
+      source = "coder/coder"
     }
     docker = {
-      source  = "kreuzwerker/docker"
+      source = "kreuzwerker/docker"
     }
   }
 }
@@ -35,7 +35,7 @@ variable "socket" {
   e.g., unix:///var/run/docker.sock
 
   EOF
-  default = "unix:///var/run/docker.sock"
+  default     = "unix:///var/run/docker.sock"
 }
 
 variable "anthropic_api_key" {
@@ -138,7 +138,6 @@ data "coder_workspace_preset" "default" {
     EOT
     "preview_port"    = "4200"
     "container_image" = "codercom/example-universal:ubuntu"
-    "jetbrains_ide"   = "PY"
   }
 }
 
@@ -212,10 +211,10 @@ module "dotfiles" {
 }
 
 module "code-server" {
-  count          = data.coder_workspace.me.start_count
-  source         = "registry.coder.com/modules/code-server/coder"
-  agent_id       = coder_agent.dev.id
-  folder         = "/home/coder/projects"
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/modules/code-server/coder"
+  agent_id = coder_agent.dev.id
+  folder   = "/home/coder/projects"
 }
 
 module "git-config" {
@@ -225,8 +224,8 @@ module "git-config" {
 }
 
 resource "coder_agent" "dev" {
-  arch           = data.coder_provisioner.me.arch
-  os             = "linux"
+  arch = data.coder_provisioner.me.arch
+  os   = "linux"
 
   # The following metadata blocks are optional. They are used to display
   # information about your workspace in the dashboard. You can remove them
@@ -275,15 +274,15 @@ resource "coder_agent" "dev" {
   }
 
   display_apps {
-    vscode = true
-    vscode_insiders = false
-    ssh_helper = false
+    vscode                 = true
+    vscode_insiders        = false
+    ssh_helper             = false
     port_forwarding_helper = true
-    web_terminal = true
+    web_terminal           = true
   }
 
   startup_script_behavior = "non-blocking"
-  connection_timeout = 300
+  connection_timeout      = 300
 
   env = {
 
@@ -293,7 +292,7 @@ resource "coder_agent" "dev" {
     GIT_COMMITTER_EMAIL = "${data.coder_workspace_owner.me.email}"
   }
 
-  startup_script  = <<EOT
+  startup_script = <<EOT
 #!/bin/sh
 
 EOT
@@ -338,7 +337,7 @@ resource "docker_container" "workspace" {
   ]
 
 
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
+  env = ["CODER_AGENT_TOKEN=${coder_agent.dev.token}"]
   volumes {
     container_path = "/home/coder/"
     volume_name    = docker_volume.coder_volume.name

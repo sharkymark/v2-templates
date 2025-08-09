@@ -1,16 +1,18 @@
 ---
-name: Develop in a container in a Docker host with Anthropic Claude Code AI agent
+display_name: "Claude Code AI Agent Template"
 description: The goal is to try the experimental ai agent integration with Claude CodeAI agent
+icon: "../../../../.icons/claude.svg"
+verified: false
+tags: ["ai", "docker", "container", "claude", "agent", "tasks"]
 ---
 
 # ai agent template for a workspace in a container on a Docker host
 
 ### Docker image
 
-1. Based on latest python slim image e.g., `python:3.13-slim`
+1. Based on Coder-managed image `codercom/example-universal:ubuntu`
 
-[Image on DockerHub](https://hub.docker.com/repository/docker/marktmilligan/python/general)
-[Dockerfile](https://github.com/sharkymark/dockerfiles/blob/main/python/Dockerfile)
+[Image on DockerHub](https://hub.docker.com/r/codercom/example-universal)
 
 ### Apps included
 
